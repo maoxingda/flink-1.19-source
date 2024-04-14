@@ -42,6 +42,11 @@ public interface ClusterPartitionManager {
      * @param dataSetToRelease dataset for which all associated partitions should be released
      * @return future that is completed once all partitions have been released
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 释放与指定IntermediateDataSetID数据集关联的所有分区。
+      */
     CompletableFuture<Void> releaseClusterPartitions(IntermediateDataSetID dataSetToRelease);
 
     /**

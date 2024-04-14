@@ -232,7 +232,9 @@ public class StreamGraphGenerator {
         this.executionConfig = checkNotNull(executionConfig);
         this.checkpointConfig = new CheckpointConfig(checkpointConfig);
         this.configuration = checkNotNull(configuration);
+        /** checkpointStorage checkpointStorage对象 */
         this.checkpointStorage = this.checkpointConfig.getCheckpointStorage();
+        /** savepoint设置对象 */
         this.savepointRestoreSettings = SavepointRestoreSettings.fromConfiguration(configuration);
     }
 
@@ -269,23 +271,40 @@ public class StreamGraphGenerator {
         this.savepointRestoreSettings = savepointRestoreSettings;
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * generate()方法最终构建StreamGraph
+      */
     public StreamGraph generate() {
+        /** 构建StreamGraph 基于基础参数构建*/
         streamGraph =
                 new StreamGraph(
                         configuration, executionConfig, checkpointConfig, savepointRestoreSettings);
+        /**判断只是的是否为批处理模式*/
         shouldExecuteInBatchMode = shouldExecuteInBatchMode();
+        /**配置StreamGraph*/
         configureStreamGraph(streamGraph);
-
+        /** 跟踪已经转换过的Transformation */
         alreadyTransformed = new IdentityHashMap<>();
-
+        /**
+         * 循环遍历List<Transformation<?>>集合
+         */
         for (Transformation<?> transformation : transformations) {
             transform(transformation);
         }
-
+        /**
+         * 配置共享资源组
+         */
         streamGraph.setSlotSharingGroupResource(slotSharingGroupResources);
-
+        /**
+         * 批处理作业中应用细粒度资源管理时，可能会出现资源死锁。用户需要触发
+         * fine-grained.shuffle-mode.all-blocking=ALL_EDGES_BLOCKING
+         */
         setFineGrainedGlobalStreamExchangeMode(streamGraph);
-
+        /**
+         * 设置UnalignedCheckpoints，设置非对其Checkpoint
+         */
         for (StreamNode node : streamGraph.getStreamNodes()) {
             if (node.getInEdges().stream().anyMatch(this::shouldDisableUnalignedCheckpointing)) {
                 for (StreamEdge edge : node.getInEdges()) {
@@ -293,9 +312,11 @@ public class StreamGraphGenerator {
                 }
             }
         }
-
+        /** 将streamGraph对象实例赋值给builtStreamGraph*/
         final StreamGraph builtStreamGraph = streamGraph;
-
+        /**
+         * 清除Transformation缓存的所有信息
+         */
         alreadyTransformed.clear();
         alreadyTransformed = null;
         streamGraph = null;
@@ -319,13 +340,34 @@ public class StreamGraphGenerator {
         graph.setDynamic(dynamic);
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 配置StreamGraph
+      */
     private void configureStreamGraph(final StreamGraph graph) {
+        /**校验是否为空*/
         checkNotNull(graph);
-
+        /**设置时间语义*/
         graph.setTimeCharacteristic(timeCharacteristic);
+        /**
+         * someStream.filter(...).name("filter").setDescription("x in (1, 2, 3, 4) and y > 1");
+         * Flink SQL框架生成的算子默认会有一个由算子的类型以及id构成的名字，以及一个带有详细信息的描述。
+         * 用户可以通过将table.exec.simplify-operator-name-enabled设为false，
+         * 将名字改为和以前的版本一样的详细描述。
+         */
         graph.setVertexDescriptionMode(configuration.get(PipelineOptions.VERTEX_DESCRIPTION_MODE));
+        /**
+         * 当一个作业的拓扑很复杂时，用户可以把pipeline.vertex-name-include-index-prefix设为true，
+         * 在节点的名字前增加一个拓扑序的前缀，这样就可以很容易根据指标以及日志的信息快速找到拓扑图中对应节点。
+         */
         graph.setVertexNameIncludeIndexPrefix(
                 configuration.get(PipelineOptions.VERTEX_NAME_INCLUDE_INDEX_PREFIX));
+        /**
+         * 用于控制在Flink程序的所有数据源任务完成后是否进行检查点。如果启用（true），则即使数据源任务已经完成，Flink也会在logical slot上等待，并在所有任务完成后进行检查点。如果禁用（false），则在所有数据源任务完成后，不会进行额外的检查点。
+         * 这个配置项的默认值是false，意味着在所有数据源任务完成后，不会进行额外的检查点。
+         * 如果你需要在程序运行中动态地修改这个配置
+         */
         graph.setAutoParallelismEnabled(
                 configuration.get(BatchExecutionOptions.ADAPTIVE_AUTO_PARALLELISM_ENABLED));
         graph.setEnableCheckpointsAfterTasksFinish(
@@ -425,6 +467,10 @@ public class StreamGraphGenerator {
         // batch jobs with PIPELINE edges. Users need to trigger the
         // fine-grained.shuffle-mode.all-blocking to convert all edges to BLOCKING before we fix
         // that issue.
+        /**
+         * 阻塞分区表示阻塞数据交换，其中数据流首先被完全产生，然后被消耗。
+         * 这是一个仅适用于有界流的选项，可以在有界流运行时和恢复中使用。
+         */
         if (shouldExecuteInBatchMode && graph.hasFineGrainedResource()) {
             if (configuration.get(ClusterOptions.FINE_GRAINED_SHUFFLE_MODE_ALL_BLOCKING)) {
                 graph.setGlobalStreamExchangeMode(GlobalStreamExchangeMode.ALL_EDGES_BLOCKING);
@@ -480,7 +526,17 @@ public class StreamGraphGenerator {
      * <p>This checks whether we already transformed it and exits early in that case. If not it
      * delegates to one of the transformation specific methods.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 对单个Transform进行转换
+      */
     private Collection<Integer> transform(Transformation<?> transform) {
+        /**
+         * 检查是否已经转换过，
+         * 转换过的会放到Map<Transformation<?>, Collection<Integer>> alreadyTransformed;结构中
+         * 如果transform对象已经存在于map集合中，那么直接返回对应的已转换的结果，避免重复转换。
+         */
         if (alreadyTransformed.containsKey(transform)) {
             return alreadyTransformed.get(transform);
         }
@@ -491,16 +547,26 @@ public class StreamGraphGenerator {
 
             // if the max parallelism hasn't been set, then first use the job wide max parallelism
             // from the ExecutionConfig.
+            /**
+             * 如果尚未设置最大并行度，则首先使用ExecutionConfig中的作业范围最大并行度。
+             */
             int globalMaxParallelismFromConfig = executionConfig.getMaxParallelism();
             if (globalMaxParallelismFromConfig > 0) {
                 transform.setMaxParallelism(globalMaxParallelismFromConfig);
             }
         }
-
+        /**
+         * 描述插槽共享组的名称和不同的资源组件
+         * 获取
+         */
         transform
                 .getSlotSharingGroup()
                 .ifPresent(
                         slotSharingGroup -> {
+                            /**
+                             * 构建ResourceSpec 描述具有自定义项不同资源。
+                             * 堆内存、CPU
+                             */
                             final ResourceSpec resourceSpec =
                                     SlotSharingGroupUtils.extractResourceSpec(slotSharingGroup);
                             if (!resourceSpec.equals(ResourceSpec.UNKNOWN)) {
@@ -525,14 +591,27 @@ public class StreamGraphGenerator {
                         });
 
         // call at least once to trigger exceptions about MissingTypeInfo
+        /** 检查输出类型 决定是否会触发MissingTypeInfo的异常*/
         transform.getOutputType();
 
+        /**
+         * 根据transform类型获取对应的TransformationTranslator
+         * transform.getClass():org.apache.flink.streaming.api.transformations.OneInputTransformation
+         * TransformationTranslator => OneInputTransformationTranslator，对Transformation进行转换
+         */
         @SuppressWarnings("unchecked")
         final TransformationTranslator<?, Transformation<?>> translator =
                 (TransformationTranslator<?, Transformation<?>>)
                         translatorMap.get(transform.getClass());
-
+        /**
+         * 定义了一个Collection<Integer>类型的变量transformedIds，用于存储转换后的ID集合。
+         */
         Collection<Integer> transformedIds;
+        /**
+         * 如果translator对象不为null，则调用translate方法进行转换，并将结果赋值给transformedIds。
+         * 如果translator为null，则调用legacyTransform方法进行转换。两种不同的转换方式，
+         * 具体使用哪一种取决于translator是否存在。
+         */
         if (translator != null) {
             transformedIds = translate(translator, transform);
         } else {
@@ -541,10 +620,20 @@ public class StreamGraphGenerator {
 
         // need this check because the iterate transformation adds itself before
         // transforming the feedback edges
+        /**
+         * 这段代码检查transform对象是否还没有被添加到alreadyTransformed集合中.
+         * 因为StreamNode内部构建是递归,第一个算子转换的时候会将父类所有的依赖都会递归转换。
+         * 此时alreadyTransformed已经存在转换后的信息，所以需要这个检查来避免重复添加。
+         */
         if (!alreadyTransformed.containsKey(transform)) {
+            /**
+             * 如果transform还没有被转换过，那么将其和对应的transformedIds一起添加到alreadyTransformed集合中
+             */
             alreadyTransformed.put(transform, transformedIds);
         }
-
+        /**
+         * 返回转换后的ID集合transformedIds
+         */
         return transformedIds;
     }
 
@@ -785,19 +874,41 @@ public class StreamGraphGenerator {
         return Collections.singleton(itSource.getId());
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * translate的私有方法，它接收两个参数：
+     * 一个TransformationTranslator类型的translator
+     * 一个Transformation类型的transform。这个方法的目的是通过给定的translator来转换transform，
+     * 并返回转换后的ID集合。
+      */
     private Collection<Integer> translate(
             final TransformationTranslator<?, Transformation<?>> translator,
             final Transformation<?> transform) {
+        /**
+         * 这两行代码使用checkNotNull方法来确保translator和transform对象不是null。
+         * 如果它们中的任何一个为null，checkNotNull方法会抛出一个异常。
+         */
         checkNotNull(translator);
         checkNotNull(transform);
-
+        /**
+         * 得到所有输入ID的列表 每次都回去查看上游所有Transformation是否转换过，这也是存放map的一个原因，防止每次重复转换
+         */
         final List<Collection<Integer>> allInputIds = getParentInputIds(transform.getInputs());
-
+        /**
+         * 这里检查transform对象是否已经在alreadyTransformed这个映射（可能是一个Map）中存在。
+         * 如果存在，直接返回已经转换的结果，避免重复转换。
+         */
         // the recursive call might have already transformed this
         if (alreadyTransformed.containsKey(transform)) {
             return alreadyTransformed.get(transform);
         }
-
+        /**
+         * 确定slotSharingGroup的值。首先检查transform对象是否有一个SlotSharingGroup，
+         * 如果有，就获取它的名称。它使用Java Stream API处理allInputIds集合，并将其转换为一个列表，
+         * 然后传递给determineSlotSharingGroup方法。
+         * 这里是default默认
+         */
         final String slotSharingGroup =
                 determineSlotSharingGroup(
                         transform.getSlotSharingGroup().isPresent()
@@ -806,10 +917,17 @@ public class StreamGraphGenerator {
                         allInputIds.stream()
                                 .flatMap(Collection::stream)
                                 .collect(Collectors.toList()));
-
+        /**
+         * 这里创建了一个ContextImpl对象，它是TransformationTranslator.Context接口的一个实现。
+         * 这个对象可能用于后续的Transformation过程中，传递一些必要的上下文信息。
+         * 为什么又ContextImpl环境信息是因为里面持有streamGraph,在后面转换过程中需要用到。
+         */
         final TransformationTranslator.Context context =
                 new ContextImpl(this, streamGraph, slotSharingGroup, configuration);
-
+        /**
+         * 根据shouldExecuteInBatchMode的值，选择执行批量模式转换的还是流模式的转换。
+         * 如果shouldExecuteInBatchMode为true，则调用translator的translateForBatch方法；调用translateForStreaming方法。
+         */
         return shouldExecuteInBatchMode
                 ? translator.translateForBatch(transform, context)
                 : translator.translateForStreaming(transform, context);
@@ -825,13 +943,26 @@ public class StreamGraphGenerator {
      * @return the nodeIds per transformation or an empty list if the {@code parentTransformations}
      *     are empty.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 返回类型是 List<Collection<Integer>>，表示它将返回一个列表，这个列表中的每一项都是一个整数集合
+      */
     private List<Collection<Integer>> getParentInputIds(
             @Nullable final Collection<Transformation<?>> parentTransformations) {
+        /** 创建一个新的 ArrayList 来存储所有的输入ID集合。 */
         final List<Collection<Integer>> allInputIds = new ArrayList<>();
+        /**
+         * 如果传入的 parentTransformations 是 null，则直接返回空的 allInputIds 列表。
+         */
         if (parentTransformations == null) {
             return allInputIds;
         }
-
+        /**
+         * 遍历父级转换并转换其输入ID。
+         * 1.循环环遍历 parentTransformations 中的每一个 Transformation 对象
+         * 2.对于每一个 Transformation对象，调用 transform 方法来获取它的输入ID集合，并将其添加到 allInputIds 列表中。
+         */
         for (Transformation<?> transformation : parentTransformations) {
             allInputIds.add(transform(transformation));
         }
@@ -892,6 +1023,11 @@ public class StreamGraphGenerator {
             return streamGraph;
         }
 
+        /**
+          * @授课老师(V): yi_locus
+          * email: 156184212@qq.com
+          * 获取已经转换过的id，基于transformation参数
+          */
         @Override
         public Collection<Integer> getStreamNodeIds(final Transformation<?> transformation) {
             checkNotNull(transformation);

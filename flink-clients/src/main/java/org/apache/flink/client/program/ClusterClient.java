@@ -47,6 +47,10 @@ import java.util.concurrent.CompletableFuture;
  *
  * @param <T> type of the cluster id
  */
+/**
+  * @授课老师(V): yi_locus
+  * ClusterClient提供了将程序提交到远程集群所需的功能。
+  */
 public interface ClusterClient<T> extends AutoCloseable {
 
     @Override
@@ -248,6 +252,11 @@ public interface ClusterClient<T> extends AutoCloseable {
      * @param clusterDatasetId id of the cluster dataset to be invalidated.
      * @return Future which will be completed when the cached dataset is invalidated.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 基于id使缓存中间数据集无效
+      */
     default CompletableFuture<Void> invalidateClusterDataset(AbstractID clusterDatasetId) {
         return CompletableFuture.completedFuture(null);
     }

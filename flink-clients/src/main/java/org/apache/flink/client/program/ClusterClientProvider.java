@@ -22,6 +22,10 @@ package org.apache.flink.client.program;
 import org.apache.flink.annotation.Internal;
 
 /** Factory for {@link ClusterClient ClusterClients}. */
+/**
+  * @授课老师(V): yi_locus
+  * ClusterClients的工厂,用来获取ClusterClients
+  */
 @Internal
 public interface ClusterClientProvider<T> {
 

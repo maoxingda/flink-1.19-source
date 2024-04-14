@@ -148,6 +148,10 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * @see org.apache.flink.streaming.api.environment.LocalStreamEnvironment
  * @see org.apache.flink.streaming.api.environment.RemoteStreamEnvironment
  */
+
+/**
+ * Flink 流处理执行上下文
+ */
 @Public
 public class StreamExecutionEnvironment implements AutoCloseable {
 
@@ -2267,6 +2271,7 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      * @return The result of the job execution, containing elapsed time and accumulators.
      * @throws Exception which occurs during job execution.
      */
+    /** 触发程序执行。 */
     public JobExecutionResult execute() throws Exception {
         return execute((String) null);
     }
@@ -2282,16 +2287,30 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      * @return The result of the job execution, containing elapsed time and accumulators.
      * @throws Exception which occurs during job execution.
      */
+
+    /**
+      * @授课老师(V): yi_locus
+      * 调用execute进行transformations生成StreamNode。并提交StreamNode继续后续任务
+      */
     public JobExecutionResult execute(String jobName) throws Exception {
+        /**
+         * 创建一个新的ArrayList来存储transformations的副本，命名为originalTransformations
+         */
         final List<Transformation<?>> originalTransformations = new ArrayList<>(transformations);
+        /** 获取一个StreamGraph对象。 */
         StreamGraph streamGraph = getStreamGraph();
+        /** 如果jobName不为空，则将其设置为streamGraph的作业名称。 */
         if (jobName != null) {
             streamGraph.setJobName(jobName);
         }
 
         try {
+            /** 尝试执行streamGraph，并返回执行结果。 */
             return execute(streamGraph);
         } catch (Throwable t) {
+            /**
+             * 如果异常则重试
+             */
             Optional<ClusterDatasetCorruptedException> clusterDatasetCorruptedException =
                     ExceptionUtils.findThrowable(t, ClusterDatasetCorruptedException.class);
             if (!clusterDatasetCorruptedException.isPresent()) {
@@ -2299,7 +2318,11 @@ public class StreamExecutionEnvironment implements AutoCloseable {
             }
 
             // Retry without cache if it is caused by corrupted cluster dataset.
+            /**
+             * 如果是由损坏的群集数据集引起的，请在没有缓存的情况下重试。 清除缓存
+             */
             invalidateCacheTransformations(originalTransformations);
+            /** 构建StreamGraph 重新执行*/
             streamGraph = getStreamGraph(originalTransformations);
             return execute(streamGraph);
         }
@@ -2348,15 +2371,37 @@ public class StreamExecutionEnvironment implements AutoCloseable {
         }
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * 校验CacehTransformation,如果因为缓存造成集群问题则清空缓存
+      */
     private void invalidateCacheTransformations(List<Transformation<?>> transformations)
             throws Exception {
+        /**
+         * 使用for-each循环遍历transformations集合中的每一个Transformation对象
+         */
         for (Transformation<?> transformation : transformations) {
+            /**
+             * 在循环内部，首先检查当前的transformation对象是否为null。
+             * 如果transformation是null，则使用continue语句跳过当前循环的剩余部分，继续下一次循环。
+             */
             if (transformation == null) {
                 continue;
             }
+            /**
+             * 检查transformation对象是否是CacheTransformation类或其子类的实例。
+             */
             if (transformation instanceof CacheTransformation) {
+                /**
+                 * 则执行invalidateClusterDataset方法，并传入通过类型转换得到的CacheTransformation对象的getDatasetId()方法的返回值。
+                 * invalidateClusterDataset方法，用于使与指定数据集ID相关联的缓存数据失效。
+                 */
                 invalidateClusterDataset(((CacheTransformation<?>) transformation).getDatasetId());
             }
+            /**
+             * transformation是否是CacheTransformation的实例，递归调用invalidateCacheTransformations方法，
+             * 并传入transformation.getInputs()，父类Transformation
+             */
             invalidateCacheTransformations(transformation.getInputs());
         }
     }
@@ -2463,6 +2508,11 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      *
      * @return The stream graph representing the transformations
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 调用getStreamGraph获取StreamGraph
+      */
     @Internal
     public StreamGraph getStreamGraph() {
         return getStreamGraph(true);
@@ -2477,24 +2527,57 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      * @param clearTransformations Whether or not to clear previously registered transformations
      * @return The stream graph representing the transformations
      */
+    /**
+     * 构建StreamGraph
+     * @param clearTransformations 是否清楚transformation
+     * @return
+     */
     @Internal
     public StreamGraph getStreamGraph(boolean clearTransformations) {
+        /**
+         * 调用内部重载方法构建StreamGraph
+         */
         final StreamGraph streamGraph = getStreamGraph(transformations);
+        /**
+         * 清除transformations,
+         * 为什么clear？不影响后续其他任务的执行
+         * 假如有多个execute触发，它们是同一个StreamExecutionEnvironment
+         * 此时transformation中的任务就要清除
+         *
+         */
         if (clearTransformations) {
             transformations.clear();
         }
         return streamGraph;
     }
-
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 通过getStreamGraphGenerator(transformations).generate() 构建StreamGraph
+      */
     private StreamGraph getStreamGraph(List<Transformation<?>> transformations) {
+        /** 异步获取数据集状态，也就是查看历史有没有缓存 */
         synchronizeClusterDatasetStatus();
         return getStreamGraphGenerator(transformations).generate();
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 获取集群中已经缓存的数据对应的datasetId
+      * 如果缓存过则将该transformation.isCached 设置为true
+      * 否则false
+      */
     private void synchronizeClusterDatasetStatus() {
         if (cachedTransformations.isEmpty()) {
             return;
         }
+
+        /**
+         * 向ResourceManager发送RPC消息 listDataSets获取到状态后
+         * 内部Map<IntermediateDataSetID, DataSetMetaInfo> dataSetMetaInfo =
+         * 缓存是否缓存ResultID
+         */
         Set<AbstractID> completedClusterDatasets =
                 listCompletedClusterDatasets().stream()
                         .map(AbstractID::new)
@@ -2519,6 +2602,11 @@ public class StreamExecutionEnvironment implements AutoCloseable {
         return getStreamGraphGenerator(transformations).generate();
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 构建StreamGraphGenerator,内部会设置一些参数如backend、时间语义、SlotSharingGroupResource
+      */
     private StreamGraphGenerator getStreamGraphGenerator(List<Transformation<?>> transformations) {
         if (transformations.size() <= 0) {
             throw new IllegalStateException(
@@ -2527,6 +2615,10 @@ public class StreamExecutionEnvironment implements AutoCloseable {
 
         // Synchronize the cached file to config option PipelineOptions.CACHED_FILES because the
         // field cachedFile haven't been migrated to configuration.
+        /**
+         * 将缓存的文件同步到配置选项PipelineOptions.CACHED_FILE，
+         * 因为cachedFile目前不支持添加到config.yaml配置中。
+         */
         if (!getCachedFiles().isEmpty()) {
             configuration.set(
                     PipelineOptions.CACHED_FILES,
@@ -2535,10 +2627,16 @@ public class StreamExecutionEnvironment implements AutoCloseable {
 
         // We copy the transformation so that newly added transformations cannot intervene with the
         // stream graph generation.
+        /**
+         * new ArrayList<>(transformations) 复制转换，这样新添加的转换就不会干扰流图的生成。
+         */
         return new StreamGraphGenerator(
                         new ArrayList<>(transformations), config, checkpointCfg, configuration)
+                /** 设置backend*/
                 .setStateBackend(defaultStateBackend)
+                /**设置时间语义*/
                 .setTimeCharacteristic(getStreamTimeCharacteristic())
+                /** 设置共享资源组。 */
                 .setSlotSharingGroupResource(slotSharingGroupResources);
     }
 
@@ -2911,21 +3009,37 @@ public class StreamExecutionEnvironment implements AutoCloseable {
         cachedTransformations.put(intermediateDataSetID, t);
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * invalidateClusterDataset接收datasetId，使得集群的数据集失效
+      */
     @Internal
     public void invalidateClusterDataset(AbstractID datasetId) throws Exception {
         if (!cachedTransformations.containsKey(datasetId)) {
             throw new RuntimeException(
                     String.format("IntermediateDataset %s is not found", datasetId));
         }
+        /**
+         * 获取PipelineExecutor
+         */
         final PipelineExecutor executor = getPipelineExecutor();
-
+        /**
+         * 如果PipelineExecutor不是CacheSupportedPipelineExecutor
+         * 也就是不是缓存对应的执行器，则跳出返回
+         */
         if (!(executor instanceof CacheSupportedPipelineExecutor)) {
             return;
         }
-
+        /**
+         * 如果是CacheSupportedPipelineExecutor则调用
+         * invalidateClusterDataset datasetId=datasetId
+         */
         ((CacheSupportedPipelineExecutor) executor)
                 .invalidateClusterDataset(datasetId, configuration, userClassloader)
                 .get();
+        /**
+         * 将来cachedTransformations key为datasetId对应的缓存状态设置为fasle
+         */
         cachedTransformations.get(datasetId).setCached(false);
     }
 

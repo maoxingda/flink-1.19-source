@@ -87,6 +87,11 @@ public class ResourceManagerPartitionTrackerImpl implements ResourceManagerParti
                 taskExecutorId, new ClusterPartitionReport(Collections.emptyList()));
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 调用方法释放dataSetId对应的缓存数据
+      */
     @Override
     public CompletableFuture<Void> releaseClusterPartitions(IntermediateDataSetID dataSetId) {
         Preconditions.checkNotNull(dataSetId);
@@ -129,6 +134,10 @@ public class ResourceManagerPartitionTrackerImpl implements ResourceManagerParti
         internalReleasePartitions(dataSetsWithLostPartitions);
     }
 
+    /**
+     * 最终调用releaseClusterPartitions释放ClusterPartitions
+     * @param dataSetsToRelease
+     */
     private void internalReleasePartitions(Set<IntermediateDataSetID> dataSetsToRelease) {
         Map<ResourceID, Set<IntermediateDataSetID>> releaseCalls =
                 prepareReleaseCalls(dataSetsToRelease);

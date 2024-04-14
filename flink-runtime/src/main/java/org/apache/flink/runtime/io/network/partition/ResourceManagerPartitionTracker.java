@@ -58,6 +58,11 @@ public interface ResourceManagerPartitionTracker {
      *
      * @param dataSetId data set to release
      */
+    /**
+     * 向托管给定数据分区的所有任务执行器发出发布调用设置
+     * @param dataSetId
+     * @return
+     */
     CompletableFuture<Void> releaseClusterPartitions(IntermediateDataSetID dataSetId);
 
     /**

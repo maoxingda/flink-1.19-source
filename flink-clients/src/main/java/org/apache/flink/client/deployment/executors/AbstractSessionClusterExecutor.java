@@ -118,21 +118,42 @@ public class AbstractSessionClusterExecutor<
         }
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * 将集群中的数据集失效
+     * clusterClient.invalidateClusterDataset方法是Task任务结果的数据集失效
+     * IntermediateDataSet：表示 JobVertex 的输出，即经过 operator 处理产生的数据集。producer 是 JobVertex ，consumer 是 JobEdge。
+      */
     @Override
     public CompletableFuture<Void> invalidateClusterDataset(
             AbstractID clusterDatasetId,
             Configuration configuration,
             ClassLoader userCodeClassloader)
             throws Exception {
+        /**
+         * 部署集群（例如Yarnm、k8s、Standalone并返回用于集群通信的客户端的描述符。最核心的触发集群部署
+         */
         try (final ClusterDescriptor<ClusterID> clusterDescriptor =
                 clusterClientFactory.createClusterDescriptor(configuration)) {
+            /**
+             * 获取集群的ClusterID
+             */
             final ClusterID clusterID = clusterClientFactory.getClusterId(configuration);
             checkState(clusterID != null);
-
+            /**
+             * 获取得到ClusterDescriptor构建出来ClusterClientProvider类
+             */
             final ClusterClientProvider<ClusterID> clusterClientProvider =
                     clusterDescriptor.retrieve(clusterID);
-
+            /**
+             * 基于ClusterClientProvider.getClusterClient()方法得到ClusterClient
+             * ClusterClient提供了将程序提交到远程集群所需的功能。
+             */
             final ClusterClient<ClusterID> clusterClient = clusterClientProvider.getClusterClient();
+            /**
+             * 通过clusterClient.invalidateClusterDataset方法向远程集群通信(参数类型为IntermediateDataSetID)
+             * IntermediateDataSet：表示 JobVertex 的输出，即经过 operator 处理产生的数据集。producer 是 JobVertex ，consumer 是 JobEdge。
+             */
             return clusterClient
                     .invalidateClusterDataset(new IntermediateDataSetID(clusterDatasetId))
                     .thenApply(acknowledge -> null);

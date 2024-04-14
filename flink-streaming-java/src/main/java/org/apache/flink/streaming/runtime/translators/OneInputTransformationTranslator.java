@@ -59,6 +59,13 @@ public final class OneInputTransformationTranslator<IN, OUT>
         return ids;
     }
 
+
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 调用OneInputTransformationTranslator中的translateInternal进行处理Transformation，
+     * 也就是说每一个Transformation都会有一个处理的TransformationTranslator
+      */
     @Override
     public Collection<Integer> translateForStreamingInternal(
             final OneInputTransformation<IN, OUT> transformation, final Context context) {

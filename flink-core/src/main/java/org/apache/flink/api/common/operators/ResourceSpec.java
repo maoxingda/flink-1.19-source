@@ -56,6 +56,12 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *   <li>Extended resources
  * </ol>
  */
+/**
+  * @授课老师(V): yi_locus
+  * email: 156184212@qq.com
+  * 用UDF描述操作的不同资源
+  * 堆内存、对外内存、CPU等
+  */
 @Internal
 public final class ResourceSpec implements Serializable {
 

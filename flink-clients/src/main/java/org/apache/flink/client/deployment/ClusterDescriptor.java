@@ -28,6 +28,10 @@ import org.apache.flink.util.FlinkException;
  *
  * @param <T> Type of the cluster id
  */
+/**
+  * @授课老师(V): yi_locus
+  * 部署集群（例如Yarnm、k8s、Standalone并返回用于集群通信的客户端的描述符。最核心的触发集群部署
+  */
 public interface ClusterDescriptor<T> extends AutoCloseable {
 
     /**

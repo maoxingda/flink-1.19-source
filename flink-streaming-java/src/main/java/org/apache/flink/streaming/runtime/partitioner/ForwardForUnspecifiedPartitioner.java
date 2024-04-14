@@ -45,6 +45,15 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
  *
  * @param <T> Type of the elements in the Stream
  */
+/**
+  * @授课老师(V): yi_locus
+  * email: 156184212@qq.com
+  * 当上游和下游的平行度为ExecutionConfig#PARALLISM_DEFAULT,
+ * 并且未指定边缘的partitioner（partitioner==null），
+ * 则默认情况下，边缘的partitioner将设置为FORWARD。
+ * 当使用AdaptiveBatchScheduler时，这将导致许多作业顶点的平行度不是基于数据量计算的，
+ * 而是由于前向边缘而必须与其上游顶点的平行性对齐，这与AdaptiveBatch调度器的初衷背道而驰。
+  */
 @Internal
 public class ForwardForUnspecifiedPartitioner<T> extends ForwardPartitioner<T> {
 

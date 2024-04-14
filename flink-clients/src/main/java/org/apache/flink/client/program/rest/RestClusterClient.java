@@ -806,9 +806,16 @@ public class RestClusterClient<T> implements ClusterClient<T> {
                                         .collect(Collectors.toSet()));
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 基于id使缓存中间数据集无效
+      */
     @Override
     public CompletableFuture<Void> invalidateClusterDataset(AbstractID clusterDatasetId) {
-
+        /**
+         * 构建请求参数
+         */
         final ClusterDataSetDeleteTriggerHeaders triggerHeader =
                 ClusterDataSetDeleteTriggerHeaders.INSTANCE;
         final ClusterDataSetDeleteTriggerMessageParameters parameters =

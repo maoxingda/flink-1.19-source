@@ -118,6 +118,12 @@ import static org.apache.flink.util.Preconditions.checkState;
  *       JobMaster} at the resource manager
  * </ul>
  */
+
+/**
+ * 资源管理
+ * @param <WorkerType>
+ */
+/** 资源管理 */
 public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
         extends FencedRpcEndpoint<ResourceManagerId>
         implements DelegationTokenManager.Listener, ResourceManagerGateway {

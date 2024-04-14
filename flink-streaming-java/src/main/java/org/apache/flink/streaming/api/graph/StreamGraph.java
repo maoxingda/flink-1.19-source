@@ -314,6 +314,20 @@ public class StreamGraph implements Pipeline {
         sources.add(vertexID);
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 添加数据源类型的StreamNode
+      * @param vertexID transformation
+      * @param slotSharingGroup slot 共享组
+      * @param coLocationGroup null
+      * @param operatorFactory StreamOperator
+      * @param inTypeInfo 输入类型类型
+      * @param outTypeInfo 输出类型类型
+      * @param operatorName operator名字
+      * @param <IN>
+      * @param <OUT>
+      */
     public <IN, OUT> void addLegacySource(
             Integer vertexID,
             @Nullable String slotSharingGroup,
@@ -322,6 +336,9 @@ public class StreamGraph implements Pipeline {
             TypeInformation<IN> inTypeInfo,
             TypeInformation<OUT> outTypeInfo,
             String operatorName) {
+        /**
+         * addOperator方法内部就会构建StreamNode
+         */
         addOperator(
                 vertexID,
                 slotSharingGroup,
@@ -330,6 +347,9 @@ public class StreamGraph implements Pipeline {
                 inTypeInfo,
                 outTypeInfo,
                 operatorName);
+        /**
+         * 将来vertexId 放入Set<Integer> sources中
+         */
         sources.add(vertexID);
     }
 
@@ -356,6 +376,13 @@ public class StreamGraph implements Pipeline {
         sinks.add(vertexID);
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 很重要的一个方法内部做了两件事
+      * 1.根据当前Transformtion获取对应的StreamTask。StreamTask 在Task线程启动任务的时候会被处理。进而构造StreamOperator实行open、setup方法等
+      * 2.调用 addOperator重载方法构建StreamNode
+      */
     public <IN, OUT> void addOperator(
             Integer vertexID,
             @Nullable String slotSharingGroup,
@@ -364,10 +391,18 @@ public class StreamGraph implements Pipeline {
             TypeInformation<IN> inTypeInfo,
             TypeInformation<OUT> outTypeInfo,
             String operatorName) {
+        /**
+         * 最最最重要的一个类
+         * 这里获取对应的StreamTask，后面Task执行的时候会通过StreamTask构造SourceStreamTask、OneInputStreamTask
+         * class org.apache.flink.streaming.runtime.tasks.SourceStreamTask
+         */
         Class<? extends TaskInvokable> invokableClass =
                 operatorFactory.isStreamSource()
                         ? SourceStreamTask.class
                         : OneInputStreamTask.class;
+        /**
+         * 构建StreamNode
+         */
         addOperator(
                 vertexID,
                 slotSharingGroup,
@@ -378,7 +413,19 @@ public class StreamGraph implements Pipeline {
                 operatorName,
                 invokableClass);
     }
-
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * addOperator的私有方法,内部调用addNode方法进行构建StreamNode
+      * @param vertexID: transformationId。
+      * @param slotSharingGroup: 操作符所属的槽共享组，用于优化资源利用。
+      * @param coLocationGroup: 操作符的协同定位组，用于确保操作符在相同的任务槽中执行。
+      * @param operatorFactory: 用于创建StreamOperator的工厂类。
+      * @param inTypeInfo: 输入数据的类型信息。
+      * @param outTypeInfo: 输出数据的类型信息。
+      * @param operatorName: StreamOperator的名称。
+      * @param invokableClass: 操作符的可调用类，它定义了操作符的行为。
+      */
     private <IN, OUT> void addOperator(
             Integer vertexID,
             @Nullable String slotSharingGroup,
@@ -388,7 +435,9 @@ public class StreamGraph implements Pipeline {
             TypeInformation<OUT> outTypeInfo,
             String operatorName,
             Class<? extends TaskInvokable> invokableClass) {
-
+        /**
+         * 调用addNode方法，将操作符作为一个节点添加到图中。这个方法使用提供的参数来配置节点，包括操作符工厂、操作符名称、槽共享组和协同定位组。
+         */
         addNode(
                 vertexID,
                 slotSharingGroup,
@@ -396,13 +445,25 @@ public class StreamGraph implements Pipeline {
                 invokableClass,
                 operatorFactory,
                 operatorName);
+        /**
+         *使用setSerializers方法设置节点的输入和输出序列化器。
+         * 输入和输出序列化器用于将数据从一种格式转换为另一种格式，为了在不同的组件之间传输数据。
+         * createSerializer方法用于根据输入和输出类型信息创建序列化器。
+         * 为什么为传入vertexId，通过vertexId得到StreamNode，那么StreamNode内部肯定有对类型相关的序列化对象吧（TypeSerializer）
+         * 注意Source这种作为头的数据源inType是什么（null吧）
+         */
         setSerializers(vertexID, createSerializer(inTypeInfo), null, createSerializer(outTypeInfo));
 
+        /**
+         * 操作符工厂允许配置输出类型，并且已经提供了输出类型信息，那么会调用setOutputType方法来设置操作符的输出类型。
+         */
         if (operatorFactory.isOutputTypeConfigurable() && outTypeInfo != null) {
             // sets the output type which must be know at StreamGraph creation time
             operatorFactory.setOutputType(outTypeInfo, executionConfig);
         }
-
+        /**
+         * 如果操作符工厂允许配置输入类型，那么会调用setInputType方法来设置操作符的输入类型。
+         */
         if (operatorFactory.isInputTypeConfigurable()) {
             operatorFactory.setInputType(inTypeInfo, executionConfig);
         }
@@ -481,6 +542,21 @@ public class StreamGraph implements Pipeline {
         }
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+     * addNode方法内部进行创建StreamNode
+      * vertexID: 节点的唯一标识符。
+      * slotSharingGroup: 节点所属的槽共享组，这通常用于优化资源使用，允许节点在相同的TaskSlot中运行，以减少任务启动和通信的开销。
+      * coLocationGroup: 协同定位组，用于确保节点在同一物理或逻辑位置执行，有助于减少网络通信延迟。
+      * vertexClass: 节点对应的可调用类，它定义了节点的执行逻辑。
+      * operatorFactory: 用于创建操作符（Operator）的工厂类，操作符是处理流数据的主要组件。
+     * operatorName: 操作符的名称，通常用于日志记录或调试。
+      * 两个核心
+      * 1.构建StreamNode
+      * 2.将来构建后的 StreamNode 放入map对象，Map<Integer, StreamNode> streamNodes
+      * key为transformation,value为StreamNode对象实例
+      */
     protected StreamNode addNode(
             Integer vertexID,
             @Nullable String slotSharingGroup,
@@ -488,11 +564,16 @@ public class StreamGraph implements Pipeline {
             Class<? extends TaskInvokable> vertexClass,
             StreamOperatorFactory<?> operatorFactory,
             String operatorName) {
-
+        /**
+         * 检查重复的vertexID,如果存在，则抛出一个运行时异常，因为每个节点的vertexID应该是唯一的。
+         */
         if (streamNodes.containsKey(vertexID)) {
             throw new RuntimeException("Duplicate vertexID " + vertexID);
         }
-
+        /**
+         * 使用传入的参数创建一个新的StreamNode实例。这个实例代表图中的一个节点，它包含了操作符工厂、名称、类以及其他配置信息。
+         * 大家可以想象，现在所有做的构建图或者简单一点一个对象实例就是用来后面执行所用的。
+         */
         StreamNode vertex =
                 new StreamNode(
                         vertexID,
@@ -501,9 +582,13 @@ public class StreamGraph implements Pipeline {
                         operatorFactory,
                         operatorName,
                         vertexClass);
-
+        /**
+         * 将新节点添加到streamNodes映射中
+         */
         streamNodes.put(vertexID, vertex);
-
+        /**
+         * 返回新创建的StreamNode实例
+         */
         return vertex;
     }
 
@@ -584,10 +669,27 @@ public class StreamGraph implements Pipeline {
         }
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 向图中添加边
+      * upStreamVertexID：上游顶点的ID。
+      * downStreamVertexID：下游顶点的ID。
+      * typeNumber：边的类型编号。
+      */
     public void addEdge(Integer upStreamVertexID, Integer downStreamVertexID, int typeNumber) {
         addEdge(upStreamVertexID, downStreamVertexID, typeNumber, null);
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * addEdgeInternal内部方法添加StreamNode添加入边出边
+      * upStreamVertexID：上游顶点的ID。
+      * downStreamVertexID：下游顶点的ID。
+      * typeNumber：边的类型编号。
+      * intermediateDataSetId：中间数据集ID。
+      */
     public void addEdge(
             Integer upStreamVertexID,
             Integer downStreamVertexID,
@@ -603,7 +705,18 @@ public class StreamGraph implements Pipeline {
                 null,
                 intermediateDataSetId);
     }
-
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 向StreamNode内部添加入边、出边
+      * upStreamVertexID 和 downStreamVertexID：分别表示上游和下游顶点的ID。
+      * typeNumber：边的类型编号。
+      * partitioner：流分区器，用于确定数据如何在顶点之间划分。
+      * outputNames：输出名称列表，可能用于标识边的输出。
+      * outputTag：输出标签，可能用于标识边产生的特定输出。
+      * exchangeMode：流交换模式，可能用于确定顶点之间数据交换的方式。
+      * intermediateDataSetId：中间数据集ID，可能用于标识在数据流动过程中产生的中间数据集。
+      */
     private void addEdgeInternal(
             Integer upStreamVertexID,
             Integer downStreamVertexID,
@@ -613,13 +726,23 @@ public class StreamGraph implements Pipeline {
             OutputTag outputTag,
             StreamExchangeMode exchangeMode,
             IntermediateDataSetID intermediateDataSetId) {
-
+        /**
+         * 检查上游顶点是否为虚拟侧输出节点
+         */
         if (virtualSideOutputNodes.containsKey(upStreamVertexID)) {
+            /** 则获取虚拟ID */
             int virtualId = upStreamVertexID;
+            /**
+             * 更新upStreamVertexID为实际的上游顶点ID，并检查是否需要设置outputTag。
+             * 注意：这段代码就是获取虚拟上游的transformationId，然后继续递归调用
+             */
             upStreamVertexID = virtualSideOutputNodes.get(virtualId).f0;
             if (outputTag == null) {
                 outputTag = virtualSideOutputNodes.get(virtualId).f1;
             }
+            /**
+             * 如果是虚拟边则继续递归调用
+             */
             addEdgeInternal(
                     upStreamVertexID,
                     downStreamVertexID,
@@ -629,13 +752,28 @@ public class StreamGraph implements Pipeline {
                     outputTag,
                     exchangeMode,
                     intermediateDataSetId);
+            /**
+             * 检查上游顶点是否为虚拟节点
+             */
         } else if (virtualPartitionNodes.containsKey(upStreamVertexID)) {
+            /** 将上游transformationVertexId赋值给virtualId*/
             int virtualId = upStreamVertexID;
+            /** 更新upStreamVertexId 为上游的id*/
             upStreamVertexID = virtualPartitionNodes.get(virtualId).f0;
+            /**
+             * 判断partitioner是否为空
+             */
             if (partitioner == null) {
+                /** 获取虚拟边对应的分区策略也就是StreamPartitioner*/
                 partitioner = virtualPartitionNodes.get(virtualId).f1;
             }
+            /**
+             * StreamGraph构建期间期间确定StreamOperator之间的数据交换模式
+             */
             exchangeMode = virtualPartitionNodes.get(virtualId).f2;
+            /**
+             * 如果是虚拟边则继续递归调用
+             */
             addEdgeInternal(
                     upStreamVertexID,
                     downStreamVertexID,
@@ -646,6 +784,9 @@ public class StreamGraph implements Pipeline {
                     exchangeMode,
                     intermediateDataSetId);
         } else {
+            /**
+             * 如果不是虚拟变，则直接调用createActualEdge增加入边出边。
+             */
             createActualEdge(
                     upStreamVertexID,
                     downStreamVertexID,
@@ -657,6 +798,18 @@ public class StreamGraph implements Pipeline {
         }
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 添加实际的边
+      * upStreamVertexID 和 downStreamVertexID：分别表示上游和下游顶点的ID。
+      * typeNumber：边的类型编号。
+      * partitioner：分区器，用于确定数据如何在顶点之间划分。
+      * outputNames：输出名称列表，可能用于标识边的输出。
+      * outputTag：输出标签，可能用于标识边产生的特定输出。
+      * exchangeMode：流交换模式，可能用于确定顶点之间数据交换的方式。
+      * intermediateDataSetId：中间数据集ID，可能用于标识在数据流动过程中产生的中间数据集。
+      */
     private void createActualEdge(
             Integer upStreamVertexID,
             Integer downStreamVertexID,
@@ -665,25 +818,49 @@ public class StreamGraph implements Pipeline {
             OutputTag outputTag,
             StreamExchangeMode exchangeMode,
             IntermediateDataSetID intermediateDataSetId) {
+        /**
+         * 通过上游TransformationId获取到StreamNode
+         * 通过下游TransformationId获取到StreamNode
+         * 这里为什么是上游下游？
+         * 说明这里设置的边是上游的出边、下游的入边。
+         */
         StreamNode upstreamNode = getStreamNode(upStreamVertexID);
+        /**
+         * 通过下游TransformationId获取到StreamNode
+         */
         StreamNode downstreamNode = getStreamNode(downStreamVertexID);
 
         // If no partitioner was specified and the parallelism of upstream and downstream
         // operator matches use forward partitioning, use rebalance otherwise.
+        /**
+         * 如果没有指定分隔器，并且上游和下游的平行度,则是ForwardPartitioner
+         * 运算符匹配使用正向分区，否则使用重新平衡。
+         */
         if (partitioner == null
                 && upstreamNode.getParallelism() == downstreamNode.getParallelism()) {
             partitioner =
                     dynamic ? new ForwardForUnspecifiedPartitioner<>() : new ForwardPartitioner<>();
         } else if (partitioner == null) {
+            /**
+             * 如果上游和下游节点的并行度不同，并且没有指定partitioner，则使用RebalancePartitioner。
+             */
             partitioner = new RebalancePartitioner<Object>();
         }
-
+        /**
+         * 代码检查partitioner是否是ForwardPartitioner的实例。如果是，并且上游和下游节点的并行度不同，
+         */
         if (partitioner instanceof ForwardPartitioner) {
             if (upstreamNode.getParallelism() != downstreamNode.getParallelism()) {
+                /**
+                 * 如果partitioner是ForwardForConsecutiveHashPartitioner的实例，则获取其内部的HashPartitioner
+                 */
                 if (partitioner instanceof ForwardForConsecutiveHashPartitioner) {
                     partitioner =
                             ((ForwardForConsecutiveHashPartitioner<?>) partitioner)
                                     .getHashPartitioner();
+                    /**
+                     * 如果不是，则抛出一个UnsupportedOperationException异常，因为前向分区不允许改变并行度。
+                     */
                 } else {
                     throw new UnsupportedOperationException(
                             "Forward partitioning does not allow "
@@ -699,7 +876,9 @@ public class StreamGraph implements Pipeline {
                 }
             }
         }
-
+        /**
+         * 代码检查exchangeMode（流交换模式）是否为null。如果为null，则将其设置为StreamExchangeMode.UNDEFINED，表示没有指定具体的交换模式
+         */
         if (exchangeMode == null) {
             exchangeMode = StreamExchangeMode.UNDEFINED;
         }
@@ -710,8 +889,14 @@ public class StreamGraph implements Pipeline {
          * difficult on the {@link StreamTask} to assign {@link RecordWriter}s to correct {@link
          * StreamEdge}.
          */
+        /**
+         * 代码获取连接相同上下游节点的StreamEdge的数量，并使用这个数量作为新StreamEdge的唯一标识符（uniqueId）。这样，即使存在多个连接相同节点的边，它们也将拥有不同的uniqueId。
+         */
         int uniqueId = getStreamEdges(upstreamNode.getId(), downstreamNode.getId()).size();
-
+        /**
+         * 创建的StreamEdge添加到上游节点的输出边集合中，并添加到下游节点的输入边集合中
+         * (包括上下游节点、类型编号、分区器、输出标签、交换模式、唯一标识符和中间数据集ID)
+         */
         StreamEdge edge =
                 new StreamEdge(
                         upstreamNode,
@@ -722,8 +907,15 @@ public class StreamGraph implements Pipeline {
                         exchangeMode,
                         uniqueId,
                         intermediateDataSetId);
-
+        /**
+         * 将edge添加到上游的出边种
+         * edge.getSourceId() 刚好是上游的TransformationId
+         */
         getStreamNode(edge.getSourceId()).addOutEdge(edge);
+        /**
+         * 将edge添加到下游游的入边
+         * edge.getTargetId() 刚好是下游的TransformationID
+         */
         getStreamNode(edge.getTargetId()).addInEdge(edge);
     }
 
@@ -737,6 +929,11 @@ public class StreamGraph implements Pipeline {
         return dynamic;
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      *
+      */
     public void setParallelism(Integer vertexId, int parallelism, boolean parallelismConfigured) {
         if (getStreamNode(vertexId) != null) {
             getStreamNode(vertexId).setParallelism(parallelism, parallelismConfigured);
