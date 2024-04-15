@@ -61,6 +61,11 @@ public class SumAggregator<T> extends AggregationFunction<T> {
         }
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 聚合实现
+      */
     @Override
     @SuppressWarnings("unchecked")
     public T reduce(T value1, T value2) throws Exception {

@@ -127,6 +127,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
 
 /** The StreamingJobGraphGenerator converts a {@link StreamGraph} into a {@link JobGraph}. */
+/**
+  * @授课老师(V): yi_locus
+  * email: 156184212@qq.com
+  * StreamingJobGraphGenerator StreamGraph转换 JobGraph。
+  */
 @Internal
 public class StreamingJobGraphGenerator {
 
@@ -143,11 +148,21 @@ public class StreamingJobGraphGenerator {
                         Runnable::run)
                 .createJobGraph();
     }
-
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * createJobGraph方法用于从StreamGraph对象创建一个JobGraph对象。
+      */
     public static JobGraph createJobGraph(
             ClassLoader userClassLoader, StreamGraph streamGraph, @Nullable JobID jobID) {
         // TODO Currently, we construct a new thread pool for the compilation of each job. In the
         // future, we may refactor the job submission framework and make it reusable across jobs.
+        /**
+         * TODO当前，我们为每个作业的编译构建一个新的线程池。未来，我们可能会重构作业提交框架，并使其在多个作业中可重复使用。
+         * 创建了一个固定大小的线程池serializationExecutor，用于编译作业时的序列化操作。线程池的大小是基于CPU核心数
+         * （通过Hardware.getNumberCPUCores()获取）和作业配置的并行度（通过streamGraph.getExecutionConfig().getParallelism()获取）来确定的。
+         * 这样做是为了提高序列化操作的并行度，从而提高性能。
+         */
         final ExecutorService serializationExecutor =
                 Executors.newFixedThreadPool(
                         Math.max(
@@ -157,10 +172,17 @@ public class StreamingJobGraphGenerator {
                                         streamGraph.getExecutionConfig().getParallelism())),
                         new ExecutorThreadFactory("flink-operator-serialization-io"));
         try {
+            /**
+             * 创建了一个StreamingJobGraphGenerator对象，并调用其createJobGraph方法来生成JobGraph
+             * StreamingJobGraphGenerator里面会放什么
+             */
             return new StreamingJobGraphGenerator(
                             userClassLoader, streamGraph, jobID, serializationExecutor)
                     .createJobGraph();
         } finally {
+            /**
+             * 无论前面的代码块是否抛出异常，finally块中的代码都会执行
+             */
             serializationExecutor.shutdown();
         }
     }
@@ -234,27 +256,54 @@ public class StreamingJobGraphGenerator {
         jobGraph = new JobGraph(jobID, streamGraph.getJobName());
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 构建JobGraph
+      */
     private JobGraph createJobGraph() {
+        /**
+         * 在创建 JobGraph 之前，首先调用 preValidate() 方法进行预验证。这通常是为了确保所有必要的条件都已满足，以便可以安全地创建 JobGraph
+         */
         preValidate();
+        /**
+         * 设置 Job的类型，该类型通常与 StreamGraph 的类型相同。
+         */
         jobGraph.setJobType(streamGraph.getJobType());
+        /**
+         * setDynamic，该类型通常与 StreamGraph 的类型相同。
+         */
         jobGraph.setDynamic(streamGraph.isDynamic());
-
+        /**
+         * 根据 StreamGraph 的检查点配置来决定是否启用近似本地恢复功能。
+          */
         jobGraph.enableApproximateLocalRecovery(
                 streamGraph.getCheckpointConfig().isApproximateLocalRecoveryEnabled());
 
         // Generate deterministic hashes for the nodes in order to identify them across
         // submission iff they didn't change.
+        /**
+         * 使用 defaultStreamGraphHasher 遍历 StreamGraph 并为其中的节点生成确定性哈希。这些哈希值用于在提交时识别节点，前提是这些节点没有发生变化。
+         */
         Map<Integer, byte[]> hashes =
                 defaultStreamGraphHasher.traverseStreamGraphAndGenerateHashes(streamGraph);
 
         // Generate legacy version hashes for backwards compatibility
+        /**
+         * 创建一个 legacyHashes 列表，用于存储使用不同哈希器生成的旧版本哈希。这主要是为了向后兼容，确保旧的系统或组件可以正确识别节点。
+         */
         List<Map<Integer, byte[]>> legacyHashes = new ArrayList<>(legacyStreamGraphHashers.size());
         for (StreamGraphHasher hasher : legacyStreamGraphHashers) {
             legacyHashes.add(hasher.traverseStreamGraphAndGenerateHashes(streamGraph));
         }
-
+        /**
+         * 调用 setChaining 方法来设置节点之间的链接（Chaining）。Chaining 是 Flink 中的一个优化技术，用于减少数据传输的开销。
+         */
         setChaining(hashes, legacyHashes);
 
+        /**
+         * 如果 JobGraph 是动态的，则调用 setVertexParallelismsForDynamicGraphIfNecessary 方法来设置顶点的并行度。这通常是为了优化计算任务的性能。
+         */
         if (jobGraph.isDynamic()) {
             setVertexParallelismsForDynamicGraphIfNecessary();
         }
@@ -262,36 +311,58 @@ public class StreamingJobGraphGenerator {
         // Note that we set all the non-chainable outputs configuration here because the
         // "setVertexParallelismsForDynamicGraphIfNecessary" may affect the parallelism of job
         // vertices and partition-reuse
+        /**
+         * 在此处设置了所有不可链接的输出配置，因为
+         * “setVertexParallelismsForDynamicGraphIfNenecessary”可能会影响作业顶点的并行性和分区重用
+         */
         final Map<Integer, Map<StreamEdge, NonChainedOutput>> opIntermediateOutputs =
                 new HashMap<>();
         setAllOperatorNonChainedOutputsConfigs(opIntermediateOutputs);
         setAllVertexNonChainedOutputsConfigs(opIntermediateOutputs);
-
+        /**
+         * 设置物理边（Physical Edges）。物理边通常指的是在任务之间实际传输数据的边。
+         */
         setPhysicalEdges();
-
+        /**
+         * 标记哪些任务支持并发执行尝试。在某些情况下，Flink 允许任务尝试并发执行，以提高容错性和性能。
+         */
         markSupportingConcurrentExecutionAttempts();
-
+        /**
+         * 验证shuffle是否在批处理模式下执行。
+         */
         validateHybridShuffleExecuteInBatchMode();
-
+        /**
+         * 设置槽（Slot）共享和协同定位（Co-location）
+         */
         setSlotSharingAndCoLocation();
-
+        /**
+         * 设置管理的内存比例。这是为了分配和管理 Flink 任务的内存资源
+         */
         setManagedMemoryFraction(
                 Collections.unmodifiableMap(jobVertices),
                 Collections.unmodifiableMap(vertexConfigs),
                 Collections.unmodifiableMap(chainedConfigs),
                 id -> streamGraph.getStreamNode(id).getManagedMemoryOperatorScopeUseCaseWeights(),
                 id -> streamGraph.getStreamNode(id).getManagedMemorySlotScopeUseCases());
-
+        /**
+         * 配置检查点（Checkpointing）。检查点是 Flink 的容错机制，用于在任务失败时恢复状态。
+         */
         configureCheckpointing();
-
+        /**
+         * 设置 JobGraph 的保存点（Savepoint）恢复设置
+         */
         jobGraph.setSavepointRestoreSettings(streamGraph.getSavepointRestoreSettings());
-
+        /**
+         * 准备用户定义的资源（如文件或对象）
+         */
         final Map<String, DistributedCache.DistributedCacheEntry> distributedCacheEntries =
                 JobGraphUtils.prepareUserArtifactEntries(
                         streamGraph.getUserArtifacts().stream()
                                 .collect(Collectors.toMap(e -> e.f0, e -> e.f1)),
                         jobGraph.getJobID());
-
+        /**
+         * 将用户定义的资源添加到 JobGraph 中，比如cache
+         */
         for (Map.Entry<String, DistributedCache.DistributedCacheEntry> entry :
                 distributedCacheEntries.entrySet()) {
             jobGraph.addUserArtifact(entry.getKey(), entry.getValue());
@@ -299,19 +370,36 @@ public class StreamingJobGraphGenerator {
 
         // set the ExecutionConfig last when it has been finalized
         try {
+            /**
+             * 设置 JobGraph 的执行配置（ExecutionConfig）。这个配置包含了任务执行时的各种参数和设置。
+             */
             jobGraph.setExecutionConfig(streamGraph.getExecutionConfig());
         } catch (IOException e) {
             throw new IllegalConfigurationException(
                     "Could not serialize the ExecutionConfig."
                             + "This indicates that non-serializable types (like custom serializers) were registered");
         }
+        /**
+         * 设置 JobGraph 的作业配置（JobConfiguration）。这通常包含了作业的元数据和其他设置。
+         */
         jobGraph.setJobConfiguration(streamGraph.getJobConfiguration());
-
+        /**
+         * 在顶点的名称中添加顶点索引的前缀。这可能是为了更清晰地标识图中的每个顶点。
+         */
         addVertexIndexPrefixInVertexName();
-
+        /**
+         * 设置顶点的描述。这通常用于记录或显示顶点的信息，帮助用户或开发者更好地理解图中的每个顶点。
+         */
         setVertexDescription();
 
         // Wait for the serialization of operator coordinators and stream config.
+        /**
+         * vertexConfigs.values().stream()：从 vertexConfigs 的值中创建一个流。
+         * map：将每个配置对象（config）映射为通过 triggerSerializationAndReturnFuture 方法触发的序列化操作，并返回一个 Future 对象。这个 Future 对象代表了一个异步操作的结果。
+         * collect(Collectors.toList())：将所有 Future 对象收集到一个列表中。
+         * FutureUtils.combineAll(...)：等待所有 Future 对象完成。这通常意味着等待所有配置对象的序列化操作完成。
+         * .get()：阻塞当前线程，直到所有 Future 对象都完成，并获取结果。如果在这个过程中有任何异常发生，它将在此处被抛出。
+         */
         try {
             FutureUtils.combineAll(
                             vertexConfigs.values().stream()
@@ -321,12 +409,19 @@ public class StreamingJobGraphGenerator {
                                                             serializationExecutor))
                                     .collect(Collectors.toList()))
                     .get();
-
+            /**
+             * 等待序列化完成并更新作业顶点.
+             * 用于确保所有序列化的 Future 对象都已经完成，并更新 JobGraph 中的相关顶点。
+             * 这可能是因为在序列化过程中可能修改了顶点的某些属性或状态，需要更新到 JobGraph 中
+             */
             waitForSerializationFuturesAndUpdateJobVertices();
         } catch (Exception e) {
             throw new FlinkRuntimeException("Error in serialization.", e);
         }
-
+        /**
+         * 检查 streamGraph 是否有作业状态钩子（JobStatusHooks）。作业状态钩子通常用于在作业生命周期的不同阶段执行自定义逻辑，如作业提交、恢复等。
+         * 如果有，将 streamGraph 中的作业状态钩子设置到 jobGraph 中，以确保这些钩子在 jobGraph 执行时也会被触发。
+         */
         if (!streamGraph.getJobStatusHooks().isEmpty()) {
             jobGraph.setJobStatusHooks(streamGraph.getJobStatusHooks());
         }
@@ -785,6 +880,14 @@ public class StreamingJobGraphGenerator {
      * parallelism and maxParallelism of vertices in the same forward group to be the same; set the
      * parallelism at early stage if possible, to avoid invalid partition reuse.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 此方法用于重置或设置动态图的作业顶点的平行度：
+      * 1.重置未配置并行度的作业顶点的并行度
+      * 2.为正向组中的作业顶点设置平行度和maxParallelism，以确保同一正向组中顶点的平行度和最大平行度相同；
+     * 如果可能的话，在早期阶段设置并行度，以避免无效的分区重用。
+      */
     private void setVertexParallelismsForDynamicGraphIfNecessary() {
         // Note that the jobVertices are reverse topological order
         final List<JobVertex> topologicalOrderVertices =

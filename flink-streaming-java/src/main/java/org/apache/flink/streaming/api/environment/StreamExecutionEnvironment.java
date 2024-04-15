@@ -1919,9 +1919,17 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      *     forever.
      * @return A data stream containing the strings received from the socket
      */
+    /**
+     * @授课老师(V): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个新的数据流，其中包含从套接字无限接收的字符串。接收到的字符串由系统的默认字符集解码。当套接字关闭时，读取器立即终止。
+     */
     @PublicEvolving
     public DataStreamSource<String> socketTextStream(
             String hostname, int port, String delimiter, long maxRetry) {
+        /**
+         * 添加addSource，内部传一个SocketTextStreamFunction(该function是Flink已经实现的)
+         */
         return addSource(
                 new SocketTextStreamFunction(hostname, port, delimiter, maxRetry), "Socket Stream");
     }
@@ -1955,6 +1963,11 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      * @param delimiter A string which splits received strings into records
      * @return A data stream containing the strings received from the socket
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 创建一个新的数据流，其中包含从套接字无限接收的字符串。接收到的字符串由系统的默认字符集解码。当套接字关闭时，读取器立即终止。
+      */
     @PublicEvolving
     public DataStreamSource<String> socketTextStream(String hostname, int port, String delimiter) {
         return socketTextStream(hostname, port, delimiter, 0);
@@ -1970,6 +1983,11 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      *     port number is automatically allocated.
      * @return A data stream containing the strings received from the socket
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 创建一个新的数据流，其中包含从套接字无限接收的字符串。接收到的字符串由系统的默认字符集解码，使用“\n”作为分隔符。当套接字关闭时，读取器立即终止。
+      */
     @PublicEvolving
     public DataStreamSource<String> socketTextStream(String hostname, int port) {
         return socketTextStream(hostname, port, "\n");
@@ -2132,6 +2150,11 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      *     removed. Use the {@link #fromSource(Source, WatermarkStrategy, String)} method based on
      *     the new {@link org.apache.flink.api.connector.source.Source} API instead.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 添加具有自定义类型信息的数据源，从而打开
+      */
     @Deprecated
     public <OUT> DataStreamSource<OUT> addSource(SourceFunction<OUT> function, String sourceName) {
         return addSource(function, sourceName, null);
@@ -2172,29 +2195,67 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      *     removed. Use the {@link #fromSource(Source, WatermarkStrategy, String, TypeInformation)}
      *     method based on the new {@link org.apache.flink.api.connector.source.Source} API instead.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 添加具有自定义类型信息的数据源，从而打开
+      */
     @Deprecated
     public <OUT> DataStreamSource<OUT> addSource(
             SourceFunction<OUT> function, String sourceName, TypeInformation<OUT> typeInfo) {
         return addSource(function, sourceName, typeInfo, Boundedness.CONTINUOUS_UNBOUNDED);
     }
 
+    /**
+     *
+     * @param function
+     * @param sourceName
+     * @param typeInfo
+     * @param boundedness
+     * @return
+     * @param <OUT>
+     */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 流处理环境或框架中添加一个数据源
+      * @param function 自定义函数
+      * @param sourceName 数据源名字
+      * @param typeInfo 数据类型
+      * @param boundedness 是否是连续的流
+      * @return
+      */
     private <OUT> DataStreamSource<OUT> addSource(
             final SourceFunction<OUT> function,
             final String sourceName,
             @Nullable final TypeInformation<OUT> typeInfo,
             final Boundedness boundedness) {
+        /**
+         * 检查 function、sourceName 和 boundedness 是否为 null。如果是，则抛出异常
+         */
         checkNotNull(function);
         checkNotNull(sourceName);
         checkNotNull(boundedness);
-
+        /**
+         * 获取输出类型信息
+         */
         TypeInformation<OUT> resolvedTypeInfo =
                 getTypeInfo(function, sourceName, SourceFunction.class, typeInfo);
-
+        /**
+         * 是否支持并行
+         */
         boolean isParallel = function instanceof ParallelSourceFunction;
-
+        /**
+         *clean()方法就是将内部类指向外部类的引用设置为null，确保序列化过程能够成功
+         */
         clean(function);
-
+        /**
+         * 创建一个新的 StreamSource(StreamOperator) 对象，它封装了数据源函数 function
+         */
         final StreamSource<OUT, ?> sourceOperator = new StreamSource<>(function);
+        /**
+         * 创建DataStreamSource(DataStream)并返回
+         */
         return new DataStreamSource<>(
                 this, resolvedTypeInfo, sourceOperator, isParallel, sourceName, boundedness);
     }
@@ -2337,19 +2398,36 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      * @return The result of the job execution, containing elapsed time and accumulators.
      * @throws Exception which occurs during job execution.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * execute的公共方法，触发程序执行。它接受一个StreamGraph对象作为参数，
+     * 并返回一个JobExecutionResult对象。这个方法的主要目的是执行一个与StreamGraph相关的作业，
+     * 并处理执行过程中的各种情况。
+      */
     @Internal
     public JobExecutionResult execute(StreamGraph streamGraph) throws Exception {
+        /**
+         * executeAsync方法，该方法接受streamGraph作为参数，并返回一个JobClient对象。
+         * 异步地执行与streamGraph相关的作业，并返回用于管理和查询作业状态的客户端对象。
+         */
         final JobClient jobClient = executeAsync(streamGraph);
 
         try {
+            /** 定义了一个JobExecutionResult变量，用于存储作业执行的结果。 */
             final JobExecutionResult jobExecutionResult;
-
+            /**
+             * * 如果设置了`ATTACHED`选项（即`true`），则通过`jobClient`的`getJobExecutionResult().get()`方法同步地获取作业执行结果。
+             * * 如果没有设置`ATTACHED`选项（即`false`），则创建一个`DetachedJobExecutionResult`对象，这个对象可能表示一个与作业ID关联的、非同步的作业执行结果。
+             */
             if (configuration.get(DeploymentOptions.ATTACHED)) {
                 jobExecutionResult = jobClient.getJobExecutionResult().get();
             } else {
                 jobExecutionResult = new DetachedJobExecutionResult(jobClient.getJobID());
             }
-
+            /**
+             *遍历jobListeners列表，对每一个作业监听器调用onJobExecuted方法，通知它们作业已经执行完成，并传递作业执行结果
+             */
             jobListeners.forEach(
                     jobListener -> jobListener.onJobExecuted(jobExecutionResult, null));
 
@@ -2358,6 +2436,10 @@ public class StreamExecutionEnvironment implements AutoCloseable {
             // get() on the JobExecutionResult Future will throw an ExecutionException. This
             // behaviour was largely not there in Flink versions before the PipelineExecutor
             // refactoring so we should strip that exception.
+            /**
+             * 如果在获取作业执行结果或执行其他操作时抛出异常，代码会捕获这个异常并进行处理。
+             *
+             */
             Throwable strippedException = ExceptionUtils.stripExecutionException(t);
 
             jobListeners.forEach(
@@ -2476,21 +2558,41 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      *     on submission succeeded.
      * @throws Exception which occurs during job execution.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 异步触发程序执行,接收StreamGraph对象作为参数，并返回一个JobClient对象。
+     * 主要目的是异步地执行与StreamGraph相关的作业，并返回用于管理和查询作业状态的客户端对象
+      */
     @Internal
     public JobClient executeAsync(StreamGraph streamGraph) throws Exception {
+        /** 参数检查 */
         checkNotNull(streamGraph, "StreamGraph cannot be null.");
+        /**
+         * 调用getPipelineExecutor方法来获取一个PipelineExecutor对象。
+         * PipelineExecutor是一个负责执行作业的组件。有不同的实现
+         */
         final PipelineExecutor executor = getPipelineExecutor();
-
+        /**
+         * 使用PipelineExecutor的execute方法异步地执行streamGraph，并传入配置和用户类加载器。
+         * 返回一个CompletableFuture<JobClient>对象，表示一个异步计算的结果，该结果将在作业执行完成后提供一个JobClient对象。
+         */
         CompletableFuture<JobClient> jobClientFuture =
                 executor.execute(streamGraph, configuration, userClassloader);
 
         try {
+            /** 使用`jobClientFuture.get()`方法同步地等待作业执行完成，并获取`JobClient`对象。 */
             JobClient jobClient = jobClientFuture.get();
+            /** 遍历`jobListeners`列表，对每一个作业监听器调用`onJobSubmitted`方法，通知它们作业已经提交，并传递作业客户端对象（如果有的话） */
             jobListeners.forEach(jobListener -> jobListener.onJobSubmitted(jobClient, null));
+            /** 遍历`collectIterators`列表，对每一个迭代器设置作业客户端对象。  */
             collectIterators.forEach(iterator -> iterator.setJobClient(jobClient));
+            /** 清空`collectIterators`列表。  */
             collectIterators.clear();
+            /**返回作业客户端对象 */
             return jobClient;
         } catch (ExecutionException executionException) {
+            /** 异常捕获 */
             final Throwable strippedException =
                     ExceptionUtils.stripExecutionException(executionException);
             jobListeners.forEach(
@@ -2674,6 +2776,11 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      * <p>This is not meant to be used by users. The API methods that create operators must call
      * this method.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 将来StreamOperator添加到List<Transformation<?>> transformations
+      */
     @Internal
     public void addOperator(Transformation<?> transformation) {
         Preconditions.checkNotNull(transformation, "transformation must not be null.");

@@ -46,13 +46,24 @@ public class StreamGraphTranslator implements FlinkPipelineTranslator {
         this.userClassloader = userClassloader;
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 用于将Pipeline对象转化为JobGraph对象
+      */
     @Override
     public JobGraph translateToJobGraph(
             Pipeline pipeline, Configuration optimizerConfiguration, int defaultParallelism) {
+        /** 用于将Pipeline对象转化为JobGraph对象 */
         checkArgument(
                 pipeline instanceof StreamGraph, "Given pipeline is not a DataStream StreamGraph.");
-
+        /**
+         * 将pipeline对象强制转换为StreamGraph
+         */
         StreamGraph streamGraph = (StreamGraph) pipeline;
+        /**
+         * streamGraph的getJobGraph方法
+         */
         return streamGraph.getJobGraph(userClassloader, null);
     }
 

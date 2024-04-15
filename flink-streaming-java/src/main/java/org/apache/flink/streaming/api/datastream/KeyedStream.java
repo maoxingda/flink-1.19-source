@@ -111,6 +111,12 @@ public class KeyedStream<T, KEY> extends DataStream<T> {
      * @param dataStream Base stream of data
      * @param keySelector Function for determining state partitions
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 继续调用构造方法传入dataStream、类型信息等
+      *
+      */
     public KeyedStream(DataStream<T> dataStream, KeySelector<T, KEY> keySelector) {
         this(
                 dataStream,
@@ -125,12 +131,25 @@ public class KeyedStream<T, KEY> extends DataStream<T> {
      * @param dataStream Base stream of data
      * @param keySelector Function for determining state partitions
      */
+    /**
+     * @授课老师(V): yi_locus
+     * email: 156184212@qq.com
+     * KeyedStream构造方法
+     * @param dataStream 上一个dataStream
+     * @param keySelector Key选择器，这里就是value -> value.f0,Lambda
+     * @param keyType key的类型信息 String
+     */
     public KeyedStream(
             DataStream<T> dataStream,
             KeySelector<T, KEY> keySelector,
             TypeInformation<KEY> keyType) {
         this(
                 dataStream,
+                /**
+                 * 创建一个PartitionTransformation，
+                 * 输入为dataStream对应的算子
+                 * StreamPartitioner:为KeyGroupStreamPartitioner
+                 */
                 new PartitionTransformation<>(
                         dataStream.getTransformation(),
                         new KeyGroupStreamPartitioner<>(
@@ -151,6 +170,16 @@ public class KeyedStream<T, KEY> extends DataStream<T> {
      * @param keySelector Function to extract keys from the base stream
      * @param keyType Defines the type of the extracted keys
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * KeyedStream构造方法
+      * KeySelector<T, KEY> keySelector Key选择器，这里就是value -> value.f0,Lambda
+      * TypeInformation<KEY> keyType:key的类型信息 String
+      * @param stream 上一个dataStream
+      * @param keySelector Key选择器，这里就是value -> value.f0,Lambda
+      * @param keyType
+      */
     @Internal
     KeyedStream(
             DataStream<T> stream,
@@ -789,7 +818,23 @@ public class KeyedStream<T, KEY> extends DataStream<T> {
      *     values with the same key.
      * @return The transformed DataStream.
      */
+    /**
+     * @授课老师(V): yi_locus
+     * email: 156184212@qq.com
+     * 对按给定键位置分组的分组数据流应用reduce变换。ReduceFunction将接收基于键值的输入值。只有具有相同键的输入值才会进入相同应用于Function。
+     * @param reducer
+     * @return
+     */
     public SingleOutputStreamOperator<T> reduce(ReduceFunction<T> reducer) {
+        /**
+         * 创建ReduceTransformation
+         * name:常量值
+         * getParallelism：并行度
+         * transformation：上有算子，这里就说明了为什么KeyedStream里面调用sum(1),因为虚拟Transformation最终还要落地吧
+         * clean，清楚外部指向，保证序列化成功
+         * keyType：key类型
+         *
+         */
         ReduceTransformation<T, KEY> reduce =
                 new ReduceTransformation<>(
                         "Keyed Reduce",
@@ -799,9 +844,11 @@ public class KeyedStream<T, KEY> extends DataStream<T> {
                         keySelector,
                         getKeyType(),
                         false);
-
+        /**
+         * 将Transformation加到list集合
+         */
         getExecutionEnvironment().addOperator(reduce);
-
+        /**构建DataStream*/
         return new SingleOutputStreamOperator<>(getExecutionEnvironment(), reduce);
     }
 
@@ -814,7 +861,20 @@ public class KeyedStream<T, KEY> extends DataStream<T> {
      *     (which is considered as having one field).
      * @return The transformed DataStream.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 应用聚合，该聚合提供按给定键分组的给定位置的数据流的滚动和。每个键都保留一个独立的聚合。
+      * @param positionToSum 指定聚合数据的位置
+      */
     public SingleOutputStreamOperator<T> sum(int positionToSum) {
+        /**
+         * SumAggregator:Flink内部实现的聚合函数
+         * positionToSum:指定聚合数据的位置
+         * getType:输出类型
+         * ExecutionConfig:获取配置信息
+         * SumAggregator是一个function？
+         */
         return aggregate(new SumAggregator<>(positionToSum, getType(), getExecutionConfig()));
     }
 
@@ -1067,6 +1127,15 @@ public class KeyedStream<T, KEY> extends DataStream<T> {
                         getExecutionConfig()));
     }
 
+    /**
+     * @授课老师(V): yi_locus
+     * email: 156184212@qq.com
+     * 将AggregationFunction<T> aggregate:聚合Function
+     * reduce:内部持有aggregate
+     * Keyed Aggregation:算子常量名字
+     * @param aggregate
+     * @return
+     */
     protected SingleOutputStreamOperator<T> aggregate(AggregationFunction<T> aggregate) {
         return reduce(aggregate).name("Keyed Aggregation");
     }

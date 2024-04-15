@@ -49,12 +49,22 @@ public class DataStreamSink<T> {
     protected DataStreamSink(PhysicalTransformation<T> transformation) {
         this.transformation = checkNotNull(transformation);
     }
+    /**
+     * @授课老师(V): yi_locus
+     * email: 156184212@qq.com
+     * 构建DataStreamSink
+     * @param inputStream 上一个DataStream
+     * @param sinkFunction 打印Function
+     */
 
     static <T> DataStreamSink<T> forSinkFunction(
             DataStream<T> inputStream, SinkFunction<T> sinkFunction) {
         StreamSink<T> sinkOperator = new StreamSink<>(sinkFunction);
         final StreamExecutionEnvironment executionEnvironment =
                 inputStream.getExecutionEnvironment();
+        /**
+         * 构建输出的LegacySinkTransformation
+         */
         PhysicalTransformation<T> transformation =
                 new LegacySinkTransformation<>(
                         inputStream.getTransformation(),
@@ -62,7 +72,13 @@ public class DataStreamSink<T> {
                         sinkOperator,
                         executionEnvironment.getParallelism(),
                         false);
+        /**
+         * 将Transformation添加的List集合
+         */
         executionEnvironment.addOperator(transformation);
+        /**
+         * 返回DataStream
+         */
         return new DataStreamSink<>(transformation);
     }
 

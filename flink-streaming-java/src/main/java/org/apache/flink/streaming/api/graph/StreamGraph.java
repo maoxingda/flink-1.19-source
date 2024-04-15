@@ -88,7 +88,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 /**
   * @授课老师(V): yi_locus
   * email: 156184212@qq.com
-  * 流拓扑的类。它包含为执行构建作业图所需的所有信息。
+  * 流拓扑的类。它包含为执行构建作业图所需的所有信息。同时内部还定义了getJobGraph获取JobGraph
   */
 @Internal
 public class StreamGraph implements Pipeline {
@@ -1269,6 +1269,11 @@ public class StreamGraph implements Pipeline {
         return getJobGraph(Thread.currentThread().getContextClassLoader(), null);
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 静态方法用于从StreamGraph对象创建一个JobGraph对象。
+      */
     /** Gets the assembled {@link JobGraph} with a specified {@link JobID}. */
     public JobGraph getJobGraph(ClassLoader userClassLoader, @Nullable JobID jobID) {
         return StreamingJobGraphGenerator.createJobGraph(userClassLoader, this, jobID);

@@ -23,6 +23,11 @@ import org.apache.flink.runtime.jobgraph.JobVertexID;
 import java.util.Map;
 
 /** Interface for different implementations of generating hashes over a stream graph. */
+/**
+  * @授课老师(V): yi_locus
+  * email: 156184212@qq.com
+  * 用于在流图上生成哈希的不同实现的接口。
+  */
 public interface StreamGraphHasher {
 
     /**

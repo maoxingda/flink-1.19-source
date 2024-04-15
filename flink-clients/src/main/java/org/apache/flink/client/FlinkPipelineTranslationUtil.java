@@ -32,26 +32,48 @@ import org.apache.flink.runtime.jobgraph.JobGraph;
 public final class FlinkPipelineTranslationUtil {
 
     /** Transmogrifies the given {@link Pipeline} to a {@link JobGraph}. */
+    /**
+     * 该方法的主要目的是将一个Pipeline对象转化为一个JobGraph对象。
+     * @param userClassloader
+     * @param pipeline
+     * @param optimizerConfiguration
+     * @param defaultParallelism
+     * @return
+     */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 该方法的主要目的是将一个Pipeline对象转化为一个JobGraph对象。
+    * @param userClassloader: 类加载器，用于加载用户提供的类。
+    * @param pipeline: 要转化为JobGraph的Pipeline对象。
+    * @param optimizerConfiguration: 优化器配置，可能包含用于优化Pipeline的设置。
+    * @param  defaultParallelism: 默认的并行度，即任务在集群中的并行执行程度。
+      */
     public static JobGraph getJobGraph(
             ClassLoader userClassloader,
             Pipeline pipeline,
             Configuration optimizerConfiguration,
             int defaultParallelism) {
-
+        /** 获取FlinkPipelineTranslator实例 */
         FlinkPipelineTranslator pipelineTranslator =
                 getPipelineTranslator(userClassloader, pipeline);
-
+        /**
+         * 使用FlinkPipelineTranslator的translateToJobGraph方法，将Pipeline、优化器配置和默认并行度作为参数，转化为JobGraph对象。
+         */
         JobGraph jobGraph =
                 pipelineTranslator.translateToJobGraph(
                         pipeline, optimizerConfiguration, defaultParallelism);
-
+        /**
+         * 从optimizerConfiguration中获取名为PARALLELISM_OVERRIDES的配置项。
+         * 如果这个配置项存在，则将其值（一个map）设置到jobGraph的配置中。这通常用于覆盖某些特定操作的默认并行度。
+         */
         optimizerConfiguration
                 .getOptional(PipelineOptions.PARALLELISM_OVERRIDES)
                 .ifPresent(
                         map ->
                                 jobGraph.getJobConfiguration()
                                         .set(PipelineOptions.PARALLELISM_OVERRIDES, map));
-
+        /** 返回转化后的JobGraph对象。 */
         return jobGraph;
     }
 

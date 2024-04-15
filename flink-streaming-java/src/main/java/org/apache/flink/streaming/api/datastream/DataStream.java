@@ -288,8 +288,17 @@ public class DataStream<T> {
      * @param key The KeySelector to be used for extracting the key for partitioning
      * @return The {@link DataStream} with partitioned state (i.e. KeyedStream)
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 创建了一个新的KeyedStream，它使用所提供的键来划分其运算符状态。
+     * clean()方法就是将内部类指向外部类的引用设置为null，确保序列化过程的成功
+      */
     public <K> KeyedStream<T, K> keyBy(KeySelector<T, K> key) {
         Preconditions.checkNotNull(key);
+        /**
+         * 构建KeyedStream
+         */
         return new KeyedStream<>(this, clean(key));
     }
 
@@ -588,12 +597,23 @@ public class DataStream<T> {
      * @param <R> output type
      * @return The transformed {@link DataStream}.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 对DataStream应用Map转换。转换调用｛MapFunction｝用于数据流的每个元素。每个MapFunction调用都只返回一个
+      *
+      */
     public <R> SingleOutputStreamOperator<R> map(MapFunction<T, R> mapper) {
-
+        /**
+         * 获取类型信息
+         * clean()方法就是将内部类指向外部类的引用设置为null，确保序列化过程的成功
+         */
         TypeInformation<R> outType =
                 TypeExtractor.getMapReturnTypes(
                         clean(mapper), getType(), Utils.getCallLocationName(), true);
-
+        /**
+         * 调用内部map方法
+         */
         return map(mapper, outType);
     }
 
@@ -608,8 +628,17 @@ public class DataStream<T> {
      * @param <R> output type
      * @return The transformed {@link DataStream}.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 调用transform方法构建Transformation
+      */
     public <R> SingleOutputStreamOperator<R> map(
             MapFunction<T, R> mapper, TypeInformation<R> outputType) {
+        /**
+         * 调用transform方法，传入opratorName、算子输出类型、
+         * 将mapper作为参数封装到StreamMap
+         */
         return transform("Map", outputType, new StreamMap<>(clean(mapper)));
     }
 
@@ -624,12 +653,19 @@ public class DataStream<T> {
      * @param <R> output type
      * @return The transformed {@link DataStream}.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * flatmap 压扁的意思，比如一行字符串转多行
+      */
     public <R> SingleOutputStreamOperator<R> flatMap(FlatMapFunction<T, R> flatMapper) {
-
+        /** 获取返回值类型 */
         TypeInformation<R> outType =
                 TypeExtractor.getFlatMapReturnTypes(
                         clean(flatMapper), getType(), Utils.getCallLocationName(), true);
-
+        /**
+         * 调用重载方法传入自定义函数、返回值类型
+         */
         return flatMap(flatMapper, outType);
     }
 
@@ -645,8 +681,18 @@ public class DataStream<T> {
      * @param <R> output type
      * @return The transformed {@link DataStream}.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 调用Transform方法构造Transformation、返回值为DataStream
+      */
     public <R> SingleOutputStreamOperator<R> flatMap(
             FlatMapFunction<T, R> flatMapper, TypeInformation<R> outputType) {
+        /**
+         *clean()方法就是将内部类指向外部类的引用设置为null，确保序列化过程的成功
+         * 将自定义Function作为参数构造出来StreamOperator(StreamFlatMap)
+         * operatorName:FlatMap
+         */
         return transform("Flat Map", outputType, new StreamFlatMap<>(clean(flatMapper)));
     }
 
@@ -950,6 +996,15 @@ public class DataStream<T> {
      *
      * @return The closed DataStream.
      */
+
+    /**
+     * @授课老师(V): yi_locus
+     * email: 156184212@qq.com
+     * 将数据流写入标准输出流（stdout）
+     * .name设置print名字
+     * addSink 将给定的接收器添加到此数据流
+     * @return
+     */
     @PublicEvolving
     public DataStreamSink<T> print() {
         PrintSinkFunction<T> printFunction = new PrintSinkFunction<>();
@@ -1174,12 +1229,21 @@ public class DataStream<T> {
      * @return the data stream constructed
      * @see #transform(String, TypeInformation, OneInputStreamOperatorFactory)
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 用于传递用户定义的运算符以及将要转换的类型信息的方法数据流。
+      */
     @PublicEvolving
     public <R> SingleOutputStreamOperator<R> transform(
             String operatorName,
             TypeInformation<R> outTypeInfo,
             OneInputStreamOperator<T, R> operator) {
-
+        /**
+         * operatorName:Map
+         * 从现有的StreamOperator创建一个SimpleOperatorFactory。
+         * outTypeInfo:返回类型
+         */
         return doTransform(operatorName, outTypeInfo, SimpleOperatorFactory.of(operator));
     }
 
@@ -1205,14 +1269,30 @@ public class DataStream<T> {
         return doTransform(operatorName, outTypeInfo, operatorFactory);
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 构建Transformation
+      */
     protected <R> SingleOutputStreamOperator<R> doTransform(
             String operatorName,
             TypeInformation<R> outTypeInfo,
             StreamOperatorFactory<R> operatorFactory) {
 
         // read the output type of the input Transform to coax out errors about MissingTypeInfo
+        /**
+         * 读取输入的输出类型Transform以引出有关MissingTypeInfo的错误
+         * 类型丢失会报错
+         */
         transformation.getOutputType();
-
+        /**
+         * 构建OneInputTransformation对象(Transformation)
+         * this.transformation=当前DataStream（ReadFile）
+         * operatorName:比如Map
+         * operatorFactory StreamOperator工厂类
+         * parallelism.default:默认并行度
+         * parallelismConfigured：如果为true，则显式设置转换的并行性，并应予以尊重。否则，并行度可以在运行时更改。
+         */
         OneInputTransformation<T, R> resultTransform =
                 new OneInputTransformation<>(
                         this.transformation,
@@ -1222,12 +1302,20 @@ public class DataStream<T> {
                         environment.getParallelism(),
                         false);
 
+        /**
+         * 构建SingleOutputStreamOperator对象(DataStream)
+         * 记住这个不是Operator是DataDtream
+         */
         @SuppressWarnings({"unchecked", "rawtypes"})
         SingleOutputStreamOperator<R> returnStream =
                 new SingleOutputStreamOperator(environment, resultTransform);
-
+        /**
+         * 将OneInputTransformation添加到List<Transformation<?>>
+         */
         getExecutionEnvironment().addOperator(resultTransform);
-
+        /**
+         * 返回DataStream，可以继续链式调用
+         */
         return returnStream;
     }
 
@@ -1250,16 +1338,27 @@ public class DataStream<T> {
      * @param sinkFunction The object containing the sink's invoke function.
      * @return The closed DataStream.
      */
+    /**
+     * @授课老师(V): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的接收器添加到此数据流
+     * @param sinkFunction
+     * @return
+     */
     public DataStreamSink<T> addSink(SinkFunction<T> sinkFunction) {
 
         // read the output type of the input Transform to coax out errors about MissingTypeInfo
+        /** 读取输入的输出类型Transform以引出有关MissingTypeInfo的错误 */
         transformation.getOutputType();
 
         // configure the type if needed
+        /** 如果需要，配置类型 */
         if (sinkFunction instanceof InputTypeConfigurable) {
             ((InputTypeConfigurable) sinkFunction).setInputType(getType(), getExecutionConfig());
         }
-
+        /**
+         * 添加SinkFunction,传入上一个DataStream
+         */
         return DataStreamSink.forSinkFunction(this, clean(sinkFunction));
     }
 

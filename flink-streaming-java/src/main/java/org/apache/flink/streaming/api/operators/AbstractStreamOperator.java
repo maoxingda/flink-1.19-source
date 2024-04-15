@@ -89,6 +89,12 @@ import static org.apache.flink.util.Preconditions.checkState;
  *
  * @param <OUT> The output type of the operator.
  */
+
+/**
+  * @授课老师(V): yi_locus
+  * email: 156184212@qq.com
+  * 所有流运算符的基类。包含用户函数的运算符应扩展
+  */
 @PublicEvolving
 public abstract class AbstractStreamOperator<OUT>
         implements StreamOperator<OUT>,
@@ -104,20 +110,31 @@ public abstract class AbstractStreamOperator<OUT>
     // ----------- configuration properties -------------
 
     // A sane default for most operators
+    /**
+     * 用于指定上下游算子的链接策略
+     */
     protected ChainingStrategy chainingStrategy = ChainingStrategy.HEAD;
 
     // ---------------- runtime fields ------------------
 
     /** The task that contains this operator (and other operators in the same chain). */
+    /**
+     * 当前Operator所属的StreamTask，最终StreamTask中的invoke方法执行当前StreamTask中所有的Operator
+     */
     private transient StreamTask<?, ?> container;
 
     protected transient StreamConfig config;
-
+    /**
+     * 定义了当前StreamOperator输出操作，执行完算子的转换后，会通过output组件将数据写入到下游
+     */
     protected transient Output<StreamRecord<OUT>> output;
 
     private transient IndexedCombinedWatermarkStatus combinedWatermark;
 
     /** The runtime context for UDFs. */
+    /**
+     * 获取上下文信息，累加器、状态数据
+     */
     private transient StreamingRuntimeContext runtimeContext;
 
     // ---------------- key/value state ------------------

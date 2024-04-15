@@ -47,6 +47,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *     org.apache.flink.streaming.api.functions.source.SourceFunction} API, which is due to be
  *     removed. Use the new {@link org.apache.flink.api.connector.source.Source} API instead.
  */
+/**
+  * @授课老师(V): yi_locus
+  * email: 156184212@qq.com
+  * 从套接字中读取字符串的源函数。源将从套接字流中读取字节，并将它们转换为字符，每个字节都是单独的。当接收到分隔符时，函数将输出当前字符串，并开始一个新字符串。
+  */
 @Deprecated
 @PublicEvolving
 public class SocketTextStreamFunction implements SourceFunction<String> {
@@ -95,6 +100,11 @@ public class SocketTextStreamFunction implements SourceFunction<String> {
         this.delayBetweenRetries = delayBetweenRetries;
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 创建Socket 读取数据
+      */
     @Override
     public void run(SourceContext<String> ctx) throws Exception {
         final StringBuilder buffer = new StringBuilder();
