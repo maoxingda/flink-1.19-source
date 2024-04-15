@@ -57,6 +57,11 @@ public final class StreamGraphUtils {
      * @param transformation A given transformation
      * @param defaultBufferTimeout The default buffer timeout value
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 根据给定的转换配置流节点的缓冲区超时。
+      */
     public static <T> void configureBufferTimeout(
             StreamGraph streamGraph,
             int nodeId,

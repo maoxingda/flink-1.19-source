@@ -28,9 +28,20 @@ import org.apache.flink.streaming.runtime.partitioner.RescalePartitioner;
  * This mode decides the default {@link ResultPartitionType} of job edges. Note that this only
  * affects job edges which are {@link StreamExchangeMode#UNDEFINED}.
  */
+
+/**
+  * @授课老师(V): yi_locus
+  * email: 156184212@qq.com
+  * 此模式决定作业边缘的默认ResultPartitionType。请注意，这只是
+  * 影响 StreamExchangeMode#UNDEFINED 的作业边缘。
+  */
+
 @Internal
 public enum GlobalStreamExchangeMode {
     /** Set all job edges to be {@link ResultPartitionType#BLOCKING}. */
+    /**
+     * 将所有作业边缘设置为 ResultPartitionType BLOCKING｝
+     */
     ALL_EDGES_BLOCKING,
 
     /**

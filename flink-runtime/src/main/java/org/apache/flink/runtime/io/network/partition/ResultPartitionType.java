@@ -19,6 +19,12 @@
 package org.apache.flink.runtime.io.network.partition;
 
 /** Type of a result partition. */
+/**
+  * @授课老师(V): yi_locus
+  * email: 156184212@qq.com
+  * 结果分区的类型
+  * 就是下游ResultPartition结果消费上游计算结果数据的交换类型
+  */
 public enum ResultPartitionType {
 
     /**
@@ -32,6 +38,15 @@ public enum ResultPartitionType {
      * {@link #PIPELINED} partitions), but only released through the scheduler, when it determines
      * that the partition is no longer needed.
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 阻塞分区表示阻塞数据交换，其中数据流首先被完全产生，然后被消耗。这是一个仅适用于有界流的选项，可以在有界流运行时和恢复中使用。
+     *  BLOCKINGBLOCKING类型的数据分区会等待数据完全处理完毕，然后才会交给下游进行处理，
+     *  在上游处理完毕之前，不会与下游进行数据交换。该类型的数据分区可以被多次消费，也可以并发消费。
+     *  被消费完毕之后不会自动释放，而是等待调度器来判断该数据分区无人再消费之后，由调度器发出销毁指令。
+     *  该模式适用于批处理，不提供反压流控能力。
+      */
     BLOCKING(true, false, false, ConsumingConstraint.BLOCKING, ReleaseBy.SCHEDULER),
 
     /**
@@ -45,6 +60,10 @@ public enum ResultPartitionType {
      * scenarios, like when the TaskManager exits or when the TaskManager loses connection to
      * JobManager / ResourceManager for too long.
      */
+    /**
+     * BLOCKING_PERSISTENTBLOCKING_PERSISTENT类型的数据分区类似于BLOCKING，
+     * 但是其生命周期由用户指定。调用JobManager或者ResourceManager API进行销毁，而不是由调度器控制。
+     */
     BLOCKING_PERSISTENT(true, false, true, ConsumingConstraint.BLOCKING, ReleaseBy.SCHEDULER),
 
     /**
@@ -56,6 +75,9 @@ public enum ResultPartitionType {
      *
      * <p>This result partition type may keep an arbitrary amount of data in-flight, in contrast to
      * the {@link #PIPELINED_BOUNDED} variant.
+     */
+    /**
+     * PIPELINEDPIPELINED（流水线）式数据交换适用于流计算和批处理。数据处理结果只能被1个消费者（下游的算子）消费1次，当数据被消费之后即自动销毁。
      */
     PIPELINED(false, false, false, ConsumingConstraint.MUST_BE_PIPELINED, ReleaseBy.UPSTREAM),
 
@@ -69,6 +91,9 @@ public enum ResultPartitionType {
      *
      * <p>For batch jobs, it will be best to keep this unlimited ({@link #PIPELINED}) since there
      * are no checkpoint barriers.
+     */
+    /**
+     * 带有一个有限大小的本地缓冲池。对于流计算作业来说，固定大小的缓冲池可以避免缓冲太多的数据和检查点延迟太久。
      */
     PIPELINED_BOUNDED(
             false, true, false, ConsumingConstraint.MUST_BE_PIPELINED, ReleaseBy.UPSTREAM),

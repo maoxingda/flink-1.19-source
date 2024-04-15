@@ -85,6 +85,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * Class representing the streaming topology. It contains all the information necessary to build the
  * jobgraph for the execution.
  */
+/**
+  * @授课老师(V): yi_locus
+  * email: 156184212@qq.com
+  * 流拓扑的类。它包含为执行构建作业图所需的所有信息。
+  */
 @Internal
 public class StreamGraph implements Pipeline {
 
@@ -94,35 +99,63 @@ public class StreamGraph implements Pipeline {
 
     public static final String ITERATION_SINK_NAME_PREFIX = "IterationSink";
 
+    /** job名字 */
     private String jobName;
 
+    /** 配置文件 */
     private final Configuration jobConfiguration;
+    /** ExecutionConfig配置文件 */
     private final ExecutionConfig executionConfig;
+    /** CheckpointConfig配置文件 */
     private final CheckpointConfig checkpointConfig;
     private SavepointRestoreSettings savepointRestoreSettings = SavepointRestoreSettings.none();
 
+    /** 时间语义 */
     private TimeCharacteristic timeCharacteristic;
+
+    /**数据交换模式*/
+    /**
+     * 数据交换模式
+     * BLOCKING:阻塞分区表示阻塞数据交换，其中数据流首先被完全产生，然后被消耗。
+     * PIPELINED_BOUNDED:带有一个有限大小的本地缓冲池。对于流计算作业来说，固定大小的缓冲池可以避免缓冲太多的数据和检查点延迟太久。
+     */
 
     private GlobalStreamExchangeMode globalExchangeMode;
 
+    /** .14 开始 Flink 支持在部分任务结束后继续进行Checkpoint。 */
     private boolean enableCheckpointsAfterTasksFinish;
 
     /** Flag to indicate whether to put all vertices into the same slot sharing group by default. */
+    /**
+     * 用于指示默认情况下是否将所有顶点放入同一槽共享组的标志
+     */
     private boolean allVerticesInSameSlotSharingGroupByDefault = true;
 
+    /**
+     * 存放StreamNode(transformationId,StreamNode)
+     */
     private Map<Integer, StreamNode> streamNodes;
     private Set<Integer> sources;
     private Set<Integer> sinks;
+    /**
+     * 用来存储虚拟的侧输出流
+     */
     private Map<Integer, Tuple2<Integer, OutputTag>> virtualSideOutputNodes;
+    /**
+     * 用来存储虚拟的Nodes(虚拟生成的Id,Tuple3<对应的输入id, 以及分区策略<?>)
+     */
     private Map<Integer, Tuple3<Integer, StreamPartitioner<?>, StreamExchangeMode>>
             virtualPartitionNodes;
 
     protected Map<Integer, String> vertexIDtoBrokerID;
     protected Map<Integer, Long> vertexIDtoLoopTimeout;
+    /** 状态后端*/
     private StateBackend stateBackend;
+    /** 该类用来存储检查点、以及容错回复*/
     private CheckpointStorage checkpointStorage;
     private Set<Tuple2<StreamNode, StreamNode>> iterationSourceSinkPairs;
     private InternalTimeServiceManager.Provider timerServiceProvider;
+    /** JobType 类型*/
     private JobType jobType = JobType.STREAMING;
     private Map<String, ResourceProfile> slotSharingGroupResources;
     private PipelineOptions.VertexDescriptionMode descriptionMode =
@@ -352,6 +385,18 @@ public class StreamGraph implements Pipeline {
          */
         sources.add(vertexID);
     }
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 添加一个输出（sink）操作
+     * @param vertexID: 流的唯一标识符，通常在流图中表示一个节点或操作。
+     * @param slotSharingGroup: 一个可选的字符串，用于指定哪些操作可以共享相同的任务槽。
+     * @param  coLocationGroup: 一个可选的字符串，用于指定操作的协同定位组，以便它们可以在同一任务管理器上运行。
+     * @param operatorFactory: 一个工厂对象，用于创建输出操作。
+     * @param inTypeInfo: 输入数据的类型信息。
+     * @param outTypeInfo: 输出数据的类型信息。
+     * @param operatorName: 操作的名称。
+      */
 
     public <IN, OUT> void addSink(
             Integer vertexID,
@@ -361,6 +406,10 @@ public class StreamGraph implements Pipeline {
             TypeInformation<IN> inTypeInfo,
             TypeInformation<OUT> outTypeInfo,
             String operatorName) {
+        /**
+         *调用addOperator方法（该方法在代码中未给出），以将操作添加到流图中。
+         * 它传递了所有必要的参数，包括顶点ID、槽共享组、协同定位组、操作工厂、输入和输出类型信息以及操作名称。
+         */
         addOperator(
                 vertexID,
                 slotSharingGroup,
@@ -369,10 +418,16 @@ public class StreamGraph implements Pipeline {
                 inTypeInfo,
                 outTypeInfo,
                 operatorName);
+        /**
+         * 检查operatorFactory是否是OutputFormatOperatorFactory的实例。如果是，则调用setOutputFormat方法
+         */
         if (operatorFactory instanceof OutputFormatOperatorFactory) {
             setOutputFormat(
                     vertexID, ((OutputFormatOperatorFactory) operatorFactory).getOutputFormat());
         }
+        /**
+         * 新添加的sink的顶点ID添加到sinks列表中
+         */
         sinks.add(vertexID);
     }
 
@@ -641,17 +696,32 @@ public class StreamGraph implements Pipeline {
      * @param virtualId ID of the virtual node.
      * @param partitioner The partitioner
      */
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 这个方法的主要目的是向virtualPartitionNodes 集合中添加一个新的虚拟分区节点。在添加之前，
+     * 它会检查是否已经存在一个具有相同ID的虚拟节点，以确保不会有重复的节点被添加进去。
+      */
     public void addVirtualPartitionNode(
             Integer originalId,
             Integer virtualId,
             StreamPartitioner<?> partitioner,
             StreamExchangeMode exchangeMode) {
-
+        /**
+         * 检查虚拟节点是否已存在。
+         * 检查Map结构中是否已包含给定 virtualId 的键。
+         * 如果包含，那么会抛出一个 IllegalStateException 异常，
+         * 说明已经存在一个具有该ID的虚拟分区节点。
+         */
         if (virtualPartitionNodes.containsKey(virtualId)) {
             throw new IllegalStateException(
                     "Already has virtual partition node with id " + virtualId);
         }
-
+        /**
+         * 如果虚拟节点不存在，那么将创建一个新的 Tuple3 对象（很可能是 Apache Flink 中的一个三元组类），
+         * 其中包含了 originalId、partitioner 和 exchangeMode 这三个元素。然后，将这个三元组对象作为值，
+         * 与 virtualId 作为键一起，添加到 virtualPartitionNodes 映射中。
+         */
         virtualPartitionNodes.put(virtualId, new Tuple3<>(originalId, partitioner, exchangeMode));
     }
 

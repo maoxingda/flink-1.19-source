@@ -22,5 +22,10 @@ package org.apache.flink.api.dag;
 import org.apache.flink.annotation.Internal;
 
 /** Common interface for Flink pipelines. */
+/**
+  * @授课老师(V): yi_locus
+  * email: 156184212@qq.com
+  * Flink pipeline 的通用接口
+  */
 @Internal
 public interface Pipeline {}

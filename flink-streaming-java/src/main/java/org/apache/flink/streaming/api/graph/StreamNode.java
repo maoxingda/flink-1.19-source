@@ -51,6 +51,11 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkState;
 
 /** Class representing the operators in the streaming programs, with all their properties. */
+/**
+  * @授课老师(V): yi_locus
+  * email: 156184212@qq.com
+  * 表示流式程序中的Operator及其所有属性
+  */
 @Internal
 public class StreamNode {
 

@@ -63,9 +63,19 @@ public class ReduceTransformationTranslator<IN, KEY>
         return ids;
     }
 
+    /**
+      * @授课老师(V): yi_locus
+      * email: 156184212@qq.com
+      * 用于处理流式处理中的ReduceTransformation
+      * 该方法主要是将ReduceTransformation转换为流处理操作，并返回生成的虚拟分区节点的ID集合
+      */
     @Override
     public Collection<Integer> translateForStreamingInternal(
             final ReduceTransformation<IN, KEY> transformation, final Context context) {
+        /**
+         * 创建一个StreamGroupedReduceOperator对象groupedReduce。这个操作符是用于执行分组归约操作的。
+         * 构造函数接受归约函数（reducer），以及通过输入类型（inputType）和序列化配置（从StreamGraph的执行配置中获取）创建的序列化器。
+         */
         StreamGroupedReduceOperator<IN> groupedReduce =
                 new StreamGroupedReduceOperator<>(
                         transformation.getReducer(),
@@ -75,9 +85,17 @@ public class ReduceTransformationTranslator<IN, KEY>
                                         context.getStreamGraph()
                                                 .getExecutionConfig()
                                                 .getSerializerConfig()));
-
+        /**
+         * 创建一个SimpleOperatorFactory对象operatorFactory，并使用groupedReduce作为参数来初始化它。这个工厂用于创建操作符实例。
+         */
         SimpleOperatorFactory<IN> operatorFactory = SimpleOperatorFactory.of(groupedReduce);
+        /**
+         * 通过setChainingStrategy方法设置操作符的链接策略，该策略由ReduceTransformation提供
+         */
         operatorFactory.setChainingStrategy(transformation.getChainingStrategy());
+        /**
+         * 使用translateInternal方法来执行实际的转换过程。
+         */
         return translateInternal(
                 transformation,
                 operatorFactory,

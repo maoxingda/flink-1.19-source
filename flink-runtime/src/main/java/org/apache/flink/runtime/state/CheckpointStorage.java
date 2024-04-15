@@ -64,6 +64,11 @@ import java.io.IOException;
  * <p>Checkpoint storage implementations have to be thread-safe. Multiple threads may be creating
  * streams concurrently.
  */
+/**
+  * @授课老师(V): yi_locus
+  * email: 156184212@qq.com
+  * CheckpointStorage定义了｛@link StateBackend｝在流应用程序中如何存储其状态以实现容错。各种实现以不同的方式存储它们的检查点，并具有不同的要求和可用性保证。
+  */
 @PublicEvolving
 public interface CheckpointStorage extends java.io.Serializable {
 
