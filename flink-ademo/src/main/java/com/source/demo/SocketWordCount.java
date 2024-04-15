@@ -9,12 +9,6 @@ import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.Collector;
 
-/**
- * @Author: 小Q
- * @Desctription: TODO
- * @Date: Created in 2024/4/14 1:51
- * @Version: 1.0
- */
 
 /**
   * @授课老师(V): yi_locus
@@ -31,7 +25,7 @@ public class SocketWordCount {
         /** 读取socket数据 */
         DataStreamSource<String> fileStream =   env.socketTextStream("127.0.0.1",9999);
         /** 将数据转成小写 */
-        SingleOutputStreamOperator<String> mapStream = fileStream.map(String :: toUpperCase);
+        SingleOutputStreamOperator<String> mapStream = fileStream.map(String :: toLowerCase);
         /** 按照空格切分字符串*/
         SingleOutputStreamOperator<Tuple2<String,Integer>> flatMapStream = mapStream.flatMap(new Split());
         /** 分组聚合*/

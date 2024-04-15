@@ -2198,7 +2198,7 @@ public class StreamExecutionEnvironment implements AutoCloseable {
     /**
       * @授课老师(V): yi_locus
       * email: 156184212@qq.com
-      * 添加具有自定义类型信息的数据源，从而打开
+      * 添加具有自定义类型信息的数据源，Boundedness.CONTINUOUS_UNBOUNDED 无界流
       */
     @Deprecated
     public <OUT> DataStreamSource<OUT> addSource(
@@ -2246,7 +2246,7 @@ public class StreamExecutionEnvironment implements AutoCloseable {
          */
         boolean isParallel = function instanceof ParallelSourceFunction;
         /**
-         *clean()方法就是将内部类指向外部类的引用设置为null，确保序列化过程能够成功
+         * clean()方法就是将内部类指向外部类的引用设置为null，确保序列化过程能够成功
          */
         clean(function);
         /**

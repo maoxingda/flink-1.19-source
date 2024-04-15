@@ -56,7 +56,6 @@ public class DataStreamSink<T> {
      * @param inputStream 上一个DataStream
      * @param sinkFunction 打印Function
      */
-
     static <T> DataStreamSink<T> forSinkFunction(
             DataStream<T> inputStream, SinkFunction<T> sinkFunction) {
         StreamSink<T> sinkOperator = new StreamSink<>(sinkFunction);

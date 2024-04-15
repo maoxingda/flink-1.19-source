@@ -39,6 +39,7 @@ public enum Boundedness {
      * the source implementations may not have to keep track of the event times or watermarks.
      * Instead, a higher throughput would be preferred.
      */
+    /** BOUNDED流是具有有限记录的流。 */
     BOUNDED,
 
     /**
@@ -51,5 +52,6 @@ public enum Boundedness {
      * <p>A CONTINUOUS_UNBOUNDED stream may also eventually stop at some point. But before that
      * happens, Flink always assumes the sources are going to run forever.
      */
+    /** CONTINUOUS_UNBOUNDED流是具有无限记录的流。 */
     CONTINUOUS_UNBOUNDED
 }
