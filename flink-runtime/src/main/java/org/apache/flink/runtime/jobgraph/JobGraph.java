@@ -64,6 +64,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * <p>The JobGraph defines the job-wide configuration settings, while each vertex and intermediate
  * result define the characteristics of the concrete operation and intermediate data.
  */
+
+/**
+ * JobGraph代表一个Flink数据流程序(任务)，在JobManager接受的低级别(数据结构)，来自更高级别API的所有程序都转换为JobGraphs。
+ * JobGraph代表一个Flink数据流(任务)，JobManager接受的结构规范(数据结构)，高级别API对应的程序都转换为JobGraphs，才能进行提交。
+ */
 public class JobGraph implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -73,6 +78,7 @@ public class JobGraph implements Serializable {
     // --- job and configuration ---
 
     /** List of task vertices included in this job graph. */
+    /** JobGraph中包含的任务顶点的列表。 */
     private final Map<JobVertexID, JobVertex> taskVertices =
             new LinkedHashMap<JobVertexID, JobVertex>();
 

@@ -27,6 +27,11 @@ import org.apache.flink.runtime.jobgraph.JobGraph;
  * This can be used to turn a {@link Pipeline} into a {@link JobGraph}. There will be
  * implementations for the different pipeline APIs that Flink supports.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于将 Pipeline 转换为 JobGraph
+*/
 public interface FlinkPipelineTranslator {
 
     /**

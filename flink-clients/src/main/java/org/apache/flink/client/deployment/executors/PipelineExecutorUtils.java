@@ -86,7 +86,7 @@ public class PipelineExecutorUtils {
                 .getOptional(PipelineOptionsInternal.PIPELINE_FIXED_JOB_ID)
                 .ifPresent(strJobID -> jobGraph.setJobID(JobID.fromHexString(strJobID)));
         /**
-         * 如果配置中启用了附着模式并且设置为在附着时关闭，则设置 jobGraph 的初始客户端心跳超时时间。
+         * 如果配置中启用了ATTACHED模式并且设置为ATTACHED时关闭，则设置 jobGraph 的初始客户端心跳超时时间。
          */
         if (configuration.get(DeploymentOptions.ATTACHED)
                 && configuration.get(DeploymentOptions.SHUTDOWN_IF_ATTACHED)) {

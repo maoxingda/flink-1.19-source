@@ -25,9 +25,9 @@ public class SocketWordCountStreamGraph {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.registerCachedFile("F:/a.txt","cache");
         /** 设置检查点的时间间隔 */
-        //env.enableCheckpointing(5000);
+        env.enableCheckpointing(5000);
         /** 设置检查点路径*/
-        env.getCheckpointConfig().setCheckpointStorage("file:///source/chk");
+        env.getCheckpointConfig().setCheckpointStorage("file:///chk");
         env.setParallelism(5);
         env.setMaxParallelism(10);
         /** 读取socket数据 */

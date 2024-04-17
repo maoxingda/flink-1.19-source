@@ -514,19 +514,42 @@ public class JobVertex implements java.io.Serializable {
                 input, distPattern, partitionType, new IntermediateDataSetID(), isBroadcast);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建IntermediateDataSet、JobEdge
+     * @param input: 输入顶点，即数据的来源。
+     * @param distPattern: 分布模式，指定数据如何在顶点之间分布。可以是点对点（POINTWISE）或全对全（ALL_TO_ALL）。
+     * @param partitionType: 结果分区类型，定义了如何分区和传输数据。
+     * @param intermediateDataSetId: 中间数据集的ID，标识数据流。
+     * @param isBroadcast: 是否进行广播，即是否将一份数据复制到所有下游子任务。
+    */
     public JobEdge connectNewDataSetAsInput(
             JobVertex input,
             DistributionPattern distPattern,
             ResultPartitionType partitionType,
             IntermediateDataSetID intermediateDataSetId,
             boolean isBroadcast) {
-
+        /**
+         * 从输入顶点获取或创建一个中间数据集。这个中间数据集代表从输入顶点流出的数据。
+         */
         IntermediateDataSet dataSet =
                 input.getOrCreateResultDataSet(intermediateDataSetId, partitionType);
 
+        /**
+         * 将新创建的JobEdge对象添加到当前顶点的输入列表中。这样，当前顶点就知道它有哪些输入边。
+         */
         JobEdge edge = new JobEdge(dataSet, this, distPattern, isBroadcast);
+
+        /**
+         * 将新创建的JobEdge对象添加到当前顶点的输入列表中。这样，当前顶点就知道它有哪些输入边。
+         */
         this.inputs.add(edge);
+        /**
+         * 将当前顶点（通过其对应的JobEdge）添加到中间数据集的消费者列表中。这样，中间数据集就知道哪些顶点正在消费它的数据
+         */
         dataSet.addConsumer(edge);
+        /** 返回新创建的JobEdge对象 */
         return edge;
     }
 

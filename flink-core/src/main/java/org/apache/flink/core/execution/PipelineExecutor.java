@@ -49,6 +49,11 @@ public interface PipelineExecutor {
      * @param userCodeClassloader the {@link ClassLoader} to deserialize usercode
      * @return a {@link CompletableFuture} with the {@link JobClient} corresponding to the pipeline.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据提供的配置执行  Pipeline 并返回JobClient，该客户端允许与正在执行的作业进行交互，例如取消该作业或获取保存点。
+    */
     CompletableFuture<JobClient> execute(
             final Pipeline pipeline,
             final Configuration configuration,

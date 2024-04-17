@@ -171,6 +171,11 @@ public class StreamConfig implements Serializable {
     }
 
     /** Trigger the object config serialization and return the completable future. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 触发对象配置序列化并返回可完成的future
+    */
     public CompletableFuture<StreamConfig> triggerSerializationAndReturnFuture(
             Executor ioExecutor) {
         FutureUtils.combineAll(chainedTaskFutures.values())

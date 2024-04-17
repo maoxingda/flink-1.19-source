@@ -59,6 +59,7 @@ public final class FlinkPipelineTranslationUtil {
                 getPipelineTranslator(userClassloader, pipeline);
         /**
          * 使用FlinkPipelineTranslator的translateToJobGraph方法，将Pipeline、优化器配置和默认并行度作为参数，转化为JobGraph对象。
+         * 完成pipeline到JobGraph的转换，提问这里问什么是pipeline?(StreamGraph是Pipeline接口的实现)
          */
         JobGraph jobGraph =
                 pipelineTranslator.translateToJobGraph(
@@ -102,17 +103,25 @@ public final class FlinkPipelineTranslationUtil {
                 getPipelineTranslator(userClassloader, pipeline);
         return pipelineTranslator.translateToJSONExecutionPlan(pipeline);
     }
-
+    /**
+    * @授课老师(微信): yi_locus
+    * email: 156184212@qq.com
+    * 这里主要是获取对应的FlinkPipelineTranslator，
+    * PlanTranslator是针对DataSet API
+    * StreamGraphTranslator是针对DataStream API
+    *
+    */
     private static FlinkPipelineTranslator getPipelineTranslator(
             ClassLoader userClassloader, Pipeline pipeline) {
+        /** 创建了一个新的PlanTranslator对象。 */
         PlanTranslator planTranslator = new PlanTranslator();
-
+        /** 如果是 pipeLine 则在返回 planTranslator*/
         if (planTranslator.canTranslate(pipeline)) {
             return planTranslator;
         }
-
+        /** 创建了一个新的StreamGraphTranslator对象。 */
         StreamGraphTranslator streamGraphTranslator = new StreamGraphTranslator(userClassloader);
-
+        /** 如果是 StreamGraph 则在返回 planTranslator*/
         if (streamGraphTranslator.canTranslate(pipeline)) {
             return streamGraphTranslator;
         }

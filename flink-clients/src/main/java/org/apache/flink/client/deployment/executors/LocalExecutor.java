@@ -81,8 +81,6 @@ public class LocalExecutor implements PipelineExecutor {
         /**
          * 创建了一个新的`Configuration`对象`effectiveConfig`，
          * 并将当前对象的`configuration`和传入的`configuration`参数合并到这个新的配置对象中。
-         * `effectiveConfig`就包含了两组配置的所有设置。
-         * 总结：说到底，effectiveConfig就是用来专门提交任务的Configuration。里面存放了任务提交时候需要用到的参数
          */
         Configuration effectiveConfig = new Configuration();
         effectiveConfig.addAll(this.configuration);
@@ -96,7 +94,7 @@ public class LocalExecutor implements PipelineExecutor {
          */
         final JobGraph jobGraph = getJobGraph(pipeline, effectiveConfig, userCodeClassloader);
         /**
-         * 提交作业并返回JobClient
+         * submitJob提交作业并返回JobClient
          */
         return PerJobMiniClusterFactory.createWithFactory(effectiveConfig, miniClusterFactory)
                 .submitJob(jobGraph, userCodeClassloader);

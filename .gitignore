@@ -66,3 +66,4 @@ tools/japicmp-output
 /docs/go.sum
 /docs/.hugo_build.lock
 /a_lib/
+/log/

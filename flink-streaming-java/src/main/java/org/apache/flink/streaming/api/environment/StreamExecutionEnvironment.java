@@ -2418,7 +2418,8 @@ public class StreamExecutionEnvironment implements AutoCloseable {
             final JobExecutionResult jobExecutionResult;
             /**
              * * 如果设置了`ATTACHED`选项（即`true`），则通过`jobClient`的`getJobExecutionResult().get()`方法同步地获取作业执行结果。
-             * * 如果没有设置`ATTACHED`选项（即`false`），则创建一个`DetachedJobExecutionResult`对象，这个对象可能表示一个与作业ID关联的、非同步的作业执行结果。
+             * * 如果没有设置`ATTACHED`选项（即`false`），则创建一个`DetachedJobExecutionResult`对象，这个对象可能表示一个与作业ID关联的、
+             * 非同步的作业执行结果。
              */
             if (configuration.get(DeploymentOptions.ATTACHED)) {
                 jobExecutionResult = jobClient.getJobExecutionResult().get();
@@ -2426,7 +2427,7 @@ public class StreamExecutionEnvironment implements AutoCloseable {
                 jobExecutionResult = new DetachedJobExecutionResult(jobClient.getJobID());
             }
             /**
-             *遍历jobListeners列表，对每一个作业监听器调用onJobExecuted方法，通知它们作业已经执行完成，并传递作业执行结果
+             *遍历jobListeners列表，对每一个作业监听器调用onJobExecuted方法(状态更改时通知的侦听器)，通知它们作业已经执行完成，并传递作业执行结果
              */
             jobListeners.forEach(
                     jobListener -> jobListener.onJobExecuted(jobExecutionResult, null));
@@ -2441,7 +2442,9 @@ public class StreamExecutionEnvironment implements AutoCloseable {
              *
              */
             Throwable strippedException = ExceptionUtils.stripExecutionException(t);
-
+            /**
+             * 状态更改时通知的侦听器
+              */
             jobListeners.forEach(
                     jobListener -> {
                         jobListener.onJobExecuted(null, strippedException);
