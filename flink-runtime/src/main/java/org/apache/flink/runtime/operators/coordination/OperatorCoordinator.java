@@ -76,6 +76,14 @@ import java.util.concurrent.CompletableFuture;
  *       because between those methods, the new attempts are scheduled and deployed.
  * </ol>
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 运行时Operator的协调器。OperatorCoordinator在与Operator作业顶点相关联的主机上运行。它通过发送Operator事件与操作员进行通信。
+ * OperatorCoordinator代表的是runtime operators，其运行在JobMaster中，
+ * 一个OperatorCoordinator对应的是一个operator的Job vertex,其和operators的交互是通过operator event。
+ * 主要负责subTask的重启、失败等，以及operator的checkpoint行为。
+*/
 @Internal
 public interface OperatorCoordinator extends CheckpointListener, AutoCloseable {
 
@@ -100,6 +108,11 @@ public interface OperatorCoordinator extends CheckpointListener, AutoCloseable {
      * This method is called when the coordinator is disposed. This method should release currently
      * held resources. Exceptions in this method do not cause the job to fail.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动协调员。此方法在开始时调用一次，然后再调用任何其他方法。
+    */
     @Override
     void close() throws Exception;
 
@@ -112,6 +125,11 @@ public interface OperatorCoordinator extends CheckpointListener, AutoCloseable {
      * @throws Exception Any exception thrown by this method results in a full job failure and
      *     recovery.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 传递来自并行Operator实例的OperatorEvent（一次并行尝试子任务）。
+    */
     void handleEventFromOperator(int subtask, int attemptNumber, OperatorEvent event)
             throws Exception;
 
@@ -144,6 +162,11 @@ public interface OperatorCoordinator extends CheckpointListener, AutoCloseable {
      * @throws Exception Any exception thrown by this method results in a full job failure and
      *     recovery.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取协调员的检查点。检查点由给定的ID标识。
+    */
     void checkpointCoordinator(long checkpointId, CompletableFuture<byte[]> resultFuture)
             throws Exception;
 

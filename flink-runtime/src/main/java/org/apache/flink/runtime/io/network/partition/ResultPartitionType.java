@@ -93,7 +93,11 @@ public enum ResultPartitionType {
      * are no checkpoint barriers.
      */
     /**
-     * 带有一个有限大小的本地缓冲池。对于流计算作业来说，固定大小的缓冲池可以避免缓冲太多的数据和检查点延迟太久。
+     * 具有有界（本地）缓冲池的管道分区。
+     * 对于流作业，对缓冲池大小的固定限制应有助于避免缓冲过多的数据和延迟检查点屏障。然而，与限制总体网络缓冲池大小相比，
+     * 这仍然允许通过选择适当大的网络缓冲池尺寸来灵活地处理分区总数。
+     * 对于批处理作业，最好保持此不受限制（｛@link#PIPELINED｝），因为没有检查点障碍。
+     * 如果是流模式，在ResultPartition接受到第一个Buffer时候，消费者任务就可以准备进行消费了，
      */
     PIPELINED_BOUNDED(
             false, true, false, ConsumingConstraint.MUST_BE_PIPELINED, ReleaseBy.UPSTREAM),

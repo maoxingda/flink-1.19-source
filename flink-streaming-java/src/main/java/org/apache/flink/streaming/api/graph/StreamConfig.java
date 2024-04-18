@@ -145,6 +145,12 @@ public class StreamConfig implements Serializable {
     // To make the parallelization of the StreamConfig serialization easier, we use this map
     // to collect all the need-to-be-serialized objects. These objects will be serialized all at
     // once then.
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为了使StreamConfig序列化的并行化更容易，toBeSerializedConfigObjects映射来收集所有需要序列化的对象。
+     * 这些对象将同时被序列化。
+    */
     private final transient Map<String, Object> toBeSerializedConfigObjects = new HashMap<>();
     private final transient Map<Integer, CompletableFuture<StreamConfig>> chainedTaskFutures =
             new HashMap<>();
@@ -831,12 +837,19 @@ public class StreamConfig implements Serializable {
          * same key arrive on multiple inputs to ensure that the operator sees all records with a
          * key as one consecutive group.
          */
+        /**
+         * 所有排序输入的记录按键分组（排序），然后一次一组地提供给操作员
+         */
         SORTED,
 
         /**
          * Records from {@link #PASS_THROUGH} inputs are passed to the operator before passing any
          * records from {@link #SORTED} inputs. There are no guarantees on ordering between and
          * within the different {@link #PASS_THROUGH} inputs.
+         */
+        /**
+         * 在传递｛@link#SORTED｝输入的任何记录之前，将｛@link#PASS_THROUH｝输入中的记录传递给运算符。
+         * 不能保证在不同的{@link#PASS_THROUH}输入之间和内部进行排序。
          */
         PASS_THROUGH;
     }

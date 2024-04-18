@@ -332,11 +332,21 @@ public class StreamingJobGraphGenerator {
          * 在此处设置了所有不可链接的输出配置，因为
          * “setVertexParallelismsForDynamicGraphIfNenecessary”可能会影响作业顶点的并行性和分区重用
          */
+        /** 创建一个空Map对象 opIntermediateOutputs */
         final Map<Integer, Map<StreamEdge, NonChainedOutput>> opIntermediateOutputs =
                 new HashMap<>();
+        /**
+         * 设置所有Operator 任务不能链的输出的配置，
+         * 为了方便后面序列化，
+         * 1.内部就是将 NUMBER_OF_OUTPUTS放入config
+         * opNonChainedOutputs,deduplicatedOutputs 放入序列化对象的
+         * Map<String, Object> toBeSerializedConfigObjects = new HashMap<>();
+         * 后面统一进行序列化
+         */
         setAllOperatorNonChainedOutputsConfigs(opIntermediateOutputs);
         /**
-         * 设置JobGraph要链接的边
+         * 设置所有Vertext 任务不能链的输出的配置，
+         * 也就是设置IntermediateDataSet、JobEdge
          */
         setAllVertexNonChainedOutputsConfigs(opIntermediateOutputs);
         /**
@@ -427,8 +437,11 @@ public class StreamingJobGraphGenerator {
                     .get();
             /**
              * 等待序列化完成并更新作业顶点.
-             * 用于确保所有序列化的 Future 对象都已经完成，并更新 JobGraph 中的相关顶点。
-             * 这可能是因为在序列化过程中可能修改了顶点的某些属性或状态，需要更新到 JobGraph 中
+             * 内部是添加协调器，OperatorCoordinator
+             * 运行时Operator的协调器。OperatorCoordinator在与Operator作业顶点相关联的主机上运行。它通过发送Operator事件与Operator进行通信。
+             * OperatorCoordinator代表的是runtime operators，其运行在JobMaster中，
+             * 一个OperatorCoordinator对应的是一个operator的Job vertex,其和operators的交互是通过operator event。
+             * 主要负责subTask的重启、失败等，以及operator的checkpoint行为。
              */
             waitForSerializationFuturesAndUpdateJobVertices();
         } catch (Exception e) {
@@ -660,24 +673,40 @@ public class StreamingJobGraphGenerator {
         return node.getOutEdges().stream()
                 .anyMatch(edge -> edge.getPartitioner() instanceof CustomPartitionerWrapper);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 主要目的是将物理边（StreamEdge对象）按目标节点ID分组，并设置每个节点的输入物理边列表
+    */
     private void setPhysicalEdges() {
+        /**
+         * 使用HashMap创建一个映射physicalInEdgesInOrder，其键是目标节点ID（Integer），
+         * 值是一个StreamEdge对象的列表。这个映射用来存储每个目标节点ID对应的所有输入边。
+         */
         Map<Integer, List<StreamEdge>> physicalInEdgesInOrder =
                 new HashMap<Integer, List<StreamEdge>>();
-
+        /** 遍历physicalEdgesInOrder列表中的每一条边。对于每一条边，获取其目标节点ID（target）。 */
         for (StreamEdge edge : physicalEdgesInOrder) {
+            /** 获取目标id */
             int target = edge.getTargetId();
-
+            /** 使用computeIfAbsent方法检查目标节点ID是否已经在physicalInEdgesInOrder映射中存在。 */
             List<StreamEdge> inEdges =
                     physicalInEdgesInOrder.computeIfAbsent(target, k -> new ArrayList<>());
-
+            /**
+             * 如果存在，则直接获取现有的列表。然后，将当前边添加到对应目标节点ID的列表中。
+              */
             inEdges.add(edge);
         }
-
+        /** 遍历physicalInEdgesInOrder映射中的每一个条目。 */
         for (Map.Entry<Integer, List<StreamEdge>> inEdges : physicalInEdgesInOrder.entrySet()) {
+            /**
+             * 对于每个条目，提取其键（节点ID，vertex）和值（输入边列表，edgeList）
+             */
             int vertex = inEdges.getKey();
             List<StreamEdge> edgeList = inEdges.getValue();
-
+            /**
+             * 放入toBeSerializedConfigObjects待序列化对象Map中
+             */
             vertexConfigs.get(vertex).setInPhysicalEdges(edgeList);
         }
     }
@@ -913,7 +942,10 @@ public class StreamingJobGraphGenerator {
             setOperatorChainedOutputsConfig(config, chainableOutputs);
 
             // we cache the non-chainable outputs here, and set the non-chained config later
-            /** 缓存不可链接的输出，稍后设置不可链接配置*/
+            /**
+             * 缓存不可链接的输出，稍后设置不可链接配置
+             * 下面会用到
+             */
             opNonChainableOutputsCache.put(currentNodeId, nonChainableOutputs);
             /**
              * 如果当前节点是启始节点
@@ -1297,6 +1329,7 @@ public class StreamingJobGraphGenerator {
         }
 
         // set the input config of the vertex if it consumes from cached intermediate dataset.
+        /** 如果顶点使用缓存的中间数据集，则设置顶点的输入配置。 */
         if (vertex.getConsumeClusterDatasetId() != null) {
             config.setNumberOfNetworkInputs(1);
             inputConfigs[0] = new StreamConfig.NetworkInputConfig(inputSerializers[0], 0);
@@ -1358,15 +1391,26 @@ public class StreamingJobGraphGenerator {
         }
         config.setChainedOutputs(chainableOutputs);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为特定的Operator（由vertexId标识）设置非链式输出的配置。
+    */
     private void setOperatorNonChainedOutputsConfig(
             Integer vertexId,
             StreamConfig config,
             List<StreamEdge> nonChainableOutputs,
             Map<StreamEdge, NonChainedOutput> outputsConsumedByEdge) {
         // iterate edges, find sideOutput edges create and save serializers for each outputTag type
+        /**
+         * 迭代边，查找边输出边为每个outputTag类型创建并保存序列化程序
+         * 查看这边有没有配置侧输出流
+         */
         for (StreamEdge edge : nonChainableOutputs) {
             if (edge.getOutputTag() != null) {
+                /***
+                 * 为typeSerializer_sideout_添加序列化配置
+                 */
                 config.setTypeSerializerSideOut(
                         edge.getOutputTag(),
                         edge.getOutputTag()
@@ -1378,7 +1422,13 @@ public class StreamingJobGraphGenerator {
 
         List<NonChainedOutput> deduplicatedOutputs =
                 mayReuseNonChainedOutputs(vertexId, nonChainableOutputs, outputsConsumedByEdge);
+        /** 设置NUMBER_OF_OUTPUTS 对应输出的数量 */
         config.setNumberOfOutputs(deduplicatedOutputs.size());
+        /**
+         * opNonChainedOutputs,deduplicatedOutputs 放入序列化对象的
+         * Map<String, Object> toBeSerializedConfigObjects = new HashMap<>();
+         * toBeSerializedConfigObjects映射来收集所有需要序列化的对象。这些对象将同时被序列化。
+         */
         config.setOperatorNonChainedOutputs(deduplicatedOutputs);
     }
     /**
@@ -1420,15 +1470,30 @@ public class StreamingJobGraphGenerator {
          */
         config.setVertexNonChainedOutputs(new ArrayList<>(transitiveOutputs));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为所有 Operators 设置非链式输出（non-chained outputs）的配置。
+    */
     private void setAllOperatorNonChainedOutputsConfigs(
             final Map<Integer, Map<StreamEdge, NonChainedOutput>> opIntermediateOutputs) {
         // set non chainable output config
+        /**
+         * Map<Integer, List<StreamEdge>> opNonChainableOutputsCache里面存放了所有的StreamEdge
+         * 循环遍历opNonChainableOutputsCache 获取vertexId 也就是StreamNodeId(1、2、3、5、6)
+         */
         opNonChainableOutputsCache.forEach(
                 (vertexId, nonChainableOutputs) -> {
+                    /**
+                     * 对于当前的vertexId，从opIntermediateOutputs这个Map中尝试获取其对应的输出。
+                     * 如果opIntermediateOutputs中没有这个vertexId，则为其创建一个新的空的HashMap。
+                     */
                     Map<StreamEdge, NonChainedOutput> outputsConsumedByEdge =
                             opIntermediateOutputs.computeIfAbsent(
                                     vertexId, ignored -> new HashMap<>());
+                    /**
+                     * 调用setOperatorNonChainedOutputsConfig方法，为特定的vertexId设置非链式输出的配置。
+                     */
                     setOperatorNonChainedOutputsConfig(
                             vertexId,
                             vertexConfigs.get(vertexId),
@@ -1456,22 +1521,40 @@ public class StreamingJobGraphGenerator {
                                         chainInfos.get(startNodeId).getTransitiveOutEdges(),
                                         opIntermediateOutputs));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 操作符的非链式输出相关的逻辑
+     * @param   vertexId：操作符或顶点的ID。
+     * @param  consumerEdges：包含消费非链式输出的边的列表。
+     * @param  outputsConsumedByEdge：一个映射，表示每个StreamEdge对应的非链式输出。
+    */
     private List<NonChainedOutput> mayReuseNonChainedOutputs(
             int vertexId,
             List<StreamEdge> consumerEdges,
             Map<StreamEdge, NonChainedOutput> outputsConsumedByEdge) {
+        /**如果consumerEdges列表为空，方法直接返回一个空的ArrayList。*/
         if (consumerEdges.isEmpty()) {
             return new ArrayList<>();
         }
+        /** 创建一个新的ArrayList来存储非链式输出，其初始大小设置为consumerEdges的大小。 */
         List<NonChainedOutput> outputs = new ArrayList<>(consumerEdges.size());
+        /** 遍历consumerEdges列表中的每个StreamEdge。 */
         for (StreamEdge consumerEdge : consumerEdges) {
+            /** 使用checkState方法检查当前vertexId是否与consumerEdge的源ID相同。如果不同，将抛出异常，因为顶点ID必须相同。 */
             checkState(vertexId == consumerEdge.getSourceId(), "Vertex id must be the same.");
+            /** 调用getResultPartitionType方法（该方法的具体实现在这段代码中未给出）来获取consumerEdge的结果分区类型。 */
             ResultPartitionType partitionType = getResultPartitionType(consumerEdge);
+            /** 创建 IntermediateDataSetID 对象 内部uuid*/
             IntermediateDataSetID dataSetId = new IntermediateDataSetID();
 
             boolean isPersistentDataSet =
                     isPersistentIntermediateDataset(partitionType, consumerEdge);
+            /**
+             * 检查consumerEdge是否关联一个持久化的中间数据集。
+             * 如果是，则将分区类型设置为BLOCKING_PERSISTENT，并获取相应的中间数据集ID。
+             * 总结这两端是获取partitionType与dataSetId
+             */
             if (isPersistentDataSet) {
                 partitionType = ResultPartitionType.BLOCKING_PERSISTENT;
                 dataSetId = consumerEdge.getIntermediateDatasetIdToProduce();
@@ -1510,10 +1593,13 @@ public class StreamingJobGraphGenerator {
             boolean isPersistentDataSet,
             IntermediateDataSetID dataSetId,
             ResultPartitionType partitionType) {
+        /** 获取消费(输出)方的 StreamNode的并行度*/
         int consumerParallelism =
                 streamGraph.getStreamNode(consumerEdge.getTargetId()).getParallelism();
+        /** 获取消费(输出)方的 StreamNode的最大并行度*/
         int consumerMaxParallelism =
                 streamGraph.getStreamNode(consumerEdge.getTargetId()).getMaxParallelism();
+        /** 创建非链Operator的output 变量*/
         NonChainedOutput reusableOutput = null;
         if (isPartitionTypeCanBeReuse(partitionType)) {
             for (NonChainedOutput outputCandidate : outputsConsumedByEdge.values()) {
@@ -1719,6 +1805,9 @@ public class StreamingJobGraphGenerator {
 
     private boolean isPersistentIntermediateDataset(
             ResultPartitionType resultPartitionType, StreamEdge edge) {
+        /**
+         *  this == BLOCKING || this == BLOCKING_PERSISTENT
+         */
         return resultPartitionType.isBlockingOrBlockingPersistentResultPartition()
                 && edge.getIntermediateDatasetIdToProduce() != null;
     }

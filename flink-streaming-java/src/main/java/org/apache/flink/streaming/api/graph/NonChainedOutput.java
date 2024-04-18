@@ -29,6 +29,11 @@ import java.util.Objects;
 /**
  * Used by operator chain and represents a non-chained output of the corresponding stream operator.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 由Operator使用，表示相应Operator的非链式输出。
+*/
 @Internal
 public class NonChainedOutput implements Serializable {
 
