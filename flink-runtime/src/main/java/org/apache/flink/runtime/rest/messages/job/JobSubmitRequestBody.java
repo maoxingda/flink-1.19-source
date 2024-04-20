@@ -36,6 +36,11 @@ import java.util.Objects;
  * <p>This request only contains the names of files that must be present on the server, and defines
  * how these files are interpreted.
  */
+/**
+* @授课老师(微信): yi_locus
+* email: 156184212@qq.com
+* 封装了请求体中的数据。
+*/
 public final class JobSubmitRequestBody implements RequestBody {
 
     public static final String FIELD_NAME_JOB_GRAPH = "jobGraphFileName";

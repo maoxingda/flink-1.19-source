@@ -62,6 +62,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * This class encapsulates represents a program, packaged in a jar file. It supplies functionality
  * to extract nested libraries, search for the program entry point, and extract a program plan.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 这个类是对一个程序的封装，包括jar文件、mainClass
+*/
 public class PackagedProgram implements AutoCloseable {
 
     private static final Logger LOG = LoggerFactory.getLogger(PackagedProgram.class);
@@ -216,9 +221,23 @@ public class PackagedProgram implements AutoCloseable {
      * This method assumes that the context environment is prepared, or the execution will be a
      * local execution by default.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通过反射调用用户的main函数
+    */
     public void invokeInteractiveModeForExecution() throws ProgramInvocationException {
+        /**
+         * 安全管理器监控
+         * FlinkSecurityManager 的 monitorUserSystemExitForCurrentThread 方法，
+         * 可能是为了监控当前线程的系统退出行为。这通常是为了防止用户代码执行某些可能终止整个程序的操作，比如调用 System.exit()
+         */
         FlinkSecurityManager.monitorUserSystemExitForCurrentThread();
         try {
+            /**
+             * 调用了一个名为 callMainMethod 的方法
+             * 用来调用用户程序的主方法。mainClass 应该是包含 main 方法的类，而 args 是传递给 main 方法的参数。
+             */
             callMainMethod(mainClass, args);
         } finally {
             FlinkSecurityManager.unmonitorUserSystemExitForCurrentThread();
@@ -320,14 +339,25 @@ public class PackagedProgram implements AutoCloseable {
                 && Modifier.isPublic(mainMethod.getModifiers());
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 该方法用于查找并验证一个类的 main 方法，以确保它满足作为 Java 应用程序入口点的条件
+    */
     private static void callMainMethod(Class<?> entryClass, String[] args)
             throws ProgramInvocationException {
         Method mainMethod;
+        /**
+         * 这段代码检查传入的类 entryClass 是否是公共的。如果不是，它抛出一个异常。
+         */
         if (!Modifier.isPublic(entryClass.getModifiers())) {
             throw new ProgramInvocationException(
                     "The class " + entryClass.getName() + " must be public.");
         }
-
+        /**
+         * 尝试从 entryClass 中查找一个名为 main 的方法，该方法接受一个 String[] 类型的参数。
+         * 如果找不到这样的方法，它会抛出一个异常。如果在查找过程中发生其他任何异常（例如，安全异常），它也会捕获并抛出相应的异常。
+         */
         try {
             mainMethod = entryClass.getMethod("main", String[].class);
         } catch (NoSuchMethodException e) {
@@ -341,7 +371,9 @@ public class PackagedProgram implements AutoCloseable {
                             + t.getMessage(),
                     t);
         }
-
+        /**
+         * 这些代码段检查 main 方法是否是静态的和公共的。如果不是，它们会分别抛出异常。
+         */
         if (!Modifier.isStatic(mainMethod.getModifiers())) {
             throw new ProgramInvocationException(
                     "The class " + entryClass.getName() + " declares a non-static main method.");
@@ -352,7 +384,14 @@ public class PackagedProgram implements AutoCloseable {
         }
 
         try {
+            /**
+             * 使用 Method 类的 invoke 方法来调用 main 方法。由于 main 方法是静态的，所以第一个参数（即类的实例）是 null。
+             * 第二个参数是传递给 main 方法的参数数组
+             */
             mainMethod.invoke(null, (Object) args);
+            /**
+             * 针对不同的一场类型抛出对应的一场
+             */
         } catch (IllegalArgumentException e) {
             throw new ProgramInvocationException(
                     "Could not invoke the main method, arguments are not matching.", e);

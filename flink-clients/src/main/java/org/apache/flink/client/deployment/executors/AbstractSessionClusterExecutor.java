@@ -68,22 +68,41 @@ public class AbstractSessionClusterExecutor<
             @Nonnull final Configuration configuration,
             @Nonnull final ClassLoader userCodeClassloader)
             throws Exception {
+        /**
+         *  根据Pipeline参数获取JobGraph
+         */
         final JobGraph jobGraph =
                 PipelineExecutorUtils.getJobGraph(pipeline, configuration, userCodeClassloader);
-
+        /**
+         * ClusterDescriptor,用于集群通信的客户端的描述符,内部最核心的就是像集群提交任务
+         * deploySessionCluster、deployApplicationCluster、deployJobCluster
+         * ClusterDescriptor是基于配置构建的并不是说去和集群通信
+         */
         try (final ClusterDescriptor<ClusterID> clusterDescriptor =
                 clusterClientFactory.createClusterDescriptor(configuration)) {
+            /**
+             * 获取ClusterID
+             */
             final ClusterID clusterID = clusterClientFactory.getClusterId(configuration);
             checkState(clusterID != null);
-
+            /**
+             * 检索现有集群通过clusterId
+             * ClusterClients的工厂,用来获取ClusterClients
+             */
             final ClusterClientProvider<ClusterID> clusterClientProvider =
                     clusterDescriptor.retrieve(clusterID);
+            /**
+             * 通过ClusterClientProvider实例获取ClusterClient集群客户端。用于提交任务
+             */
             ClusterClient<ClusterID> clusterClient = clusterClientProvider.getClusterClient();
             return clusterClient
+                    /** 使用clusterClient的submitJob方法提交一个jobGraph到集群 */
                     .submitJob(jobGraph)
+                    /** 作业提交后，使用thenApplyAsync方法异步地等待作业初始化完成。 */
                     .thenApplyAsync(
                             FunctionUtils.uncheckedFunction(
                                     jobId -> {
+                                        /** 此方法将阻塞，直到作业状态不再为INITIALIZING。 */
                                         ClientUtils.waitUntilJobInitializationFinished(
                                                 () -> clusterClient.getJobStatus(jobId).get(),
                                                 () -> clusterClient.requestJobResult(jobId).get(),
@@ -92,11 +111,13 @@ public class AbstractSessionClusterExecutor<
                                     }))
                     .thenApplyAsync(
                             jobID ->
+                                    /** 一旦作业初始化完成，该代码段会创建一个ClusterClientJobClientAdapter实例(JobClient) */
                                     (JobClient)
                                             new ClusterClientJobClientAdapter<>(
                                                     clusterClientProvider,
                                                     jobID,
                                                     userCodeClassloader))
+                    /**  关闭集群客户端 */
                     .whenCompleteAsync((ignored1, ignored2) -> clusterClient.close());
         }
     }

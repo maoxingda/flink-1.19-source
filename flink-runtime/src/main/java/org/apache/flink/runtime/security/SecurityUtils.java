@@ -52,8 +52,17 @@ public class SecurityUtils {
      *
      * <p>Applies the configuration using the available security modules (i.e. Hadoop, JAAS).
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 安装进程范围的安全配置。
+    */
     public static void install(SecurityConfiguration config) throws Exception {
         // Install the security modules first before installing the security context
+        /** 在安装安全上下文之前，请先安装安全模块 */
+        /**
+         * 安装的安全模板主要包括了Java认证与授权服务（JAAS)，Hadoop用户组信息（UGI）和Zookeeper的全过程安全设置
+         */
         installModules(config);
         installContext(config);
     }

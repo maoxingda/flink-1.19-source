@@ -25,6 +25,11 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 
 /** Custom command-line interface to load hooks for the command-line interface. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 自定义命令行接口以加载命令行接口的挂钩
+*/
 public interface CustomCommandLine {
 
     /**

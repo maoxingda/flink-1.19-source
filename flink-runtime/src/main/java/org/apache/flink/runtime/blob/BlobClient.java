@@ -334,23 +334,44 @@ public final class BlobClient implements Closeable {
      * @return the computed BLOB key of the uploaded BLOB
      * @throws IOException thrown if an I/O error occurs while uploading the data to the BLOB server
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定输入流中的数据上传到BLOB服务器。
+     * 将输入流（InputStream）中的数据作为 BLOB（Binary Large Object，二进制大对象）上传到一个 BLOB 客户端
+     *  JobID jobId：作业的ID，可以是null。
+     *  InputStream inputStream：要上传的数据流。
+     *  BlobKey.BlobType blobType：BLOB 的类型。
+    */
     BlobKey putInputStream(
             @Nullable JobID jobId, InputStream inputStream, BlobKey.BlobType blobType)
             throws IOException {
-
+        /** 如果 BLOB 客户端的 socket 已经关闭，则抛出一个 IllegalStateException，表示客户端未连接或之前已遇到错误。 */
         if (this.socket.isClosed()) {
             throw new IllegalStateException(
                     "BLOB Client is not connected. "
                             + "Client has been shut down or encountered an error before.");
         }
+        /**
+         * 使用 checkNotNull 方法确保 inputStream 不是 null。如果为 null，通常会抛出一个 NullPointerException。
+         */
         checkNotNull(inputStream);
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("PUT BLOB stream to {}.", socket.getLocalSocketAddress());
         }
-
+        /**
+         * 1.创建一个 `BlobOutputStream` 对象，用于将数据写入 BLOB 客户端。
+         */
         try (BlobOutputStream os = new BlobOutputStream(jobId, blobType, socket)) {
+            /**
+             * 2.使用 `IOUtils.copyBytes` 方法将 `inputStream` 中的数据复制到 `BlobOutputStream` 中。
+             * 这里使用了缓冲区（`BUFFER_SIZE`）来优化性能。
+             */
             IOUtils.copyBytes(inputStream, os, BUFFER_SIZE, false);
+            /**
+             * 3.调用 `os.finish()` 方法完成上传操作，并返回 `BlobKey`。
+             */
             return os.finish();
         } catch (Throwable t) {
             BlobUtils.closeSilently(socket, LOG);
@@ -368,27 +389,44 @@ public final class BlobClient implements Closeable {
      * @param files List of files to upload
      * @throws IOException if the upload fails
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将JAR文件上载到指定地址的 BlobServer 的 link PermanentBlobService
+    */
     public static List<PermanentBlobKey> uploadFiles(
             InetSocketAddress serverAddress,
             Configuration clientConfig,
             JobID jobId,
             List<Path> files)
             throws IOException {
-
+        /**
+         * 使用 checkNotNull 方法来确保 jobId 不为 null。如果为 null，则通常会抛出 NullPointerException。
+         */
         checkNotNull(jobId);
-
+        /**
+         * 如果传入的文件列表为空，则直接返回一个空的 List，避免不必要的操作。
+         */
         if (files.isEmpty()) {
             return Collections.emptyList();
         } else {
+            /**
+             * 创建一个新的 ArrayList 来存储每个上传文件对应的 PermanentBlobKey。
+             */
             List<PermanentBlobKey> blobKeys = new ArrayList<>();
-
+            /**
+             * 创建BlobClient blobClient
+             */
             try (BlobClient blobClient = new BlobClient(serverAddress, clientConfig)) {
+                /** 遍历传入的文件列表 */
                 for (final Path file : files) {
+                    /** 使用 BlobClient 的 uploadFile 方法上传每个文件 */
                     final PermanentBlobKey key = blobClient.uploadFile(jobId, file);
+                    /** 上传后得到的 PermanentBlobKey 被添加到 blobKeys 列表中 */
                     blobKeys.add(key);
                 }
             }
-
+            /** 返回 BLOB 键列表 */
             return blobKeys;
         }
     }
@@ -400,9 +438,26 @@ public final class BlobClient implements Closeable {
      * @param file file to upload
      * @throws IOException if the upload fails
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将单个文件上载到给定BlobServer的PermanentBlobService
+    */
     public PermanentBlobKey uploadFile(JobID jobId, Path file) throws IOException {
+        /**
+         * 通过文件路径 file 获取其所在的文件系统 fs。这通常用于后续的文件操作，如打开文件。
+         */
         final FileSystem fs = file.getFileSystem();
+        /**
+         * 1.使用 `fs.open(file)` 打开文件，得到一个 `InputStream`，即文件的输入流。
+         *
+         */
         try (InputStream is = fs.open(file)) {
+            /**
+             * 2.用之前定义的 `putInputStream` 方法，将文件的输入流上传到 BLOB 客户端。
+             * 这里传递的 `blobType` 参数是 `PERMANENT_BLOB`，表示上传的 BLOB 是永久性的。
+             * 3.将 `putInputStream` 方法返回的 `BlobKey` 强制转换为 `PermanentBlobKey` 并返回。
+             */
             return (PermanentBlobKey) putInputStream(jobId, is, PERMANENT_BLOB);
         }
     }

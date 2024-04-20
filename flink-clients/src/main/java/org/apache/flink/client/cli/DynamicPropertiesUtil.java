@@ -35,6 +35,11 @@ public class DynamicPropertiesUtil {
      * Dynamic properties allow the user to specify additional configuration values with -D, such as
      * <tt> -Dfs.overwrite-files=true -Dtaskmanager.memory.network.min=536346624</tt>.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 动态属性允许用户使用-D指定其他配置值，例如 -Dtaskmanager.memory.network.min=536346624
+    */
     static final Option DYNAMIC_PROPERTIES =
             Option.builder("D")
                     .argName("property=value")

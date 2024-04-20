@@ -36,6 +36,11 @@ import java.net.URL;
 import static org.apache.flink.client.cli.CliFrontend.setJobManagerAddressInConfig;
 
 /** The default CLI which is used for interaction with standalone clusters. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于与独立群集交互的默认CLI。
+*/
 public class DefaultCLI extends AbstractCustomCommandLine {
 
     public static final String ID = "default";

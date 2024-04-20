@@ -510,13 +510,30 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
     // RPCs
     // ------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @Override
     public CompletableFuture<Acknowledge> submitJob(JobGraph jobGraph, Time timeout) {
+        /** 从传入的jobGraph中获取作业的唯一标识符jobID。 */
         final JobID jobID = jobGraph.getJobID();
         log.info("Received JobGraph submission '{}' ({}).", jobGraph.getName(), jobID);
+        /**
+         * 调用isInGloballyTerminalState方法来检查作业是否已经达到了全局终止状态。
+         * 返回一个CompletableFuture<Boolean>，表示异步检查的结果。
+         */
         return isInGloballyTerminalState(jobID)
+                /**
+                 * thenCompose 它用于链接两个异步操作，其中第二个操作依赖于第一个操作的结果。
+                 */
                 .thenComposeAsync(
                         isTerminated -> {
+                            /**
+                             * 作业已经处于全局终止状态，则记录一条警告级别的日志，并返回一个异常完成的CompletableFuture，
+                             * 这个异常是DuplicateJobSubmissionException的一个实例，表示尝试提交一个已经全局终止的作业。
+                             */
                             if (isTerminated) {
                                 log.warn(
                                         "Ignoring JobGraph submission '{}' ({}) because the job already "
@@ -531,11 +548,21 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                                 return FutureUtils.completedExceptionally(
                                         DuplicateJobSubmissionException.ofGloballyTerminated(
                                                 jobID));
+                            /**
+                             * 如果作业ID已经在jobManagerRunnerRegistry中注册，
+                             * 或者它已经在submittedAndWaitingTerminationJobIDs集合中（意味着作业已经提交并正在等待终止），
+                             * 则返回一个异常完成的CompletableFuture，表示尝试重复提交作业。
+                             */
                             } else if (jobManagerRunnerRegistry.isRegistered(jobID)
                                     || submittedAndWaitingTerminationJobIDs.contains(jobID)) {
                                 // job with the given jobID is not terminated, yet
                                 return FutureUtils.completedExceptionally(
                                         DuplicateJobSubmissionException.of(jobID));
+                            /**
+                             * 如果jobGraph的部分顶点（vertices）配置了资源，但系统当前不支持这种情况，
+                             * 则创建一个JobSubmissionException异常，并通过FutureUtils.completedExceptionally方法
+                             * 返回一个异常完成的CompletableFuture。
+                             */
                             } else if (isPartialResourceConfigured(jobGraph)) {
                                 return FutureUtils.completedExceptionally(
                                         new JobSubmissionException(
@@ -544,6 +571,11 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                                                         + "have resources configured. The limitation will be "
                                                         + "removed in future versions."));
                             } else {
+                                /**
+                                 * 如果上述所有条件都不满足，即作业图的状态允许正常提交，
+                                 * 调用internalSubmitJob方法来执行实际的作业提交逻辑，
+                                 * CompletableFuture。
+                                 */
                                 return internalSubmitJob(jobGraph);
                             }
                         },

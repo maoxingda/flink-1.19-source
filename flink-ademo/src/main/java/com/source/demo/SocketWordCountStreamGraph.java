@@ -23,13 +23,15 @@ public class SocketWordCountStreamGraph {
          * 创建StreamExecutionEnvironment
          */
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.registerCachedFile("F:/a.txt","cache");
+        // 指定Flink集群
+        String jobManagerAddress = "localhost:8081";
+        //env.registerCachedFile("file:///H:/a.txt","cache");
         /** 设置检查点的时间间隔 */
         env.enableCheckpointing(5000);
         /** 设置检查点路径*/
-        env.getCheckpointConfig().setCheckpointStorage("file:///chk");
-        env.setParallelism(5);
-        env.setMaxParallelism(10);
+        env.getCheckpointConfig().setCheckpointStorage("file:///H:/chk");
+        env.setParallelism(2);
+        env.setMaxParallelism(2);
         /** 读取socket数据 */
         DataStreamSource<String> fileStream =   env.socketTextStream("127.0.0.1",9999);
         /** 将数据转成小写 */

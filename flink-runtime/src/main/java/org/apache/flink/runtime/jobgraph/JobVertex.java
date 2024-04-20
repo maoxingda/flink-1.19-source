@@ -494,8 +494,23 @@ public class JobVertex implements java.io.Serializable {
     }
 
     // --------------------------------------------------------------------------------------------
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构建IntermediateDataSet并作为输入JobVertext的result
+     * @param  id：中间数据集的ID。
+     * @param  partitionType：结果分区的类型。
+    */
     public IntermediateDataSet getOrCreateResultDataSet(
             IntermediateDataSetID id, ResultPartitionType partitionType) {
+        /**
+         *  results 结构Map<IntermediateDataSetID, IntermediateDataSet> results = new LinkedHashMap<>();
+         *  其键是IntermediateDataSetID类型，值是IntermediateDataSet类型
+         *  检查this.results中是否已经存在与给定id相关联的IntermediateDataSet
+         *  如果存在，则直接返回该IntermediateDataSet。
+         * 如果不存在，则调用new IntermediateDataSet(id, partitionType, this)
+         * 来创建一个新的IntermediateDataSet实例，将其与给定的id关联起来，并存储在this.results中，然后返回新创建的IntermediateDataSet。
+         */
         return this.results.computeIfAbsent(
                 id, key -> new IntermediateDataSet(id, partitionType, this));
     }
@@ -532,6 +547,7 @@ public class JobVertex implements java.io.Serializable {
             boolean isBroadcast) {
         /**
          * 从输入顶点获取或创建一个中间数据集。这个中间数据集代表从输入顶点流出的数据。
+         * 总结：内部并将IntermediateDataSet直接作为输出放入JobVertext的result字段
          */
         IntermediateDataSet dataSet =
                 input.getOrCreateResultDataSet(intermediateDataSetId, partitionType);
@@ -543,6 +559,7 @@ public class JobVertex implements java.io.Serializable {
 
         /**
          * 将新创建的JobEdge对象添加到当前顶点的输入列表中。这样，当前顶点就知道它有哪些输入边。
+         *  创建JobEdge 并将jobEdge放入当前JobVertext的input
          */
         this.inputs.add(edge);
         /**

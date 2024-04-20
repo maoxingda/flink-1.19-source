@@ -21,6 +21,11 @@ package org.apache.flink.runtime.blob;
 import org.apache.flink.annotation.VisibleForTesting;
 
 /** BLOB key referencing permanent BLOB files. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 引用永久BLOB文件的BLOB密钥。
+*/
 public final class PermanentBlobKey extends BlobKey {
 
     /** Constructs a new BLOB key. */

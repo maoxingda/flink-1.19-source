@@ -354,15 +354,31 @@ public class RestClusterClient<T> implements ClusterClient<T> {
         return retry(operation, unknownJobStateRetryable);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @Override
     public CompletableFuture<JobID> submitJob(@Nonnull JobGraph jobGraph) {
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * CompletableFuture.supplyAsync异步地创建一个临时文件，并将JobGraph对象序列化到这个文件中。
+         * 序列化是为了将JobGraph转换为可以存储或传输的二进制格式。如果序列化失败，将抛出一个包含详细错误信息的CompletionException。
+        */
         CompletableFuture<java.nio.file.Path> jobGraphFileFuture =
+                /**
+                 * supplyAsync执行CompletableFuture任务，有返回值
+                 */
                 CompletableFuture.supplyAsync(
                         () -> {
                             try {
+                                /** 异步地创建一个临时文件 */
                                 final java.nio.file.Path jobGraphFile =
                                         Files.createTempFile(
                                                 "flink-jobgraph-" + jobGraph.getJobID(), ".bin");
+                                /** 序列化是为了将JobGraph转换为可以存储或传输的二进制格式 */
                                 try (ObjectOutputStream objectOut =
                                         new ObjectOutputStream(
                                                 Files.newOutputStream(jobGraphFile))) {
@@ -375,19 +391,36 @@ public class RestClusterClient<T> implements ClusterClient<T> {
                             }
                         },
                         executorService);
-
+       /**
+        * @授课老师(微信): yi_locus
+        * email: 156184212@qq.com
+        * 定义了一个新的CompletableFuture，它依赖于jobGraphFileFuture的完成。
+        * 一旦临时文件创建成功，这部分代码就会准备提交作业所需的请求体和其他相关文件。
+        * 在这里，它只添加了一个需要上传的文件，即之前序列化的JobGraph文件。
+       */
         CompletableFuture<Tuple2<JobSubmitRequestBody, Collection<FileUpload>>> requestFuture =
+                /** 有入参，有返回值 */
                 jobGraphFileFuture.thenApply(
                         jobGraphFile -> {
+                            /**
+                             * 初始化了三个集合：jarFileNames 用于存储JAR文件的名称，
+                             * artifactFileNames 用于存储分布式缓存文件的描述，
+                             * filesToUpload 用于存储所有需要上传的文件。
+                             */
                             List<String> jarFileNames = new ArrayList<>(8);
                             List<JobSubmitRequestBody.DistributedCacheFile> artifactFileNames =
                                     new ArrayList<>(8);
                             Collection<FileUpload> filesToUpload = new ArrayList<>(8);
-
+                            /**
+                             * JobGraph文件被添加到filesToUpload集合中，准备进行上传。文件的类型是二进制。
+                             */
                             filesToUpload.add(
                                     new FileUpload(
                                             jobGraphFile, RestConstants.CONTENT_TYPE_BINARY));
-
+                            /**
+                             * jobGraph中所有的用户JAR包，并将它们的名称添加到jarFileNames集合中。
+                             * 每个JAR包都被封装为FileUpload对象，并添加到filesToUpload集合中
+                              */
                             for (Path jar : jobGraph.getUserJars()) {
                                 jarFileNames.add(jar.getName());
                                 filesToUpload.add(
@@ -395,18 +428,32 @@ public class RestClusterClient<T> implements ClusterClient<T> {
                                                 Paths.get(jar.toUri()),
                                                 RestConstants.CONTENT_TYPE_JAR));
                             }
-
+                            /**
+                             * 代码遍历jobGraph中的用户分布式缓存条目的集合。
+                             * 每个条目是一个键值对，其中键是条目的名称，值是DistributedCacheEntry对象，它包含了条目的详细信息。
+                             */
                             for (Map.Entry<String, DistributedCache.DistributedCacheEntry>
                                     artifacts : jobGraph.getUserArtifacts().entrySet()) {
+                                /**
+                                 * 代码首先通过filePath获取到Path对象artifactFilePath。
+                                 * 然后，它检查这个文件所在的文件系统是否是分布式文件系统
+                                 */
                                 final Path artifactFilePath =
                                         new Path(artifacts.getValue().filePath);
                                 try {
                                     // Only local artifacts need to be uploaded.
+                                    /**
+                                     * 如果文件不是分布在分布式文件系统中，代码将创建一个JobSubmitRequestBody.DistributedCacheFile对象来描述这个文件，
+                                     * 并将其添加到artifactFileNames集合中
+                                     */
                                     if (!artifactFilePath.getFileSystem().isDistributedFS()) {
                                         artifactFileNames.add(
                                                 new JobSubmitRequestBody.DistributedCacheFile(
                                                         artifacts.getKey(),
                                                         artifactFilePath.getName()));
+                                        /**
+                                         * 代码将文件添加到filesToUpload集合中，以便后续上传
+                                         */
                                         filesToUpload.add(
                                                 new FileUpload(
                                                         Paths.get(artifactFilePath.getPath()),
@@ -421,7 +468,10 @@ public class RestClusterClient<T> implements ClusterClient<T> {
                                                     e));
                                 }
                             }
-
+                            /**
+                             * JobSubmitRequestBody对象被完全初始化。除了之前提到的作业图的文件名（jobGraphFile.getFileName().toString()），
+                             * 它还接收了jarFileNames和artifactFileNames两个集合作为参数。
+                             */
                             final JobSubmitRequestBody requestBody =
                                     new JobSubmitRequestBody(
                                             jobGraphFile.getFileName().toString(),
@@ -431,14 +481,20 @@ public class RestClusterClient<T> implements ClusterClient<T> {
                             return Tuple2.of(
                                     requestBody, Collections.unmodifiableCollection(filesToUpload));
                         });
+        /**
+         * CompletableFuture，名为submissionFuture，其泛型类型为JobSubmitResponseBody。
+         */
 
         final CompletableFuture<JobSubmitResponseBody> submissionFuture =
+                /** thenCompose 它用于链接两个异步操作，其中第二个操作依赖于第一个操作的结果。thenCompose */
+                /** 当requestFuture完成时，它会将其结果传递给thenCompose的lambda表达式 */
                 requestFuture.thenCompose(
                         requestAndFileUploads -> {
                             LOG.info(
                                     "Submitting job '{}' ({}).",
                                     jobGraph.getName(),
                                     jobGraph.getJobID());
+                            /** sendRetriableRequest方法发送一个可重试的请求*/
                             return sendRetriableRequest(
                                     JobSubmitHeaders.getInstance(),
                                     EmptyMessageParameters.getInstance(),
@@ -462,10 +518,18 @@ public class RestClusterClient<T> implements ClusterClient<T> {
                                         }
                                     });
                         });
-
+        /**
+         * exceptionally方法来处理submissionFuture可能发生的异常。如果submissionFuture计算过程中抛出了异常，
+         * exceptionally中的lambda表达式会被调用。这里简单地返回null，意味着忽略了这个异常，
+         * 不将异常传播给后续的链式调用。
+         */
         submissionFuture
                 .exceptionally(ignored -> null) // ignore errors
                 .thenCompose(ignored -> jobGraphFileFuture)
+                /**
+                 * 一旦jobGraphFileFuture完成（不论成功或失败），thenAccept方法会执行，尝试删除一个临时文件（jobGraphFile）。
+                 * 如果删除过程中发生IOException，则记录一条警告级别的日志。
+                 */
                 .thenAccept(
                         jobGraphFile -> {
                             try {
@@ -476,8 +540,13 @@ public class RestClusterClient<T> implements ClusterClient<T> {
                         });
 
         return submissionFuture
+                /** 返回作业ID */
                 .thenApply(ignore -> jobGraph.getJobID())
                 .exceptionally(
+                        /**
+                         * 使用exceptionally方法来处理submissionFuture链中任何未被捕获的异常。当异常发生时，
+                         * 它会创建一个新的CompletionException，这个异常封装了一个JobSubmissionException。
+                         */
                         (Throwable throwable) -> {
                             throw new CompletionException(
                                     new JobSubmissionException(
@@ -1086,6 +1155,17 @@ public class RestClusterClient<T> implements ClusterClient<T> {
                 });
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 发送请求
+     * M messageHeaders：消息头对象。
+     * U messageParameters：消息参数对象。
+     * R request：请求体对象。
+     * Collection<FileUpload> filesToUpload：一个文件上传的集合。
+     * Predicate<Throwable> retryPredicate：一个谓词（函数式接口），用于确定是否应该重试某个操作。
+     *  BiConsumer<String, Throwable> consumer：一个双参数消费者（函数式接口），它接受一个字符串和一个异常作为参数。
+    */
     private <
                     M extends MessageHeaders<R, P, U>,
                     U extends MessageParameters,
@@ -1100,23 +1180,37 @@ public class RestClusterClient<T> implements ClusterClient<T> {
                     BiConsumer<String, Throwable> consumer) {
         return retry(
                 () ->
+                        /** 获取webiMonitor地址 */
                         getWebMonitorBaseUrl()
                                 .thenCompose(
                                         webMonitorBaseUrl -> {
                                             try {
+                                                // 创建一个带有前缀装饰器的CustomHeadersDecorator对象，用于处理URL和设置自定义头
                                                 CustomHeadersDecorator<R, P, U> headers =
                                                         new CustomHeadersDecorator<>(
                                                                 new UrlPrefixDecorator<>(
-                                                                        messageHeaders,
-                                                                        jobmanagerUrl.getPath()));
+                                                                        messageHeaders,  // 包含消息头的对象
+                                                                        jobmanagerUrl.getPath())); // URL前缀
+                                                /** 设置自定义的HTTP请求头  */
                                                 headers.setCustomHeaders(customHttpHeaders);
+                                                /**
+                                                 * 使用restClient发送请求
+                                                 * 这个请求将发送到webMonitorBaseUrl的主机和端口，使用上面创建的headers和其他参数
+                                                 *
+                                                 */
                                                 final CompletableFuture<P> future =
                                                         restClient.sendRequest(
+                                                                /** 主机名 */
                                                                 webMonitorBaseUrl.getHost(),
+                                                                /** 端口号 */
                                                                 webMonitorBaseUrl.getPort(),
+                                                                /** 自定义的请求头 */
                                                                 headers,
+                                                                /** 消息参数 */
                                                                 messageParameters,
+                                                                /** 请求体 */
                                                                 request,
+                                                                /** 要上传的文件集合   */
                                                                 filesToUpload);
                                                 future.whenComplete(
                                                         (result, error) ->
@@ -1176,6 +1270,11 @@ public class RestClusterClient<T> implements ClusterClient<T> {
                         .orElse(false);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取webiMonitor地址
+    */
     @VisibleForTesting
     CompletableFuture<URL> getWebMonitorBaseUrl() {
         return FutureUtils.orTimeout(

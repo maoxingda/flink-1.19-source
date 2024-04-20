@@ -34,7 +34,7 @@ heartbeat.timeout: 50000
 heartbeat.interval: 10000
 taskmanager.host: localhost
 taskmanager.memory.process.size: 1728m
-taskmanager.numberOfTaskSlots: 1
+taskmanager.numberOfTaskSlots: 2
 # The parallelism used for programs that did not specify and other parallelism.
 parallelism.default: 1
 jobmanager.execution.failover-strategy: region

@@ -73,6 +73,16 @@ public enum ClientUtils {
         return FlinkUserCodeClassLoaders.create(urls, parent, configuration);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 定义了一个名为 executeProgram 的公共静态方法，它负责执行一个封装好的程序（PackagedProgram）
+     * executorServiceLoader：一个 PipelineExecutorServiceLoader 对象，可能是用于加载和配置执行环境的。
+     * configuration：一个 Configuration 对象，包含程序执行所需的配置信息。
+     * program：一个 PackagedProgram 对象，表示要执行的程序。
+     * enforceSingleJobExecution：一个布尔值，决定是否强制只执行单个任务。
+     * suppressSysout：一个布尔值，决定是否抑制标准输出。
+    */
     public static void executeProgram(
             PipelineExecutorServiceLoader executorServiceLoader,
             Configuration configuration,
@@ -80,16 +90,26 @@ public enum ClientUtils {
             boolean enforceSingleJobExecution,
             boolean suppressSysout)
             throws ProgramInvocationException {
+        /**
+         * 这行代码检查 executorServiceLoader 是否为 null。如果是，则抛出异常。
+         */
         checkNotNull(executorServiceLoader);
+        /**
+         * 获取了两个类加载器：userCodeClassLoader 是从 program 对象中获取的，用于加载用户代码；
+         */
         final ClassLoader userCodeClassLoader = program.getUserCodeClassLoader();
         final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
         try {
+            /** 将当前线程的上下文类加载器设置为 userCodeClassLoader，这样在执行用户代码时就会使用这个类加载器。 */
             Thread.currentThread().setContextClassLoader(userCodeClassLoader);
 
             LOG.info(
                     "Starting program (detached: {})",
                     !configuration.get(DeploymentOptions.ATTACHED));
-
+            /**
+             * 分别设置了 ContextEnvironment 和 StreamContextEnvironment 为当前上下文环境。
+             * 这通常是为了确保在执行程序时能够访问到正确的环境配置。
+             */
             ContextEnvironment.setAsContext(
                     executorServiceLoader,
                     configuration,
@@ -105,12 +125,17 @@ public enum ClientUtils {
                     suppressSysout);
 
             try {
+                /**
+                 * 程序通过调用 invokeInteractiveModeForExecution 方法来执行。
+                 * 无论程序执行成功还是抛出异常，finally 块中的代码都会执行，用于清除之前设置的上下文环境。
+                 */
                 program.invokeInteractiveModeForExecution();
             } finally {
                 ContextEnvironment.unsetAsContext();
                 StreamContextEnvironment.unsetAsContext();
             }
         } finally {
+            /** 无论之前发生了什么，都会将当前线程的上下文类加载器恢复为原来的 contextClassLoader。 */
             Thread.currentThread().setContextClassLoader(contextClassLoader);
         }
     }
@@ -123,6 +148,11 @@ public enum ClientUtils {
      *     job reaches the FAILED state.
      * @throws JobInitializationException If the initialization failed
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 此方法将阻塞，直到作业状态不再为INITIALIZING。
+    */
     public static void waitUntilJobInitializationFinished(
             SupplierWithException<JobStatus, Exception> jobStatusSupplier,
             SupplierWithException<JobResult, Exception> jobResultSupplier,

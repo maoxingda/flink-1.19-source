@@ -219,25 +219,43 @@ public class CliFrontend {
      *
      * @param args Command line arguments for the run action.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 运行成勋
+    */
     protected void run(String[] args) throws Exception {
+        /** 记录一条信息级别的日志，表明正在执行“run”命令。 */
         LOG.info("Running 'run' command.");
-
+        /** 通过CliFrontendParser类的静态方法getRunCommandOptions获取“run”命令的选项列表。
+         * 获取run命令所有可以跟的参数
+         */
         final Options commandOptions = CliFrontendParser.getRunCommandOptions();
+        /** 使用前面获取的选项列表commandOptions和传入的参数args来解析命令行，并返回CommandLine对象。 */
         final CommandLine commandLine = getCommandLine(commandOptions, args, true);
 
         // evaluate help flag
+        /**
+         * 判断参数中是否有“帮助”相关的信息 help、h,如果有则打印日志
+         */
         if (commandLine.hasOption(HELP_OPTION.getOpt())) {
             CliFrontendParser.printHelpForRun(customCommandLines);
             return;
         }
-
+        /**
+         * 获取活跃的活跃的集群
+         * 总结：这里就是向那个模式提交这里是像Standalone Cluster
+         */
         final CustomCommandLine activeCommandLine =
                 validateAndGetActiveCommandLine(checkNotNull(commandLine));
 
         final ProgramOptions programOptions = ProgramOptions.create(commandLine);
 
+        /**
+         * 获取entryPointClass、jarFilePath参数 返回List<URL>类型
+         */
         final List<URL> jobJars = getJobJarAndDependencies(programOptions);
-
+        /** 获取有效的配置参数 */
         final Configuration effectiveConfiguration =
                 getEffectiveConfiguration(activeCommandLine, commandLine, programOptions, jobJars);
 
@@ -249,10 +267,16 @@ public class CliFrontend {
     }
 
     /** Get all provided libraries needed to run the program from the ProgramOptions. */
+    /**
+     * 从ProgramOptions获取运行程序所需的所有提供的库
+     * @param programOptions
+     * @return
+     * @throws CliArgsException
+     */
     private List<URL> getJobJarAndDependencies(ProgramOptions programOptions)
             throws CliArgsException {
-        String entryPointClass = programOptions.getEntryPointClassName();
-        String jarFilePath = programOptions.getJarFilePath();
+        String entryPointClass = programOptions.getEntryPointClassName();//com.source.demo.SocketWordCountStreamGraph
+        String jarFilePath = programOptions.getJarFilePath();//H:\deep_source\flink\flink-ademo\target\flink-ademo-1.19-SNAPSHOT.jar
 
         try {
             File jarFile = jarFilePath != null ? getJarFile(jarFilePath) : null;
@@ -262,18 +286,25 @@ public class CliFrontend {
                     "Could not get job jar and dependencies from JAR file: " + e.getMessage(), e);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 用于从一个JAR文件构建（或获取）一个PackagedProgram对象
+    */
     private PackagedProgram getPackagedProgram(
             ProgramOptions programOptions, Configuration effectiveConfiguration)
             throws ProgramInvocationException, CliArgsException {
+        /** 根据给定的命令行选项和有效配置创建Packaged程序。 */
         PackagedProgram program;
         try {
             LOG.info("Building program from JAR file");
+            /** 调用buildProgram方法构建出 PackagedProgram对象 */
             program = buildProgram(programOptions, effectiveConfiguration);
         } catch (FileNotFoundException e) {
             throw new CliArgsException(
                     "Could not build the program from JAR file: " + e.getMessage(), e);
         }
+        /** 返回PackagedProgram */
         return program;
     }
 
@@ -297,19 +328,24 @@ public class CliFrontend {
             final ProgramOptions programOptions,
             final List<T> jobJars)
             throws FlinkException {
-
+        /**
+         * 获取有效的配置参数
+         */
         final Configuration effectiveConfiguration =
                 getEffectiveConfiguration(activeCustomCommandLine, commandLine);
-
+        /**
+         * 获取要执行的参数，程序成眠的比如execution.attached
+         */
         final ExecutionConfigAccessor executionParameters =
                 ExecutionConfigAccessor.fromProgramOptions(
                         checkNotNull(programOptions), checkNotNull(jobJars));
-
+        /** 将配置参数参数合并到底一起 */
         executionParameters.applyToConfiguration(effectiveConfiguration);
 
         LOG.debug(
                 "Effective configuration after Flink conf, custom commandline, and program options: {}",
                 effectiveConfiguration);
+        /**返回配置参数*/
         return effectiveConfiguration;
     }
 
@@ -1020,7 +1056,11 @@ public class CliFrontend {
     // --------------------------------------------------------------------------------------------
     //  Interaction with programs and JobManager
     // --------------------------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通过ClientUtils.executeProgram调用程序
+    */
     protected void executeProgram(final Configuration configuration, final PackagedProgram program)
             throws ProgramInvocationException {
         ClientUtils.executeProgram(
@@ -1043,18 +1083,29 @@ public class CliFrontend {
      *
      * @return A PackagedProgram (upon success)
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据给定的命令行选项和有效配置创建Packaged程序。
+    */
     PackagedProgram buildProgram(final ProgramOptions runOptions, final Configuration configuration)
             throws FileNotFoundException, ProgramInvocationException, CliArgsException {
         runOptions.validate();
 
         String[] programArgs = runOptions.getProgramArgs();
+        /** 获取jarFile 路径 */
         String jarFilePath = runOptions.getJarFilePath();
+        /** 获取classPaths 路径 */
         List<URL> classpaths = runOptions.getClasspaths();
 
         // Get assembler class
+        /** 获取我们开发的main函数，也就是flink run上提交的*/
         String entryPointClass = runOptions.getEntryPointClassName();
+        /** 构建jarFile 内部就是将jarFilePath 构建出来File对象*/
         File jarFile = jarFilePath != null ? getJarFile(jarFilePath) : null;
-
+        /**
+         * 基于上面的参数构建出PackagedProgram
+         */
         return PackagedProgram.newBuilder()
                 .setJarFile(jarFile)
                 .setUserClassPaths(classpaths)
@@ -1248,6 +1299,11 @@ public class CliFrontend {
      * @param args command line arguments of the client.
      * @return The return code of the program
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 分析命令行参数并启动请求的操作。
+    */
     public int parseAndRun(String[] args) {
 
         // check for action
@@ -1258,6 +1314,7 @@ public class CliFrontend {
         }
 
         // get action
+        /** 获取脚本传入的参数*/
         String action = args[0];
 
         // remove action from parameters
@@ -1265,6 +1322,7 @@ public class CliFrontend {
 
         try {
             // do action
+            /** 根据参数做对应的操作 */
             switch (action) {
                 case ACTION_RUN:
                     run(params);
@@ -1329,56 +1387,99 @@ public class CliFrontend {
     }
 
     /** Submits the job based on the arguments. */
+    /**
+    * @授课老师(微信): yi_locus
+    * email: 156184212@qq.com
+    * 根据参数提交作业。
+    * ["run", "-c", "com.source.demo...", "H:\deep_source\..."]
+    */
     public static void main(final String[] args) {
+        /** 声明了一个整型变量retCode并初始化为INITIAL_RET_CODE的值 31 */
         int retCode = INITIAL_RET_CODE;
+        /**
+         * 使用try-finally块是为了确保无论try块中的代码是否成功执行或是否抛出异常，
+         * finally块中的代码都会被执行。
+         */
         try {
+            /**
+             * 调用mainInternal(args)方法将args当作参数传入
+             */
             retCode = mainInternal(args);
         } finally {
+            /** 推出 INITIAL_RET_CODE 表示退出状态 */
             System.exit(retCode);
         }
     }
 
     @VisibleForTesting
     static int mainInternal(final String[] args) {
+        /** 记录有关环境的信息，如代码修订、当前用户、Java版本和JVM参数。 */
         EnvironmentInformation.logEnvironmentInfo(LOG, "Command Line Client", args);
 
         // 1. find the configuration directory
+        /** 1. 获取配置文件目录 */
         final String configurationDirectory = getConfigurationDirectoryFromEnv();
 
         // 2. load the global configuration
+        /** 加载全局配置 */
         final Configuration configuration =
                 GlobalConfiguration.loadConfiguration(configurationDirectory);
 
         // 3. load the custom command lines
+        /**
+         * 初始化 3 种不同的 CLI 分别是
+         * GenericCLI 对应的是 per-job 模式，
+         * flinkYarnSessionCLI 对应的是 yarn-session 模式，
+         * 以及 DefaultCLI 对应的是 standalone 模式
+         */
         final List<CustomCommandLine> customCommandLines =
                 loadCustomCommandLines(configuration, configurationDirectory);
-
+        /** 声明了一个整型变量retCode并初始化为INITIAL_RET_CODE的值 31 */
         int retCode = INITIAL_RET_CODE;
         try {
+            /** 初始化 CliFrontend 客户端对象 */
             final CliFrontend cli = new CliFrontend(configuration, customCommandLines);
+            /**
+             * 将参数放入CommandLine 的List中
+             */
             CommandLine commandLine =
                     cli.getCommandLine(
                             new Options(),
                             Arrays.copyOfRange(args, min(args.length, 1), args.length),
                             true);
+            /** 将配置所有信息放入 Configuration securityConfig对象中*/
             Configuration securityConfig = new Configuration(cli.configuration);
+            /** 加载动态配置 */
             DynamicPropertiesUtil.encodeDynamicProperties(commandLine, securityConfig);
+            /**安装全过程的安全配置，比如kerberos、Java认证与授权服务（JAAS)，Hadoop用户组信息（UGI）和Zookeeper的全过程安全设置*/
             SecurityUtils.install(new SecurityConfiguration(securityConfig));
+            /**
+             * 通过cli.parseAndRun(args)解析并运行用户输入的命令。这些命令可能是提交作业、检查集群状态、查看日志等。
+             */
             retCode = SecurityUtils.getInstalledContext().runSecured(() -> cli.parseAndRun(args));
         } catch (Throwable t) {
+            /** 报错抛出异常 */
             final Throwable strippedThrowable =
                     ExceptionUtils.stripException(t, UndeclaredThrowableException.class);
             LOG.error("Fatal error while running command line interface.", strippedThrowable);
             strippedThrowable.printStackTrace();
         }
+        /** 返回code值 */
         return retCode;
     }
 
     // --------------------------------------------------------------------------------------------
     //  Miscellaneous Utilities
     // --------------------------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取配置目录
+    */
     public static String getConfigurationDirectoryFromEnv() {
+        /**
+         * 读取FLINK_CONF_DIR配置，获取到配置文件目录
+         */
         String location = System.getenv(ConfigConstants.ENV_FLINK_CONF_DIR);
 
         if (location != null) {
@@ -1418,7 +1519,14 @@ public class CliFrontend {
         config.set(RestOptions.ADDRESS, address.getHostString());
         config.set(RestOptions.PORT, address.getPort());
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化 3 种不同的 CLI 分别是
+     * GenericCLI 对应的是 per-job 模式，
+     * flinkYarnSessionCLI 对应的是 yarn-session 模式，
+     * 以及 DefaultCLI 对应的是 standalone 模式
+    */
     public static List<CustomCommandLine> loadCustomCommandLines(
             Configuration configuration, String configurationDirectory) {
         List<CustomCommandLine> customCommandLines = new ArrayList<>();

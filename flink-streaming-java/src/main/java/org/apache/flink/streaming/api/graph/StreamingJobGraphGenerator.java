@@ -350,7 +350,8 @@ public class StreamingJobGraphGenerator {
          */
         setAllVertexNonChainedOutputsConfigs(opIntermediateOutputs);
         /**
-         * 设置物理边（Physical Edges）。物理边通常指的是在任务之间实际传输数据的边。
+         * 设置物理边（Physical Edges）。
+         * Map<String, Object> toBeSerializedConfigObjects = new HashMap<>();将StreamEdge设置给待序列化对象集合
          */
         setPhysicalEdges();
         /**
@@ -1874,17 +1875,33 @@ public class StreamingJobGraphGenerator {
                                 + streamGraph.getGlobalStreamExchangeMode());
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 判断Operator是否可以链到一起
+    */
     public static boolean isChainable(StreamEdge edge, StreamGraph streamGraph) {
         StreamNode downStreamVertex = streamGraph.getTargetVertex(edge);
-
+        /**
+         * 1.该出边的上游算子是该出边的下游算子的唯一输入
+         */
         return downStreamVertex.getInEdges().size() == 1 && isChainableInput(edge, streamGraph);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 判断上下游是否可以合并为OperatorChain
+    */
     private static boolean isChainableInput(StreamEdge edge, StreamGraph streamGraph) {
+        /** 获取上游 StreamNode*/
         StreamNode upStreamVertex = streamGraph.getSourceVertex(edge);
+        /** 获取下游 StreamNode*/
         StreamNode downStreamVertex = streamGraph.getTargetVertex(edge);
-
+        /**
+         * 2.是否禁用pipeline.operator-chaining.enabled
+         * 3.上下游必须在同一个slotSharingGroup
+         */
         if (!(streamGraph.isChainingEnabled()
                 && upStreamVertex.isSameSlotSharingGroup(downStreamVertex)
                 && areOperatorsChainable(upStreamVertex, downStreamVertex, streamGraph)
@@ -1905,6 +1922,12 @@ public class StreamingJobGraphGenerator {
         return true;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 该出边的分区器为ForwardPartitioner，没有进行重分区
+     * 该出边的ShuffleMode不为BATCH
+    */
     @VisibleForTesting
     static boolean arePartitionerAndExchangeModeChainable(
             StreamPartitioner<?> partitioner,
@@ -1926,6 +1949,9 @@ public class StreamingJobGraphGenerator {
             StreamNode upStreamVertex, StreamNode downStreamVertex, StreamGraph streamGraph) {
         StreamOperatorFactory<?> upStreamOperator = upStreamVertex.getOperatorFactory();
         StreamOperatorFactory<?> downStreamOperator = downStreamVertex.getOperatorFactory();
+        /**
+         * 4.上下游的StreamOperatorFactory不能为空
+         */
         if (downStreamOperator == null || upStreamOperator == null) {
             return false;
         }
@@ -1941,7 +1967,11 @@ public class StreamingJobGraphGenerator {
         // we use switch/case here to make sure this is exhaustive if ever values are added to the
         // ChainingStrategy enum
         boolean isChainable;
-
+        /**
+         * 5.下游的ChainingStrategy为ALWAYS
+         * 6.上有的ChainingStrategy为ALWAYS、HEAD、HEAD_WITH_SOURCES
+         * 7.上下游并行度必须一致
+         */
         switch (upStreamOperator.getChainingStrategy()) {
             case NEVER:
                 isChainable = false;
@@ -1973,6 +2003,11 @@ public class StreamingJobGraphGenerator {
                         "Unknown chaining strategy: " + downStreamOperator.getChainingStrategy());
         }
 
+        /**
+         * 7.上下游并行度必须一致
+         * 8.如果设置了pipeline.operator-chaining.chain-operators-with-different-max-parallelism
+         * 则上下游最大并行度必须一致
+         */
         // Only vertices with the same parallelism can be chained.
         isChainable &= upStreamVertex.getParallelism() == downStreamVertex.getParallelism();
 

@@ -122,6 +122,9 @@ public class JobGraph implements Serializable {
             new HashMap<>();
 
     /** Set of blob keys identifying the JAR files required to run this job. */
+    /**
+     * 一组blob密钥，用于标识运行此作业所需的JAR文件
+     */
     private final List<PermanentBlobKey> userJarBlobKeys = new ArrayList<>();
 
     /** List of classpaths required to run this job. */
@@ -585,11 +588,19 @@ public class JobGraph implements Serializable {
      *
      * @param key path of the JAR file required to run the job on a task manager
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将键引用的BLOB添加到JobGraph的依赖项中。
+    */
     public void addUserJarBlobKey(PermanentBlobKey key) {
         if (key == null) {
             throw new IllegalArgumentException();
         }
-
+        /**
+         * List<PermanentBlobKey> userJarBlobKeys = new ArrayList<>();
+         * 如果不存在则将key添加的List结合中
+         */
         if (!userJarBlobKeys.contains(key)) {
             userJarBlobKeys.add(key);
         }

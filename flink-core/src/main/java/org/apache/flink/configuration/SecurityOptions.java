@@ -34,6 +34,11 @@ import static org.apache.flink.configuration.description.TextElement.text;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** The set of configuration options relating to security. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 与安全相关的配置选项集
+*/
 public class SecurityOptions {
 
     public static final String DELEGATION_TOKEN_PROVIDER_PREFIX =

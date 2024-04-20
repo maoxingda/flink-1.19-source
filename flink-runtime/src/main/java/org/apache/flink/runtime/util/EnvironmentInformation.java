@@ -389,24 +389,43 @@ public class EnvironmentInformation {
      * @param componentName The component name to mention in the log.
      * @param commandLineArgs The arguments accompanying the starting the component.
      */
+    /**
+     * 记录有关环境的信息，如代码修订、当前用户、Java版本和JVM参数。
+     * @param log
+     * @param componentName
+     * @param commandLineArgs
+     */
     public static void logEnvironmentInfo(
             Logger log, String componentName, String[] commandLineArgs) {
         if (log.isInfoEnabled()) {
+            /**
+             * 修订信息封装了有关Flink源代码修订的信息
+             * commitId=a6a4667
+             * commitDate=2024-03-18T11:41:00+01:00
+             */
             RevisionInformation rev = getRevisionInformation();
+            /**flink版本号 1.19-SNAPSHOT*/
             String version = getVersion();
+            /**scala版本号 2.12 */
             String scalaVersion = getScalaVersion();
-
+            /**jvm版本号 Java HotSpot(TM) 64-Bit Server VM - Oracle Corporation - 1.8/25.131-b11*/
             String jvmVersion = getJvmVersion();
+            /** Jvm 启动的相关参数 */
             String[] options = getJvmStartupOptionsArray();
 
+            /** JAVA_HOME=E:\dir\jdk1.8.131 */
             String javaHome = System.getenv("JAVA_HOME");
 
+            /** 获取日志相关的属性默认为null*/
             String inheritedLogs = System.getenv("FLINK_INHERITED_LOGS");
 
+            /** os.arch属性表示运行Java虚拟机的操作系统的架构（例如，x86, amd64, arm等） amd64*/
             String arch = System.getProperty("os.arch");
 
+            /** 获取当前配置的最大堆内存大小 5435*/
             long maxHeapMegabytes = getMaxJvmHeapMemory() >>> 20;
 
+            /** 打印日志 */
             if (inheritedLogs != null) {
                 log.info(
                         "--------------------------------------------------------------------------------");

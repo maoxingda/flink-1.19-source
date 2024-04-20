@@ -28,6 +28,11 @@ import org.apache.commons.cli.CommandLine;
  * A stub Yarn Command Line to throw an exception with the correct message when the {@code
  * HADOOP_CLASSPATH} is not set.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 一个stub Yarn命令行，用于在未设置 HADOOP_CLASSPATH 时引发带有正确消息的异常。
+*/
 @Internal
 public class FallbackYarnSessionCli extends AbstractYarnCli {
 

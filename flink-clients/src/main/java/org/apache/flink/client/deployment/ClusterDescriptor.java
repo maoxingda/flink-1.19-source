@@ -46,6 +46,11 @@ public interface ClusterDescriptor<T> extends AutoCloseable {
      * @return Client for the cluster
      * @throws ClusterRetrieveException if the cluster client could not be retrieved
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 检索现有的Flink Cluster
+    */
     ClusterClientProvider<T> retrieve(T clusterId) throws ClusterRetrieveException;
 
     /**

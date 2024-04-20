@@ -90,6 +90,11 @@ import static org.apache.flink.configuration.HighAvailabilityOptions.HA_CLUSTER_
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** Class handling the command line interface to the YARN session. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 处理YARN会话的命令行接口的类
+*/
 public class FlinkYarnSessionCli extends AbstractYarnCli {
     private static final Logger LOG = LoggerFactory.getLogger(FlinkYarnSessionCli.class);
 

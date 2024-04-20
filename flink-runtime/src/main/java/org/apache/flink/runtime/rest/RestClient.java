@@ -381,7 +381,11 @@ public class RestClient implements AutoCloseableAsync {
                 request,
                 Collections.emptyList());
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 方法重载继续调用sendRequest方法
+    */
     public <
                     M extends MessageHeaders<R, P, U>,
                     U extends MessageParameters,
@@ -407,6 +411,11 @@ public class RestClient implements AutoCloseableAsync {
                 RestAPIVersion.getLatestVersion(supportedAPIVersions));
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 发送请求
+    */
     public <
                     M extends MessageHeaders<R, P, U>,
                     U extends MessageParameters,
@@ -421,6 +430,9 @@ public class RestClient implements AutoCloseableAsync {
                     Collection<FileUpload> fileUploads,
                     RestAPIVersion<? extends RestAPIVersion<?>> apiVersion)
                     throws IOException {
+        /**
+         * 参数校验
+         */
         Preconditions.checkNotNull(targetAddress);
         Preconditions.checkArgument(
                 NetUtils.isValidHostPort(targetPort),
@@ -432,6 +444,10 @@ public class RestClient implements AutoCloseableAsync {
         Preconditions.checkState(
                 messageParameters.isResolved(), "Message parameters were not resolved.");
 
+        /**
+         * 首先检查请求的apiVersion是否包含在messageHeaders所支持的API版本中。如果不包含，则抛出一个IllegalArgumentException，
+         * 并附带一个描述性的错误消息，指明请求的版本不受支持，同时列出支持的所有版本
+         */
         if (!messageHeaders.getSupportedAPIVersions().contains(apiVersion)) {
             throw new IllegalArgumentException(
                     String.format(
@@ -443,7 +459,10 @@ public class RestClient implements AutoCloseableAsync {
                                     .map(RestAPIVersion::getURLVersionPrefix)
                                     .collect(Collectors.joining(","))));
         }
-
+        /**
+         * 首先调用constructVersionedHandlerUrl方法，使用消息头、API版本前缀和URL前缀来构建一个版本化的处理器URL。
+         * 然后，它使用MessageParameters.resolveUrl方法来解析并构建目标URL。
+         */
         String versionedHandlerURL =
                 constructVersionedHandlerUrl(
                         messageHeaders, apiVersion.getURLVersionPrefix(), this.urlPrefix);
@@ -457,10 +476,16 @@ public class RestClient implements AutoCloseableAsync {
                 targetUrl);
         // serialize payload
         StringWriter sw = new StringWriter();
+        /**
+         * 使用objectMapper将request对象序列化为JSON格式的字符串，并将其转换为ByteBuf对象，
+         * 这是Netty网络库用来处理字节数据的类。
+         */
         objectMapper.writeValue(sw, request);
         ByteBuf payload =
                 Unpooled.wrappedBuffer(sw.toString().getBytes(ConfigConstants.DEFAULT_CHARSET));
-
+        /**
+         * 调用createRequest方法来创建一个新的HTTP请求，并传入目标地址、URL、HTTP方法、负载、文件上传和自定义头。
+         */
         Request httpRequest =
                 createRequest(
                         targetAddress + ':' + targetPort,
@@ -469,14 +494,22 @@ public class RestClient implements AutoCloseableAsync {
                         payload,
                         fileUploads,
                         messageHeaders.getCustomHeaders());
-
+        /** 定义了一个JavaType类型的变量responseType，用于存储最终构建的响应类型 */
         final JavaType responseType;
-
+        /** 从messageHeaders对象中获取响应类型的参数，这些参数用于泛型类型的构建。 */
         final Collection<Class<?>> typeParameters = messageHeaders.getResponseTypeParameters();
-
+        /**
+         * 如果typeParameters集合为空，那么直接通过objectMapper的constructType方法根据messageHeaders中的响应类
+         * （getResponseClass）来构建响应类型。
+         */
         if (typeParameters.isEmpty()) {
             responseType = objectMapper.constructType(messageHeaders.getResponseClass());
         } else {
+            /**
+             * 如果typeParameters集合不为空，那么使用objectMapper的getTypeFactory方法来获取类型工厂，
+             * 并调用constructParametricType方法构建带参数的泛型类型。这里需要传入泛型的原始类型（messageHeaders.getResponseClass()）
+             * 和泛型参数数组（typeParameters.toArray(...)）。
+             */
             responseType =
                     objectMapper
                             .getTypeFactory()
@@ -484,7 +517,9 @@ public class RestClient implements AutoCloseableAsync {
                                     messageHeaders.getResponseClass(),
                                     typeParameters.toArray(new Class<?>[typeParameters.size()]));
         }
-
+        /**
+         * 调用submitRequest方法，传入目标地址、端口、构建好的HTTP请求以及响应类型，来发送请求并可能返回响应。
+         */
         return submitRequest(targetAddress, targetPort, httpRequest, responseType);
     }
 
@@ -570,32 +605,67 @@ public class RestClient implements AutoCloseableAsync {
             return new MultipartRequest(httpRequest, bodyRequestEncoder);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * submitRequest方法，该方法用于异步提交HTTP请求并返回一个CompletableFuture对象，该对象将在请求完成时持有响应体
+     * private: 这是一个私有方法，只能在当前类中被调用。
+     * <P extends ResponseBody>: 这是一个泛型方法，其中P是ResponseBody的一个子类或实现。这表示返回的CompletableFuture将持有某种类型的响应体，该类型继承自ResponseBody。
+     * CompletableFuture<P>: 方法返回一个CompletableFuture对象，该对象将在请求完成时包含响应体。
+     * 参数包括目标地址、目标端口、HTTP请求和响应类型。
+    */
     private <P extends ResponseBody> CompletableFuture<P> submitRequest(
             String targetAddress, int targetPort, Request httpRequest, JavaType responseType) {
+        /**
+         * 如果isRunning的值为false，表示RestClient已经关闭，
+         * 那么方法将立即返回一个异常完成的CompletableFuture。
+         */
         if (!isRunning.get()) {
             return FutureUtils.completedExceptionally(
                     new IllegalStateException("RestClient is already closed"));
         }
-
+        /**
+         * 创建一个新的CompletableFuture对象，用于异步获取连接通道（Channel）。
+         * 将这个channelFuture添加到responseChannelFutures中，以便稍后可能对其进行管理或跟踪。
+         */
         final CompletableFuture<Channel> channelFuture = new CompletableFuture<>();
         responseChannelFutures.add(channelFuture);
-
+        /**
+         * 使用bootstrap来尝试连接到指定的地址和端口。
+         * 返回的ChannelFuture表示一个异步的I/O操作，当连接建立成功或失败时，它会得到通知。
+         */
         final ChannelFuture connectFuture = bootstrap.connect(targetAddress, targetPort);
+        /** 为connectFuture添加一个监听器，当连接操作完成时，监听器会被触发。 */
         connectFuture.addListener(
+                /**
+                 * 在监听器内部，首先从responseChannelFutures中移除channelFuture，因为它不再需要被跟踪（因为连接操作已经完成）。
+                 */
                 (ChannelFuture future) -> {
                     responseChannelFutures.remove(channelFuture);
 
                     if (future.isSuccess()) {
+                        /** 如果连接成功，则使用成功的Channel完成channelFuture。 */
                         channelFuture.complete(future.channel());
                     } else {
+                        /** 如果连接失败，则使用导致失败的异常来完成channelFuture。 */
                         channelFuture.completeExceptionally(future.cause());
                     }
                 });
-
+        /**
+         * 在成功建立连接之后，它开始发送HTTP请求，并处理响应。
+         */
         return channelFuture
+                /**
+                 * channelFuture.thenComposeAsync(...): 这是一个CompletableFuture的链式调用，
+                 * 它接受一个函数作为参数，这个函数会在channelFuture完成时（即连接成功建立后）被调用。
+                 * thenComposeAsync用于组合多个异步操作，并允许你返回一个新的CompletableFuture。
+                 */
                 .thenComposeAsync(
                         channel -> {
+                            /**
+                             * ClientHandler Netty中的一个ChannelInboundHandler实现，用于处理入站的I/O事件和消息。
+                             * 通过从ChannelPipeline中获取ClientHandler的实例，代码可以访问与特定Channel关联的处理器。
+                             */
                             ClientHandler handler = channel.pipeline().get(ClientHandler.class);
 
                             CompletableFuture<JsonResponse> future;
@@ -606,10 +676,17 @@ public class RestClient implements AutoCloseableAsync {
                                     throw new IOException(
                                             "Netty pipeline was not properly initialized.");
                                 } else {
+                                    /**
+                                     * 使用writeTo方法将httpRequest写入到Channel中，这通常会触发Netty的写操作，将请求发送到服务器。
+                                     */
                                     httpRequest.writeTo(channel);
                                     future = handler.getJsonFuture();
                                     success = true;
                                 }
+                            /**
+                             * executor: 这个参数是一个Executor，用于异步执行thenComposeAsync中的函数。
+                             * 这允许你在一个单独的线程中执行耗时的操作，而不会阻塞主线程。
+                             */
                             } catch (IOException e) {
                                 future =
                                         FutureUtils.completedExceptionally(
