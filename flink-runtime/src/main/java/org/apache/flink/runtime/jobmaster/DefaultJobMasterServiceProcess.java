@@ -80,55 +80,109 @@ public class DefaultJobMasterServiceProcess
 
     @GuardedBy("lock")
     private boolean isRunning = true;
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构造函数创建了一个新的DefaultJobMasterServiceProcess对象，
+     * 该对象负责管理分布式作业中的作业主服务（JobMasterService）
+     *  jobId: 作业的唯一标识符。
+     *  leaderSessionId: 当前领导者的会话ID。
+     *  jobMasterServiceFactory: 用于创建JobMasterService的工厂对象。
+     *  failedArchivedExecutionGraphFactory: 一个函数式接口，它接受一个Throwable（异常）并返回一个ArchivedExecutionGraph。这个函数在作业失败时被用来创建归档的执行图。
+     *
+    */
     public DefaultJobMasterServiceProcess(
             JobID jobId,
             UUID leaderSessionId,
             JobMasterServiceFactory jobMasterServiceFactory,
             Function<Throwable, ArchivedExecutionGraph> failedArchivedExecutionGraphFactory) {
+        /**
+         * 构造函数将传入的jobId和leaderSessionId赋值给对象的成员变量。
+         */
         this.jobId = jobId;
         this.leaderSessionId = leaderSessionId;
+        /**
+         * jobMasterServiceFactory工厂对象来创建一个JobMasterService的CompletableFuture。
+         * 这个CompletableFuture代表一个异步计算的结果，这里指的是JobMasterService的创建过程。
+         */
         this.jobMasterServiceFuture =
                 jobMasterServiceFactory.createJobMasterService(leaderSessionId, this);
-
+        /**
+         * 当jobMasterServiceFuture完成时（即JobMasterService创建成功或失败），
+         * whenComplete方法中的lambda表达式会被执行。
+         */
         jobMasterServiceFuture.whenComplete(
                 (jobMasterService, throwable) -> {
+                    /** 如果throwable不为null（表示在创建JobMasterService时发生了异常）： */
                     if (throwable != null) {
+                        /**
+                         * 创建一个JobInitializationException异常，其中包含作业ID、错误消息和原始的throwable。
+                         */
                         final JobInitializationException jobInitializationException =
                                 new JobInitializationException(
                                         jobId, "Could not start the JobMaster.", throwable);
-
+                        /**
+                         * 记录日志
+                          */
                         LOG.debug(
                                 "Initialization of the JobMasterService for job {} under leader id {} failed.",
                                 jobId,
                                 leaderSessionId,
                                 jobInitializationException);
-
+                        /**
+                         * 调用resultFuture.complete方法，将初始化失败的结果传递给resultFuture。
+                         */
                         resultFuture.complete(
                                 JobManagerRunnerResult.forInitializationFailure(
+                                        /**
+                                         * 使用failedArchivedExecutionGraphFactory函数创建一个归档的执行图。
+                                         */
                                         new ExecutionGraphInfo(
                                                 failedArchivedExecutionGraphFactory.apply(
                                                         jobInitializationException)),
                                         jobInitializationException));
+                    /**
+                     * 如果throwable为null（表示JobMasterService创建成功）：
+                     */
                     } else {
+                        /**
+                         * 调用registerJobMasterServiceFutures方法
+                         * 来注册这个新创建的JobMasterService。
+                         */
                         registerJobMasterServiceFutures(jobMasterService);
                     }
                 });
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 主要作用是注册并处理JobMasterService相关的异步操作结果
+    */
     private void registerJobMasterServiceFutures(JobMasterService jobMasterService) {
         LOG.debug(
                 "Successfully created the JobMasterService for job {} under leader id {}.",
                 jobId,
                 leaderSessionId);
+        /**
+         * 获取JobMasterService的终止Future（getTerminationFuture()）。
+         * 这个Future代表JobMasterService的终止状态，当JobMasterService终止时，这个Future会完成。
+         */
         jobMasterGatewayFuture.complete(jobMasterService.getGateway());
-        leaderAddressFuture.complete(jobMasterService.getAddress());
 
+        leaderAddressFuture.complete(jobMasterService.getAddress());
+        /**
+         * 使用whenComplete方法来注册一个回调函数，当JobMasterService终止时（无论是正常还是异常），该回调函数都会被调用。
+         */
         jobMasterService
                 .getTerminationFuture()
                 .whenComplete(
                         (unused, throwable) -> {
                             synchronized (lock) {
+                                /**
+                                 * 检查isRunning标志。如果isRunning为true（表示作业正在运行），
+                                 * 则记录一条warn级别的日志，
+                                 * 并调用jobMasterFailed方法来处理JobMasterService的意外终止。
+                                 */
                                 if (isRunning) {
                                     LOG.warn(
                                             "Unexpected termination of the JobMasterService for job {} under leader id {}.",
@@ -219,9 +273,22 @@ public class DefaultJobMasterServiceProcess
         resultFuture.complete(JobManagerRunnerResult.forSuccess(executionGraphInfo));
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 该类负责处理与作业管理（JobMaster）相关的逻辑，并且在作业管理失败时被调用。
+    */
     @Override
     public void jobMasterFailed(Throwable cause) {
+        /**
+         * 记录日志
+         */
         LOG.debug("Job {} under leader id {} failed.", jobId, leaderSessionId);
+        /**
+         * 调用了resultFuture对象的completeExceptionally方法，并传递了导致失败的cause。
+         * 调用completeExceptionally方法意味着将这个未来对象标记为已完成，但是是以异常的方式完成，
+         * 即表示操作失败，并将失败的原因（cause）传递给等待这个未来的任何代码。
+         */
         resultFuture.completeExceptionally(cause);
     }
 }

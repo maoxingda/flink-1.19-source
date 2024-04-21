@@ -29,6 +29,11 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>In practice the backing service will be the ResourceManager.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于声明资源需求的ServiceConnectionManager。
+*/
 public interface DeclareResourceRequirementServiceConnectionManager
         extends ServiceConnectionManager<
                 DeclareResourceRequirementServiceConnectionManager

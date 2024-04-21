@@ -36,6 +36,11 @@ public interface JobMasterServiceProcessFactory {
      * @param leaderSessionId leaderSessionId for which to create a {@link JobMasterServiceProcess}
      * @return the newly created {@link JobMasterServiceProcess}
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 基于leaderSessionId创建JobMasterServiceProcess对象。
+    */
     JobMasterServiceProcess create(UUID leaderSessionId);
 
     /**

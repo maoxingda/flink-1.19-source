@@ -52,12 +52,26 @@ public class DefaultJobManagerRunnerRegistry implements JobManagerRunnerRegistry
         return jobManagerRunners.containsKey(jobId);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * register用于注册一个JobManagerRunner对象
+    */
     @Override
     public void register(JobManagerRunner jobManagerRunner) {
+        /**
+         * checkArgument方法来进行前置条件检查。该方法会检查传入的条件是否为真。
+         * 如果条件为假，它会抛出一个IllegalArgumentException。
+         */
         Preconditions.checkArgument(
                 !isRegistered(jobManagerRunner.getJobID()),
                 "A job with the ID %s is already registered.",
                 jobManagerRunner.getJobID());
+        /**
+         * Map<JobID, JobManagerRunner> jobManagerRunners
+         * 将jobManagerRunner对象添加到jobManagerRunners Map结构中
+         * jobID作为键，jobManagerRunner对象作为值。
+         */
         this.jobManagerRunners.put(jobManagerRunner.getJobID(), jobManagerRunner);
     }
 

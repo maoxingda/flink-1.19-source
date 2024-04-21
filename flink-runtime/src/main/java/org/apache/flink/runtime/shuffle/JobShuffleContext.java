@@ -28,6 +28,11 @@ import java.util.concurrent.CompletableFuture;
  * Job level shuffle context which can offer some job information like job ID and through it, the
  * shuffle plugin notify the job to stop tracking the lost result partitions.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 作业级shuffle上下文可以提供一些作业信息，如作业ID，shuffle插件通过它通知作业停止跟踪丢失的结果分区。
+*/
 public interface JobShuffleContext {
 
     /** @return the corresponding {@link JobID}. */

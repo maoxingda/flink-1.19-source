@@ -409,7 +409,10 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
          * 并赋值给 jobMasterServiceProcess 变量。
          */
         jobMasterServiceProcess = jobMasterServiceProcessFactory.create(leaderSessionId);
-
+        /**
+         * 根据某个条件（即当前领导者是否有效）将结果或异常转发到另一个
+         * CompletableFuture（target）。
+         */
         forwardIfValidLeader(
                 leaderSessionId,
                 jobMasterServiceProcess.getJobMasterGatewayFuture(),
@@ -657,12 +660,23 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
             }
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 查当前expectedLeaderId是否有效，如果有效，则执行一个提供的Runnable动作。
+     * 如果expectedLeaderId无效，它可能会执行另一个操作
+     *  UUID expectedLeaderId: 期望的领导者ID。
+     *  Runnable action: 要在领导者有效时执行的动作。
+     *  String noLeaderFallbackCommandDescription: 如果领导者无效时，用于描述备选命令或操作的字符串，可能用于日志输出。
+    */
     private void runIfValidLeader(
             UUID expectedLeaderId, Runnable action, String noLeaderFallbackCommandDescription) {
         runIfValidLeader(
                 expectedLeaderId,
                 action,
+                /**
+                 * 接受两个参数：一个描述字符串和一个期望的领导者ID。我们可以推测这个方法的作用是，当领导者无效时，打印一条日志消息。
+                 */
                 () ->
                         printLogIfNotValidLeader(
                                 noLeaderFallbackCommandDescription, expectedLeaderId));
@@ -687,20 +701,41 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
                 && leaderElection != null
                 && leaderElection.hasLeadership(expectedLeaderId);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 该方法用于在一个CompletableFuture（source）完成后，
+     * 根据某个条件（即当前领导者是否有效）将结果或异常转发到另一个
+     * CompletableFuture（target）。
+    */
     private <T> void forwardIfValidLeader(
             UUID expectedLeaderId,
             CompletableFuture<? extends T> source,
             CompletableFuture<T> target,
             String forwardDescription) {
+        /**
+         * source.whenComplete，它接受一个BiConsumer<T, Throwable>作为参数，这个BiConsumer会在source完成时（无论成功还是异常）被调用。
+         */
         source.whenComplete(
+                /**
+                 * 当source完成时，t会是结果值（如果source正常完成），throwable会是异常（如果source异常完成）
+                 */
                 (t, throwable) ->
+                        /** 检查当前 expectedLeaderId 是否有效的 */
                         runIfValidLeader(
                                 expectedLeaderId,
                                 () -> {
+                                    /** 用于检查source是否异常完成 */
                                     if (throwable != null) {
+                                        /**
+                                         * 如果throwable不为null，即source异常完成，
+                                         * 则调用target.completeExceptionally(throwable)来在target上异常完成，并传递相同的异常。
+                                         */
                                         target.completeExceptionally(throwable);
                                     } else {
+                                        /**
+                                         * source正常完成，调用target.complete(t)来在target上正常完成，并传递相同的结果
+                                         */
                                         target.complete(t);
                                     }
                                 },

@@ -133,6 +133,13 @@ public abstract class RetryingRegistration<
      * This method resolves the target address to a callable gateway and starts the registration
      * after that.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 开始注册
+     * 1.rpcService.connect获取网关代理对象 rpcGateway
+     * 2.thenAcceptAsync异步调用 register方法会接收网关代理对象 rpcGateway
+    */
     @SuppressWarnings("unchecked")
     public void startRegistration() {
         if (canceled) {
@@ -142,9 +149,15 @@ public abstract class RetryingRegistration<
 
         try {
             // trigger resolution of the target address to a callable gateway
+            /**
+             * 这是一个 CompletableFuture 类型的变量，它代表了连接远程RPC网关的异步结果。
+             */
             final CompletableFuture<G> rpcGatewayFuture;
-
+            /**
+             * 检查 targetType 是否是 FencedRpcGateway 类型或其子类。
+             */
             if (FencedRpcGateway.class.isAssignableFrom(targetType)) {
+                /** 调用内部方法获取到网关代理对象 */
                 rpcGatewayFuture =
                         (CompletableFuture<G>)
                                 rpcService.connect(
@@ -152,6 +165,7 @@ public abstract class RetryingRegistration<
                                         fencingToken,
                                         targetType.asSubclass(FencedRpcGateway.class));
             } else {
+                /** 调用内部方法获取到网关代理对象 */
                 rpcGatewayFuture = rpcService.connect(targetAddress, targetType);
             }
 
@@ -160,6 +174,9 @@ public abstract class RetryingRegistration<
                     rpcGatewayFuture.thenAcceptAsync(
                             (G rpcGateway) -> {
                                 log.info("Resolved {} address, beginning registration", targetName);
+                                /**
+                                 * 调用 register 方法来执行实际的注册逻辑，传递网关代理对象、初始重试次数和初始注册超时时间作为参数。
+                                 */
                                 register(
                                         rpcGateway,
                                         1,
@@ -169,8 +186,15 @@ public abstract class RetryingRegistration<
                             rpcService.getScheduledExecutor());
 
             // upon failure, retry, unless this is cancelled
+            /**
+             * whenCompleteAsync 方法异步处理 rpcGatewayAcceptFuture 的完成状态。
+             * 该方法接受两个参数：一个 BiConsumer（表示当 Future 完成时执行的函数）和一个执行器（用于执行该函数）。
+             */
             rpcGatewayAcceptFuture.whenCompleteAsync(
                     (Void v, Throwable failure) -> {
+                        /**
+                         * 如果 failure 不为 null（即发生了异常），并且 canceled 为 false（即注册没有被取消），则进入异常处理逻辑。
+                         */
                         if (failure != null && !canceled) {
                             final Throwable strippedFailure =
                                     ExceptionUtils.stripCompletionException(failure);
@@ -189,7 +213,9 @@ public abstract class RetryingRegistration<
                                         retryingRegistrationConfiguration.getErrorDelayMillis(),
                                         strippedFailure.getMessage());
                             }
-
+                            /**
+                             * 再次进行注册
+                              */
                             startRegistrationLater(
                                     retryingRegistrationConfiguration.getErrorDelayMillis());
                         }

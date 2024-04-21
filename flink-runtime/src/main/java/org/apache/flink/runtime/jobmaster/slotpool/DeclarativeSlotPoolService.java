@@ -109,22 +109,35 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
         return Optional.empty();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @Override
     public final void start(
             JobMasterId jobMasterId, String address, ComponentMainThreadExecutor mainThreadExecutor)
             throws Exception {
+        /**
+         * 服务的状态为State.CREATED（即已创建但尚未启动）时，才能调用start方法。
+         * 如果服务已经启动过，则抛出异常，因为DeclarativeSlotPoolService只能启动一次。
+         */
         Preconditions.checkState(
                 state == State.CREATED, "The DeclarativeSlotPoolService can only be started once.");
-
+        /** 检查jobMasterId是否为null，如果为null，则抛出NullPointerException。 */
         this.jobMasterId = Preconditions.checkNotNull(jobMasterId);
+        /** 检查address是否为null，如果为null，则抛出NullPointerException */
         this.jobManagerAddress = Preconditions.checkNotNull(address);
-
+        /**
+         * 创建DeclareResourceRequirementServiceConnectionManager对象
+         * 用于声明资源需求的ServiceConnectionManager。
+         */
         this.resourceRequirementServiceConnectionManager =
                 DefaultDeclareResourceRequirementServiceConnectionManager.create(
                         mainThreadExecutor);
 
         onStart(mainThreadExecutor);
-
+        /** 将服务的状态更新为State.STARTED，表示服务已经成功启动。 */
         state = State.STARTED;
     }
 

@@ -95,19 +95,43 @@ public abstract class RegisteredRpcConnection<
     // ------------------------------------------------------------------------
     //  Life cycle
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     public void start() {
+        /**
+         * checkState 方法，确保 RPC 连接没有被关闭。如果连接已经关闭，则抛出异常，
+         * 并给出错误信息 "The RPC connection is already closed"。
+         */
         checkState(!closed, "The RPC connection is already closed");
+        /**
+         * 确保 RPC 连接尚未启动（isConnected() 返回 false）且没有待处理的注册 (pendingRegistration 为 null)。
+         * 如果连接已经启动，则抛出异常，并给出错误信息 "The RPC connection is already started"。
+         */
         checkState(
                 !isConnected() && pendingRegistration == null,
                 "The RPC connection is already started");
-
+        /**
+         * 创建一个新的 RetryingRegistration 对象，该对象可能负责处理 RPC 连接的注册过程，
+         * 包括注册、注册成功、注册失败等逻辑。
+         */
         final RetryingRegistration<F, G, S, R> newRegistration = createNewRegistration();
-
+        /**
+         * AtomicReferenceFieldUpdater<RegisteredRpcConnection, RetryingRegistration>
+         * 原子性地更新当前对象的 pendingRegistration 字段。如果当前字段为 null（即没有待处理的注册），则将其设置为新创建的 newRegistration。
+         */
         if (REGISTRATION_UPDATER.compareAndSet(this, null, newRegistration)) {
+            /**
+             * 如果更新成功（即 compareAndSet 返回 true），则调用 newRegistration.startRegistration() 来启动注册过程。
+             */
             newRegistration.startRegistration();
         } else {
             // concurrent start operation
+            /**
+             * 如果更新失败（即 compareAndSet 返回 false），说明在并发操作中，其他线程已经启动了注册过程。因此，调用 newRegistration.cancel() 来取消
+             */
             newRegistration.cancel();
         }
     }
@@ -240,6 +264,9 @@ public abstract class RegisteredRpcConnection<
     // ------------------------------------------------------------------------
 
     private RetryingRegistration<F, G, S, R> createNewRegistration() {
+        /**
+         * 使用 checkNotNull 来确保生成的注册对象不为 null。如果为 null，checkNotNull 会抛出 NullPointerException。
+         */
         RetryingRegistration<F, G, S, R> newRegistration = checkNotNull(generateRegistration());
 
         CompletableFuture<RetryingRegistration.RetryingRegistrationResult<G, S, R>> future =

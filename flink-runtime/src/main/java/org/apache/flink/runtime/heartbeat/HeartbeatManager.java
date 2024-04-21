@@ -27,6 +27,12 @@ import org.apache.flink.runtime.clusterframework.types.ResourceID;
  * @param <I> Type of the incoming payload
  * @param <O> Type of the outgoing payload
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 心跳管理器用来启动或停止监视HeartbeatTarget，并报告该目标心跳超时事件。通过monitorTarget来传递并监控HeartbeatTarget，
+ * 这个方法可以看做是整个服务的输入，告诉心跳服务去管理哪些目标。
+*/
 public interface HeartbeatManager<I, O> extends HeartbeatTarget<I> {
 
     /**
@@ -37,6 +43,11 @@ public interface HeartbeatManager<I, O> extends HeartbeatTarget<I> {
      * @param heartbeatTarget Interface to send heartbeat requests and responses to the heartbeat
      *     target
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 开始监控心跳目标，当目标心跳超时，会报告给与HeartbeatManager关联的HeartbeatListener
+    */
     void monitorTarget(ResourceID resourceID, HeartbeatTarget<O> heartbeatTarget);
 
     /**
@@ -44,9 +55,19 @@ public interface HeartbeatManager<I, O> extends HeartbeatTarget<I> {
      *
      * @param resourceID Resource ID of the heartbeat target which shall no longer be monitored
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 取消监控心跳目标，ResourceID是心跳目标的标识
+    */
     void unmonitorTarget(ResourceID resourceID);
 
     /** Stops the heartbeat manager. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 停止当前心跳管理器
+    */
     void stop();
 
     /**
@@ -56,5 +77,10 @@ public interface HeartbeatManager<I, O> extends HeartbeatTarget<I> {
      * @return Last heartbeat received from the given target or -1 if the target is not being
      *     monitored.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回最近一次心跳时间，如果心跳目标被移除了则返回-1
+    */
     long getLastHeartbeatFrom(ResourceID resourceId);
 }

@@ -50,9 +50,16 @@ public class DefaultJobMasterServiceProcessFactory implements JobMasterServicePr
         this.initializationTimestamp = initializationTimestamp;
         this.jobMasterServiceFactory = jobMasterServiceFactory;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 基于leaderSessionId创建JobMasterServiceProcess对象。
+     */
     @Override
     public JobMasterServiceProcess create(UUID leaderSessionId) {
+        /**
+         * 创建DefaultJobMasterServiceProcess对象
+         */
         return new DefaultJobMasterServiceProcess(
                 jobId,
                 leaderSessionId,

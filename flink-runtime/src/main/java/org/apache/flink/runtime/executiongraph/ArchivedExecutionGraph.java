@@ -50,6 +50,11 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 /** An archived execution graph represents a serializable form of an {@link ExecutionGraph}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * ArchivedExecutionGraph：表示存储Executiongraph 可序列化形式
+*/
 public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializable {
 
     private static final long serialVersionUID = 7231383912742578428L;

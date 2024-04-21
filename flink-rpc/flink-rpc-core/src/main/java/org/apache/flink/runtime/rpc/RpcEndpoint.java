@@ -370,6 +370,11 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
      *
      * @param runnable Runnable to be executed in the main thread of the underlying RPC endpoint
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 在基础RPC终结点的主线程中执行可运行的。
+    */
     protected void runAsync(Runnable runnable) {
         rpcServer.runAsync(runnable);
     }

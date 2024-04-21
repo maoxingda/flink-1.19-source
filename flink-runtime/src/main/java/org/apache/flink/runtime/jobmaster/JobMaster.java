@@ -426,12 +426,23 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
     // ----------------------------------------------------------------------------------------------
     // Lifecycle management
     // ----------------------------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动内部服务
+    */
     @Override
     protected void onStart() throws JobMasterException {
         try {
+            /**
+             * 方法内部首先尝试调用startJobExecution()方法，实际启动作业执行的操作。
+             */
             startJobExecution();
         } catch (Exception e) {
+            /**
+             * 如果startJobExecution()方法抛出任何异常（Exception类型或其子类），则捕获这个异常。
+             * 异常处理分几种？
+             */
             final JobMasterException jobMasterException =
                     new JobMasterException("Could not start the JobMaster.", e);
             handleJobMasterError(jobMasterException);
@@ -975,13 +986,26 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
 
     // -- job starting and stopping
     // -----------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动服务触发调度
+    */
     private void startJobExecution() throws Exception {
+        /**
+         * 调用一个方法来验证当前是否在主线程中运行。这通常是为了确保某些操作只能在主线程中执行，以避免并发问题或线程安全问题。
+         */
         validateRunsInMainThread();
-
+        /**
+         * 作业级shuffle上下文可以提供一些作业信息，如作业ID，shuffle插件通过它通知作业停止跟踪丢失的结果分区。
+         * 跟踪和管理作业的状态。
+         */
         JobShuffleContext context = new JobShuffleContextImpl(jobGraph.getJobID(), this);
+        /**
+         * 向shuffleMaster注册JobShuffleContext
+         */
         shuffleMaster.registerJob(context);
-
+        /** 启动作业主服务 */
         startJobMasterServices();
 
         log.info(
@@ -989,43 +1013,81 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                 jobGraph.getName(),
                 jobGraph.getJobID(),
                 getFencingToken());
-
+        /** 开始作业的调度。启动作业的任务分配和执行计划 */
         startScheduling();
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     private void startJobMasterServices() throws Exception {
         try {
+            /**
+             * 调用createTaskManagerHeartbeatManager方法，并传入heartbeatServices作为参数，
+             * 以创建任务管理器（TaskManager）的心跳管理器。
+             */
             this.taskManagerHeartbeatManager = createTaskManagerHeartbeatManager(heartbeatServices);
+            /**
+             * 创建资源管理器（ResourceManager）的心跳管理器。
+             */
             this.resourceManagerHeartbeatManager =
                     createResourceManagerHeartbeatManager(heartbeatServices);
 
             // start the slot pool make sure the slot pool now accepts messages for this leader
+            /**
+             * 启动插slotPool 服务
+             */
             slotPoolService.start(getFencingToken(), getAddress(), getMainThreadExecutor());
 
             // job is ready to go, try to establish connection with resource manager
             //   - activate leader retrieval for the resource manager
             //   - on notification of the leader, the connection will be established and
             //     the slot pool will start requesting slots
+            /**
+             * 尝试与资源管理器建立连接。在收到leader的通知后，为资源管理器激活leader Retriever，连接将建立，插槽池将开始请求插槽
+             * JobMaster内部也会像ResourceManager注册
+             */
             resourceManagerLeaderRetriever.start(new ResourceManagerLeaderListener());
         } catch (Exception e) {
+            /**
+             * 异常情况霞调用
+             */
             handleStartJobMasterServicesError(e);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理在启动作业主节点服务过程中出现的异常
+    */
     private void handleStartJobMasterServicesError(Exception e) throws Exception {
         try {
+            /**
+             * 停止作业主节点服务
+             */
             stopJobMasterServices();
         } catch (Exception inner) {
+            /**
+             * 如果在停止服务的过程中又抛出了异常（inner），则使用e.addSuppressed(inner)将内部异常添加到原始异常e的抑制异常列表中。
+             */
             e.addSuppressed(inner);
         }
 
         throw e;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 停止作业主节点相关的服务
+    */
     private void stopJobMasterServices() throws Exception {
         Exception resultingException = null;
 
         try {
+            /**
+             * resourceManagerLeaderRetriever停止对ResourceManager Leader变化的监听
+             */
             resourceManagerLeaderRetriever.stop();
         } catch (Exception e) {
             resultingException = e;
@@ -1033,10 +1095,14 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
 
         // TODO: Distinguish between job termination which should free all slots and a loss of
         // leadership which should keep the slots
+        /** 关闭Slot池服务 */
         slotPoolService.close();
-
+        /** 停止心跳服务 */
         stopHeartbeatServices();
-
+        /**
+         * 使用ExceptionUtils的tryRethrowException方法来尝试重新抛出resultingException。
+         * 如果resultingException不为null，则该方法会抛出这个异常；否则，什么都不会发生。
+         */
         ExceptionUtils.tryRethrowException(resultingException);
     }
 
@@ -1084,14 +1150,29 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
     }
 
     // ----------------------------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理JobMaster中发生的错误
+    */
     private void handleJobMasterError(final Throwable cause) {
+        /**
+         * 使用ExceptionUtils.isJvmFatalError(cause)来判断发生的错误是否是JVM致命错误。
+         * ExceptionUtils是一个工具类，用于处理异常相关的操作。
+         */
         if (ExceptionUtils.isJvmFatalError(cause)) {
             log.error("Fatal error occurred on JobManager.", cause);
             // The fatal error handler implementation should make sure that this call is
             // non-blocking
+            /**
+             * 致命错误处理程序实现应确保此调用是非阻塞的
+             * 调用fatalErrorHandler.onFatalError(cause)来处理致命错误。
+             */
             fatalErrorHandler.onFatalError(cause);
         } else {
+            /**
+             * 调用jobCompletionActions.jobMasterFailed(cause)来通知作业完成动作处理器jobCompletionActions，
+             */
             jobCompletionActions.jobMasterFailed(cause);
         }
     }
@@ -1137,12 +1218,22 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                     });
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 重新连接ResourceManager进行注册
+    */
     private void notifyOfNewResourceManagerLeader(
             final String newResourceManagerAddress, final ResourceManagerId resourceManagerId) {
+        /**
+         * 获取ResourceManager地址
+         */
         resourceManagerAddress =
                 createResourceManagerAddress(newResourceManagerAddress, resourceManagerId);
-
+        /**
+         * reconnectToResourceManager：重新链接ResourceManager
+         * 创建了一个新的 `FlinkException` 异常对象，异常信息包含格式化后的字符串，表示资源管理器领导者的地址发生了变化。
+         */
         reconnectToResourceManager(
                 new FlinkException(
                         String.format(
@@ -1162,25 +1253,54 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
             return null;
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 重新链接ResourceManager
+    */
     private void reconnectToResourceManager(Exception cause) {
+        /**
+         * 关闭资源管理器连接
+         * 先把历史建立的链接关闭
+         */
         closeResourceManagerConnection(cause);
+        /**
+         * 试图重新链接ResourceManager
+         */
         tryConnectToResourceManager();
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 链接ResourceManager，内部会进行注册
+    */
     private void tryConnectToResourceManager() {
+        /** 检查资源管理器地址 */
         if (resourceManagerAddress != null) {
+            /** 调用connectToResourceManager*/
             connectToResourceManager();
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建ResourceManagerConnection链接并启动进行注册
+    */
     private void connectToResourceManager() {
+        /**
+         * assert 语句进行前置条件检查。这些断言用于确保方法执行前满足以下条件：
+         * resourceManagerAddress 不为 null，即资源管理器地址是有效的。
+         * resourceManagerConnection 为 null，即当前没有正在进行的资源管理器连接。
+         * establishedResourceManagerConnection 为 null，即尚未建立有效的资源管理器连接。
+         */
         assert (resourceManagerAddress != null);
         assert (resourceManagerConnection == null);
         assert (establishedResourceManagerConnection == null);
-
+        /**
+         * 打印日志
+         */
         log.info("Connecting to ResourceManager {}", resourceManagerAddress);
-
+        /** 创建 ResourceManagerConnection 对象 */
         resourceManagerConnection =
                 new ResourceManagerConnection(
                         log,
@@ -1191,13 +1311,25 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                         resourceManagerAddress.getAddress(),
                         resourceManagerAddress.getResourceManagerId(),
                         futureExecutor);
-
+        /**
+         * start 方法来启动 resourceManagerConnection
+         */
         resourceManagerConnection.start();
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     private void establishResourceManagerConnection(final JobMasterRegistrationSuccess success) {
+        /**
+         * 从 success 对象中获取资源管理器的ID。
+         */
         final ResourceManagerId resourceManagerId = success.getResourceManagerId();
 
+        /**
+         * resourceManagerConnection 是否不为空，并且其目标领导者ID是否与从 success 中获取的资源管理器ID相等。
+         */
         // verify the response with current connection
         if (resourceManagerConnection != null
                 && Objects.equals(
@@ -1206,20 +1338,36 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
             log.info(
                     "JobManager successfully registered at ResourceManager, leader id: {}.",
                     resourceManagerId);
-
+            /**
+             * 从当前资源管理器连接中获取资源管理器的网关。
+             */
             final ResourceManagerGateway resourceManagerGateway =
                     resourceManagerConnection.getTargetGateway();
-
+            /**
+             * 从 success 对象中获取资源管理器的资源ID。
+             */
             final ResourceID resourceManagerResourceId = success.getResourceManagerResourceId();
-
+            /**
+             * 使用获取到的资源管理器网关和资源ID创建一个新的 EstablishedResourceManagerConnection 对象。
+             */
             establishedResourceManagerConnection =
                     new EstablishedResourceManagerConnection(
                             resourceManagerGateway, resourceManagerResourceId);
-
+            /**
+             * 将资源管理器网关注册为黑名单处理器的监听器。
+             */
             blocklistHandler.registerBlocklistListener(resourceManagerGateway);
+            /**
+             * 连接槽池服务到资源管理器。
+             */
             slotPoolService.connectToResourceManager(resourceManagerGateway);
+            /**
+             * 连接分区追踪器到资源管理器。
+             */
             partitionTracker.connectToResourceManager(resourceManagerGateway);
-
+            /**
+             * 开始监控心跳目标
+             */
             resourceManagerHeartbeatManager.monitorTarget(
                     resourceManagerResourceId,
                     new ResourceManagerHeartbeatReceiver(resourceManagerGateway));
@@ -1229,26 +1377,53 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                     resourceManagerId);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 关闭ResourceManager对应的链接
+    */
     private void closeResourceManagerConnection(Exception cause) {
+        /**
+         * 检查 `establishedResourceManagerConnection` 是否为 `null`。
+         */
         if (establishedResourceManagerConnection != null) {
+            /**
+             * 关闭链接
+             */
             dissolveResourceManagerConnection(establishedResourceManagerConnection, cause);
+            /** 设置establishedResourceManagerConnection 为null */
             establishedResourceManagerConnection = null;
         }
-
+        /**
+         * 如果resourceManagerConnection 不为null
+         *
+         */
         if (resourceManagerConnection != null) {
             // stop a potentially ongoing registration process
+            /**
+             * 关闭resourceManagerConnection,
+             * 并将resourceManagerConnection设置为null
+             */
             resourceManagerConnection.close();
             resourceManagerConnection = null;
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 关闭相关服务
+    */
     private void dissolveResourceManagerConnection(
             EstablishedResourceManagerConnection establishedResourceManagerConnection,
             Exception cause) {
+        /**
+         * 获取资源管理器资源ID
+         */
         final ResourceID resourceManagerResourceID =
                 establishedResourceManagerConnection.getResourceManagerResourceID();
-
+        /**
+         * 根据日志级别，记录关闭资源管理器连接的信息。
+         */
         if (log.isDebugEnabled()) {
             log.debug(
                     "Close ResourceManager connection {}.",
@@ -1260,14 +1435,20 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                     resourceManagerResourceID.getStringWithMetadata(),
                     cause.getMessage());
         }
-
+        /**
+         * 取消监控心跳目标，ResourceID是心跳目标的标识
+         * 取消对ResourceManager之间相关的心跳
+         */
         resourceManagerHeartbeatManager.unmonitorTarget(resourceManagerResourceID);
 
         ResourceManagerGateway resourceManagerGateway =
                 establishedResourceManagerConnection.getResourceManagerGateway();
+        /** 断开作业管理器连接 */
         resourceManagerGateway.disconnectJobManager(
                 jobGraph.getJobID(), schedulerNG.requestJobStatus(), cause);
+        /** 注销阻塞列表监听器 */
         blocklistHandler.deregisterBlocklistListener(resourceManagerGateway);
+        /** 断开资源管理器连接 */
         slotPoolService.disconnectResourceManager();
     }
 
@@ -1316,18 +1497,37 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
             return resourceManagerGateway.heartbeatFromJobManager(resourceID);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 监听ResourceManagerLeader leader变化会处罚notifyLeaderAddress
+     * 第一次也会处罚执行
+    */
     private class ResourceManagerLeaderListener implements LeaderRetrievalListener {
 
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * ResourceManagerLeader改变触发该方法
+        */
         @Override
         public void notifyLeaderAddress(final String leaderAddress, final UUID leaderSessionID) {
+            /** 用于异步执行传入的Lambda表达式或Runnable对象的 */
             runAsync(
                     () ->
+                            /**
+                             * 调用notifyOfNewResourceManagerLeader进行处理
+                             */
                             notifyOfNewResourceManagerLeader(
                                     leaderAddress,
                                     ResourceManagerId.fromUuidOrNull(leaderSessionID)));
         }
 
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 处理JobMaster中发生的错误
+        */
         @Override
         public void handleError(final Exception exception) {
             handleJobMasterError(
@@ -1393,7 +1593,9 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                         ResourceManagerId fencingToken,
                         long timeoutMillis) {
                     Time timeout = Time.milliseconds(timeoutMillis);
-
+                    /**
+                     * 向ResourceManaer注册JobMaster
+                     */
                     return gateway.registerJobMaster(
                             jobMasterId,
                             jobManagerResourceID,
@@ -1404,6 +1606,11 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
             };
         }
 
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 处理作业主节点（JobMaster）注册成功的回调
+        */
         @Override
         protected void onRegistrationSuccess(final JobMasterRegistrationSuccess success) {
             runAsync(
@@ -1411,6 +1618,9 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                         // filter out outdated connections
                         //noinspection ObjectEquality
                         if (this == resourceManagerConnection) {
+                            /**
+                             * 与ResourceManager建立链接
+                             */
                             establishResourceManagerConnection(success);
                         }
                     });

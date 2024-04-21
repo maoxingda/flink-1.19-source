@@ -27,6 +27,11 @@ import java.util.concurrent.TimeUnit;
  * Extension for the {@link Executor} interface which is enriched by method for scheduling tasks in
  * the future.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 通过用于将来调度任务的方法进行了丰富。
+*/
 public interface ScheduledExecutor extends Executor {
 
     /**

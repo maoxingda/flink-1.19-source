@@ -67,6 +67,11 @@ public interface SlotPoolService extends AutoCloseable {
      * @param mainThreadExecutor mainThreadExecutor to run actions in the main thread
      * @throws Exception if the service cannot be started
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动SlotPoolService
+    */
     void start(
             JobMasterId jobMasterId, String address, ComponentMainThreadExecutor mainThreadExecutor)
             throws Exception;

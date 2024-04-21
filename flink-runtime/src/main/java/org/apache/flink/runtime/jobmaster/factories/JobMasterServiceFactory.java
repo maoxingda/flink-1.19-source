@@ -35,6 +35,11 @@ public interface JobMasterServiceFactory {
      *     JobMasterService}
      * @return Future which contains the newly created {@link JobMasterService}
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 基于leaderSessionId、onCompletionActions创建JobMasterService。
+    */
     CompletableFuture<JobMasterService> createJobMasterService(
             UUID leaderSessionId, OnCompletionActions onCompletionActions);
 }

@@ -90,7 +90,11 @@ public class DefaultJobMasterServiceFactory implements JobMasterServiceFactory {
         this.failureEnrichers = failureEnrichers;
         this.initializationTimestamp = initializationTimestamp;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 基于leaderSessionId、onCompletionActions创建JobMasterService。
+     */
     @Override
     public CompletableFuture<JobMasterService> createJobMasterService(
             UUID leaderSessionId, OnCompletionActions onCompletionActions) {
@@ -103,7 +107,9 @@ public class DefaultJobMasterServiceFactory implements JobMasterServiceFactory {
 
     private JobMasterService internalCreateJobMasterService(
             UUID leaderSessionId, OnCompletionActions onCompletionActions) throws Exception {
-
+        /**
+         * 创建JobMaster实例
+          */
         final JobMaster jobMaster =
                 new JobMaster(
                         rpcService,
@@ -129,9 +135,15 @@ public class DefaultJobMasterServiceFactory implements JobMasterServiceFactory {
                                 jobMasterConfiguration.getConfiguration()),
                         failureEnrichers,
                         initializationTimestamp);
-
+        /**
+         * 调用jobMaster.start()方法启动JobMaster实例。
+         * 触发一系列的初始化操作和后台线程，JobMaster可以开始管理和协调作业
+         * 内部会流转到JobMaster.onStart方法
+         */
         jobMaster.start();
-
+        /**
+         * 返回JobMasterService实例
+         */
         return jobMaster;
     }
 }

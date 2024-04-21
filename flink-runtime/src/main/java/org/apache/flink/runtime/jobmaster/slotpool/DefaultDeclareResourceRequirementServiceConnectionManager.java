@@ -41,6 +41,11 @@ import java.util.concurrent.CompletableFuture;
  * service. In case of faults it continues retrying to send the latest resource requirements to the
  * service with an exponential backoff strategy.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于声明资源需求的ServiceConnectionManager。
+*/
 class DefaultDeclareResourceRequirementServiceConnectionManager
         extends AbstractServiceConnectionManager<
                 DeclareResourceRequirementServiceConnectionManager
@@ -108,9 +113,17 @@ class DefaultDeclareResourceRequirementServiceConnectionManager
             }
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建 DefaultDeclareResourceRequirementServiceConnectionManager
+    */
     public static DeclareResourceRequirementServiceConnectionManager create(
             ScheduledExecutor scheduledExecutor) {
+        /**
+         * 使用传入的scheduledExecutor参数来创建一个新的DefaultDeclareResourceRequirementServiceConnectionManager对象，
+         * 并返回这个新创建的对象的引用。
+         */
         return new DefaultDeclareResourceRequirementServiceConnectionManager(scheduledExecutor);
     }
 }
