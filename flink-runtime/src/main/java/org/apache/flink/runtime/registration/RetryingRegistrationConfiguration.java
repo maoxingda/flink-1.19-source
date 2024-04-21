@@ -24,6 +24,11 @@ import org.apache.flink.configuration.Configuration;
 import static org.apache.flink.util.Preconditions.checkArgument;
 
 /** Configuration for the cluster components. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 群集组件的配置
+*/
 public class RetryingRegistrationConfiguration {
 
     private final long initialRegistrationTimeoutMillis;
@@ -71,13 +76,30 @@ public class RetryingRegistrationConfiguration {
         return refusedDelayMillis;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册重试相关的配置
+    */
     public static RetryingRegistrationConfiguration fromConfiguration(
             final Configuration configuration) {
+        /**
+         *  cluster.registration.initial-timeout 群集组件之间的初始注册超时（以毫秒为单位）。
+         */
         long initialRegistrationTimeoutMillis =
                 configuration.get(ClusterOptions.INITIAL_REGISTRATION_TIMEOUT);
+        /**
+         * cluster.registration.max-timeout 群集组件之间的最大注册超时（以毫秒为单位）。
+         */
         long maxRegistrationTimeoutMillis =
                 configuration.get(ClusterOptions.MAX_REGISTRATION_TIMEOUT);
+        /**
+         * cluster.registration.error-delay 在注册尝试导致异常（而不是超时）后进行的暂停（以毫秒为单位）。
+         */
         long errorDelayMillis = configuration.get(ClusterOptions.ERROR_REGISTRATION_DELAY);
+        /**
+         * cluster.registration.refused-registration-delay 注册尝试被拒绝后的暂停时间（以毫秒为单位）。
+         */
         long refusedDelayMillis = configuration.get(ClusterOptions.REFUSED_REGISTRATION_DELAY);
 
         return new RetryingRegistrationConfiguration(

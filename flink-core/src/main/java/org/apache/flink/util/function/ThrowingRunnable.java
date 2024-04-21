@@ -43,6 +43,12 @@ public interface ThrowingRunnable<E extends Throwable> {
      * @param throwingRunnable to convert into a {@link Runnable}
      * @return {@link Runnable} which throws all checked exceptions as unchecked.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将一个可能抛出异常的 ThrowingRunnable 转换为不声明抛出异常的普通 Runnable。
+     * 允许你将可能抛出异常的代码块包装成一个不会抛出任何声明的异常的 Runnable 对象。
+    */
     static Runnable unchecked(ThrowingRunnable<?> throwingRunnable) {
         return () -> {
             try {

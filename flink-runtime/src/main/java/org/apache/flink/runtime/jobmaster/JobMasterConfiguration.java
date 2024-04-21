@@ -74,17 +74,28 @@ public class JobMasterConfiguration {
 
     public static JobMasterConfiguration fromConfiguration(Configuration configuration) {
 
+        /**
+         * pekko.ask.timeout Pekko ask超时时间
+         */
         final Time rpcTimeout =
                 Time.fromDuration(configuration.get(RpcOptions.ASK_TIMEOUT_DURATION));
-
+        /**
+         * slot.request.timeout 从请求slot超时时间（以毫秒为单位）
+          */
         final Time slotRequestTimeout =
                 Time.milliseconds(configuration.get(JobManagerOptions.SLOT_REQUEST_TIMEOUT));
-
+        /**
+         * 获取零食目录
+         */
         final String tmpDirectory = ConfigurationUtils.parseTempDirectories(configuration)[0];
-
+        /**
+         * 注册充实相关的配置
+         */
         final RetryingRegistrationConfiguration retryingRegistrationConfiguration =
                 RetryingRegistrationConfiguration.fromConfiguration(configuration);
-
+        /**
+         * 构建JobMasterConfiguration并返回
+         */
         return new JobMasterConfiguration(
                 rpcTimeout,
                 slotRequestTimeout,

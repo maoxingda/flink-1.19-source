@@ -21,6 +21,11 @@ package org.apache.flink.configuration;
 import org.apache.flink.annotation.Experimental;
 
 /** Enum for controlling whether REACTIVE mode is enabled or not. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于控制是否启用REACTIVE模式的枚举
+*/
 @Experimental
 public enum SchedulerExecutionMode {
     REACTIVE

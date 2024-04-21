@@ -49,6 +49,11 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerFactory {
     INSTANCE;
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建 JobManagerRunner 实例
+    */
     @Override
     public JobManagerRunner createJobManagerRunner(
             JobGraph jobGraph,
@@ -62,21 +67,43 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
             Collection<FailureEnricher> failureEnrichers,
             long initializationTimestamp)
             throws Exception {
-
+        /**
+         * taskVertices.size()
+         * 如果没有顶点，说明作业是空的，方法将抛出异常
+         */
         checkArgument(jobGraph.getNumberOfVertices() > 0, "The given job is empty");
 
+        /**
+         * 从 configuration 中解析 JobMasterConfiguration，这通常包含作业管理器的特定配置
+         * 里面更多的是超时时间
+         */
         final JobMasterConfiguration jobMasterConfiguration =
                 JobMasterConfiguration.fromConfiguration(configuration);
-
+        /**
+         * 从 highAvailabilityServices 中获取 JobResultStore 用于存储作业结果
+         */
         final JobResultStore jobResultStore = highAvailabilityServices.getJobResultStore();
-
+        /**
+         * 从 highAvailabilityServices 中获取 JobManagerLeaderElection，进行作业管理器的领导者选举。
+         */
         final LeaderElection jobManagerLeaderElection =
                 highAvailabilityServices.getJobManagerLeaderElection(jobGraph.getJobID());
-
+        /**
+         * 使用 DefaultSlotPoolServiceSchedulerFactory 从配置中创建 SlotPoolServiceSchedulerFactory。
+         * 这个工厂用于生成调度器，用于分配和管理作业所需的计算资源（称为槽位）。
+         * SlotPoolServiceSchedulerFactory 是 SlotPoolService、SchedulerNG的工厂
+         * SlotPoolService：JobMaster 用于管理Slot的服务。
+         * SchedulerNG：用于调度Flink作业的接口。
+         */
         final SlotPoolServiceSchedulerFactory slotPoolServiceSchedulerFactory =
                 DefaultSlotPoolServiceSchedulerFactory.fromConfiguration(
                         configuration, jobGraph.getJobType(), jobGraph.isDynamic());
 
+        /**
+         * 如果作业管理器的配置中指定的调度器模式是 REACTIVE（响应式），
+         * 则检查 slotPoolServiceSchedulerFactory 生成的调度器类型是否为 Adaptive。
+         * 响应式模式需要自适应调度器，如果不是，方法将抛出状态异常。
+         */
         if (jobMasterConfiguration.getConfiguration().get(JobManagerOptions.SCHEDULER_MODE)
                 == SchedulerExecutionMode.REACTIVE) {
             Preconditions.checkState(
@@ -85,17 +112,28 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
                     "Adaptive Scheduler is required for reactive mode");
         }
 
+        /**
+         * 从 jobManagerServices 中获取 LibraryCacheManager，并为其注册一个类加载器租约。
+         * 类加载器租约用于管理作业执行期间使用的类加载器，以确保作业可以正确加载所需的库和依赖项。
+         */
         final LibraryCacheManager.ClassLoaderLease classLoaderLease =
                 jobManagerServices
                         .getLibraryCacheManager()
                         .registerClassLoaderLease(jobGraph.getJobID());
-
+        /**
+         * 使用 classLoaderLease 对象来获取或解析用户代码的类加载器。
+         * jobGraph.getUserJarBlobKeys() 和 jobGraph.getClasspaths() 是指向用户作业 JAR 文件和类路径的键或标识符。
+         * getOrResolveClassLoader 方法利用这些信息来构造或获取一个类加载器，该类加载器用于加载用户作业中的类。
+         */
         final ClassLoader userCodeClassLoader =
                 classLoaderLease
                         .getOrResolveClassLoader(
                                 jobGraph.getUserJarBlobKeys(), jobGraph.getClasspaths())
                         .asClassLoader();
-
+        /**
+         * 创建了一个 DefaultJobMasterServiceFactory 实例，该工厂用于创建 JobMasterService 对象。
+         * JobMasterService 是作业管理器的一个核心组件，它负责协调和管理作业的执行。
+         */
         final DefaultJobMasterServiceFactory jobMasterServiceFactory =
                 new DefaultJobMasterServiceFactory(
                         jobManagerServices.getIoExecutor(),
@@ -111,7 +149,10 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
                         userCodeClassLoader,
                         failureEnrichers,
                         initializationTimestamp);
-
+        /**
+         * 创建了一个 DefaultJobMasterServiceProcessFactory 实例，它用于创建 JobMasterServiceProcess 对象。
+         * JobMasterServiceProcess 封装了作业主服务的执行逻辑，并提供了对外部事件的响应。
+         */
         final DefaultJobMasterServiceProcessFactory jobMasterServiceProcessFactory =
                 new DefaultJobMasterServiceProcessFactory(
                         jobGraph.getJobID(),
@@ -119,7 +160,9 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
                         jobGraph.getCheckpointingSettings(),
                         initializationTimestamp,
                         jobMasterServiceFactory);
-
+        /**
+         * 代码创建并返回了一个 JobMasterServiceLeadershipRunner 实例。这个类负责处理作业主服务的领导者选举和领导逻辑。
+         */
         return new JobMasterServiceLeadershipRunner(
                 jobMasterServiceProcessFactory,
                 jobManagerLeaderElection,

@@ -40,6 +40,11 @@ public interface LeaderElection extends AutoCloseable {
      * @param leaderSessionID The new leader session ID
      * @param leaderAddress The address of the new leader
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 确认LeaderContender已接受由给定的LeaderId标识的领导者。
+    */
     void confirmLeadership(UUID leaderSessionID, String leaderAddress);
 
     /**
@@ -49,6 +54,11 @@ public interface LeaderElection extends AutoCloseable {
      * @param leaderSessionId identifying the current leader
      * @return true if the associated {@link LeaderContender} is the leader, otherwise false
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 如果通过leaderSessionId获取的LeaderContender(leader)是当前会话霞的Leader，则返回true。
+    */
     boolean hasLeadership(UUID leaderSessionId);
 
     /**

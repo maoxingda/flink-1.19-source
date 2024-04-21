@@ -92,7 +92,22 @@ public final class ExceptionUtils {
      * @param t The exception to check.
      * @return True, if the exception is considered fatal to the JVM, false otherwise.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 用于检查传入的 Throwable 对象 t 是否代表了一个 JVM 致命错误。
+    */
     public static boolean isJvmFatalError(Throwable t) {
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * InternalError：这是 JVM 内部错误的表示。当 JVM 或其内部组件遇到严重问题时，通常会抛出此类型的错误。
+         * 这些错误通常是不可恢复的，并且通常表明 JVM 出现了严重问题。
+         * UnknownError：这是一个错误类型，表示发生了未知的运行时错误。
+         * 这通常意味着 JVM 遇到了它无法识别或处理的异常情况。
+         * ThreadDeath：这是一个错误类型，用于表示线程应该被终止。尽管 ThreadDeath 是一种错误，
+         * 但它是线程死亡的正常机制的一部分，通常不会被视为一个严重的致命错误。然而，在这个方法中，它仍然被包含在内，可能是为了处理一些特殊情况。
+        */
         return (t instanceof InternalError)
                 || (t instanceof UnknownError)
                 || (t instanceof ThreadDeath);

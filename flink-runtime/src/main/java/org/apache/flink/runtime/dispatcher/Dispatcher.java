@@ -413,27 +413,50 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                             throwable));
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化作业客户端的心跳超时时间，并设置相应的检查机制来确保客户端的活跃性
+    */
     private void initJobClientExpiredTime(JobGraph jobGraph) {
+        /**
+         * 从作业图中获取作业的ID。
+         */
         JobID jobID = jobGraph.getJobID();
+        /**
+         * 从作业图中获取初始的客户端心跳超时时间。
+         */
         long initialClientHeartbeatTimeout = jobGraph.getInitialClientHeartbeatTimeout();
+        /**
+         * 如果 initialClientHeartbeatTimeout 大于0，说明设置了有效的心跳超时时间
+         */
         if (initialClientHeartbeatTimeout > 0) {
             log.info(
                     "Begin to detect the client's aliveness for job {}. The heartbeat timeout is {}",
                     jobID,
                     initialClientHeartbeatTimeout);
+            /**
+             * 将作业ID和对应的心跳超时时间存储到一个映射（很可能是 Map<JobID, Long>）中，以便后续使用。
+             * Map<JobID, Long> uninitializedJobClientHeartbeatTimeout = new HashMap<>();
+             */
             uninitializedJobClientHeartbeatTimeout.put(jobID, initialClientHeartbeatTimeout);
-
+            /**
+             * 如果jobClientAlivenessCheck为空
+             */
             if (jobClientAlivenessCheck == null) {
                 // Use the client heartbeat timeout as the check interval.
                 jobClientAlivenessCheck =
+                        /** 使用RPC服务的调度执行器来设置一个定期任务。 */
                         this.getRpcService()
                                 .getScheduledExecutor()
                                 .scheduleWithFixedDelay(
                                         () ->
                                                 getMainThreadExecutor()
+                                                        /** 这个任务会调用 checkJobClientAliveness 方法来检查客户端的活跃性。 */
                                                         .execute(this::checkJobClientAliveness),
+                                        /** 初始延迟是0毫秒，即任务会立即开始执行。 */
                                         0L,
+                                        /** 每次检查之间的时间间隔。 */
                                         jobClientAlivenessCheckInterval,
                                         TimeUnit.MILLISECONDS);
             }
@@ -629,15 +652,37 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
     }
 
     private CompletableFuture<Acknowledge> internalSubmitJob(JobGraph jobGraph) {
+        /**
+         * 读取pipeline.jobvertex-parallelism-overrides配置
+         * 为JobGraph中的JobVertex设置并行度，覆盖以前的并行度
+         */
         applyParallelismOverrides(jobGraph);
         log.info("Submitting job '{}' ({}).", jobGraph.getName(), jobGraph.getJobID());
 
         // track as an outstanding job
+        /**
+         * Set<JobID> submittedAndWaitingTerminationJobIDs
+         * 将当前作业的ID添加到 submittedAndWaitingTerminationJobIDs 列表中，
+         * 这个列表用来跟踪所有已经提交但尚未终止的作业。
+         */
         submittedAndWaitingTerminationJobIDs.add(jobGraph.getJobID());
-
+        /**
+         * 异步地等待作业完成或终止的
+         */
         return waitForTerminatingJob(jobGraph.getJobID(), jobGraph, this::persistAndRunJob)
+                /**
+                 * 用于处理作业完成或失败的情况。如果作业成功完成，ignored 参数将包含结果；如果作业失败，throwable 将包含异常。
+                 * handleTermination 方法用于处理这些完成或失败的情况。
+                 */
                 .handle((ignored, throwable) -> handleTermination(jobGraph.getJobID(), throwable))
+                /**
+                 * 方法用于处理异步操作的结果。在这里，它似乎只是返回 CompletableFuture 的结果，没有执行任何额外的转换或组合。
+                 */
                 .thenCompose(Function.identity())
+                /**
+                 * CompletableFuture 完成时执行一些清理操作。在这里，
+                 * 它从 submittedAndWaitingTerminationJobIDs 列表中移除已完成（无论成功还是失败）的作业的ID。
+                 */
                 .whenComplete(
                         (ignored, throwable) ->
                                 // job is done processing, whether failed or finished
@@ -672,15 +717,40 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         }
         return CompletableFuture.completedFuture(Acknowledge.get());
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 持久化并运行Job
+    */
     private void persistAndRunJob(JobGraph jobGraph) throws Exception {
+        /**
+         * 将JobGraph持久化，standalone内部为空
+         */
         jobGraphWriter.putJobGraph(jobGraph);
+        /**
+         * 设置JobGraph超时时间，内部有定时任务去判断是否超时
+         */
         initJobClientExpiredTime(jobGraph);
+        /**
+         * 1.创建JobManagerRunner
+         * 2.runJob运行JobManagerRunner
+         */
         runJob(createJobMasterRunner(jobGraph), ExecutionType.SUBMISSION);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建JobManagerRunner 用于执行JobMaster
+    */
     private JobManagerRunner createJobMasterRunner(JobGraph jobGraph) throws Exception {
+        /**
+         * 确保作业管理器运行器注册表（jobManagerRunnerRegistry）中尚未注册与给定 JobGraph 的作业ID关联的运行器。
+         * 如果已经注册，则会抛出异常。
+         */
         Preconditions.checkState(!jobManagerRunnerRegistry.isRegistered(jobGraph.getJobID()));
+        /**
+         * 接受一个 JobGraph 对象作为参数，并返回一个 JobManagerRunner 对象。
+         */
         return jobManagerRunnerFactory.createJobManagerRunner(
                 jobGraph,
                 configuration,
@@ -703,47 +773,95 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                 ioExecutor);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 该方法负责启动一个作业管理器运行器（JobManagerRunner），注册它，并处理作业完成后的清理工作。
+    */
     private void runJob(JobManagerRunner jobManagerRunner, ExecutionType executionType)
             throws Exception {
+        /**
+         * 调用 start 方法来启动作业管理器运行器。
+         * 会跳转到grantLeadership方法
+         */
         jobManagerRunner.start();
+        /**
+         * 将作业管理器运行器注册到 jobManagerRunnerRegistry 中，这通常是为了追踪和管理正在运行的作业。
+         */
         jobManagerRunnerRegistry.register(jobManagerRunner);
-
+        /**
+         * 从作业管理器运行器中获取作业的ID。
+         */
         final JobID jobId = jobManagerRunner.getJobID();
 
         final CompletableFuture<CleanupJobState> cleanupJobStateFuture =
+                /**
+                 * 获取一个 `CompletableFuture`，它代表作业的结果。
+                 */
                 jobManagerRunner
                         .getResultFuture()
+                        /**
+                         * 异步处理这个 `CompletableFuture` 的结果。当作业完成时，它会检查作业是否仍在注册表中，并根据作业的结果或异常进行相应的处理。
+                         */
                         .handleAsync(
                                 (jobManagerRunnerResult, throwable) -> {
+                                    /** 检查作业是否仍在 jobManagerRunnerRegistry 中注册
+                                     *  注册的对象与原始的 jobManagerRunner 是否相同
+                                     */
                                     Preconditions.checkState(
                                             jobManagerRunnerRegistry.isRegistered(jobId)
                                                     && jobManagerRunnerRegistry.get(jobId)
                                                             == jobManagerRunner,
                                             "The job entry in runningJobs must be bound to the lifetime of the JobManagerRunner.");
-
+                                    /**
+                                     * 	+ 如果作业结果不为空，则调用 `handleJobManagerRunnerResult` 方法处理结果。
+                                     */
                                     if (jobManagerRunnerResult != null) {
                                         return handleJobManagerRunnerResult(
                                                 jobManagerRunnerResult, executionType);
                                     } else {
+                                        /**
+                                         * + 如果作业结果为空，则调用 `jobManagerRunnerFailed` 方法，并返回一个表示作业失败的 `CleanupJobState`。
+                                         */
                                         return CompletableFuture.completedFuture(
                                                 jobManagerRunnerFailed(
                                                         jobId, JobStatus.FAILED, throwable));
                                     }
                                 },
                                 getMainThreadExecutor())
+                        /**
+                         * 是为了将异步操作的结果合并到 `cleanupJobStateFuture` 中。
+                         */
                         .thenCompose(Function.identity());
-
+        /**
+         * 定义了一个 CompletableFuture<Void>，名为 jobTerminationFuture，它代表作业的终止操作。
+         */
         final CompletableFuture<Void> jobTerminationFuture =
                 cleanupJobStateFuture.thenCompose(
                         cleanupJobState ->
+                                /**
+                                 * 从ResourceCleaner中一处 jobId
+                                 */
                                 removeJob(jobId, cleanupJobState)
+                                        /**
+                                         * 方法用于处理 removeJob 方法可能抛出的异常。如果 removeJob 抛出异常，
+                                         * 调用 logCleanupErrorWarning 方法来记录警告信息。
+                                         */
                                         .exceptionally(
                                                 throwable ->
                                                         logCleanupErrorWarning(jobId, throwable)));
-
+        /**
+         * FutureUtils.handleUncaughtException 方法来注册一个异常处理器
+         */
         FutureUtils.handleUncaughtException(
+                /**
+                 * 当异常发生时，它会调用 fatalErrorHandler.onFatalError 方法来处理致命错误。
+                 */
                 jobTerminationFuture,
                 (thread, throwable) -> fatalErrorHandler.onFatalError(throwable));
+        /**
+         * 注册 jobTerminationFuture。这通常是为了跟踪作业的终止状态，以便在需要时能够查询或等待作业的终止。
+         */
         registerJobManagerRunnerTerminationFuture(jobId, jobTerminationFuture);
     }
 
@@ -838,20 +956,42 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                 jobManagerSharedServices.getIoExecutor());
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 取消一个特定的作业
+    */
     @Override
     public CompletableFuture<Acknowledge> cancelJob(JobID jobId, Time timeout) {
+        /**
+         * 获取与给定作业ID关联的作业管理器运行器
+         */
         Optional<JobManagerRunner> maybeJob = getJobManagerRunner(jobId);
-
+        /**
+         * 如果 maybeJob 存在（即 isPresent() 返回 true），则调用其 cancel 方法来取消作业，
+         * 并返回取消操作的 CompletableFuture。
+          */
         if (maybeJob.isPresent()) {
+            /** schedulerNG.cancel(); */
             return maybeJob.get().cancel(timeout);
         }
-
+        /**
+         * 如果作业管理器运行器不存在，代码将尝试从 executionGraphInfoStore中获取与作业ID关联的执行图信息。
+         */
         final ExecutionGraphInfo executionGraphInfo = executionGraphInfoStore.get(jobId);
         if (executionGraphInfo != null) {
             final JobStatus jobStatus = executionGraphInfo.getArchivedExecutionGraph().getState();
+            /**
+             * 如果找到了执行图信息，并且其状态是 CANCELED（即作业已被取消），
+             * 则立即返回一个已完成的 CompletableFuture，其中包含一个 Acknowledge 对象。
+             */
             if (jobStatus == JobStatus.CANCELED) {
                 return CompletableFuture.completedFuture(Acknowledge.get());
             } else {
+                /**
+                 * 如果作业状态不是 CANCELED，则返回一个异常完成的 CompletableFuture，
+                 * 其中包含一个 FlinkJobTerminatedWithoutCancellationException 异常，指示作业在没有被取消的情况下终止。
+                 */
                 return FutureUtils.completedExceptionally(
                         new FlinkJobTerminatedWithoutCancellationException(jobId, jobStatus));
             }
@@ -1148,26 +1288,46 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         }
         return FutureUtils.completedVoidFuture();
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 检查作业客户端的心跳是否仍然活跃，并根据心跳超时情况来取消作业
+    */
     private void checkJobClientAliveness() {
+        /** 设置或更新已经初始化的作业的心跳超时时间 */
         setClientHeartbeatTimeoutForInitializedJob();
-
+        /** 使用 System.currentTimeMillis() 获取当前的毫秒级时间戳。 */
         long currentTimestamp = System.currentTimeMillis();
+        /**
+         * 迭代器 iterator 遍历 jobClientExpiredTimestamp 映射。
+         */
         Iterator<Map.Entry<JobID, Long>> iterator = jobClientExpiredTimestamp.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<JobID, Long> entry = iterator.next();
+            /**
+             * 对于每个映射中的条目，代码首先获取作业ID和对应的心跳超时时间戳。
+             */
             JobID jobID = entry.getKey();
             long expiredTimestamp = entry.getValue();
-
+            /**
+             * 通过调用 getJobManagerRunner(jobID) 方法并检查返回的 Optional 是否为空，
+             * 来确定作业管理器是否仍然在运行。如果不在运行，则使用迭代器从映射中移除该条目。
+             */
             if (!getJobManagerRunner(jobID).isPresent()) {
                 iterator.remove();
             } else if (expiredTimestamp <= currentTimestamp) {
+                /**
+                 * 如果作业管理器仍然在运行，但心跳超时时间戳小于或等于当前时间戳，这意味着客户端的心跳已经超时
+                 */
                 log.warn(
                         "The heartbeat from the job client is timeout and cancel the job {}. "
                                 + "You can adjust the heartbeat interval "
                                 + "by 'client.heartbeat.interval' and the timeout "
                                 + "by 'client.heartbeat.timeout'",
                         jobID);
+                /**
+                 * 取消作业
+                 */
                 cancelJob(jobID, webTimeout);
             }
         }
@@ -1269,18 +1429,40 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册一个作业管理器运行器的终止 Future
+    */
     private void registerJobManagerRunnerTerminationFuture(
             JobID jobId, CompletableFuture<Void> jobManagerRunnerTerminationFuture) {
+        /**
+         * Preconditions.checkState 方法来确保当前 jobId 不在 jobManagerRunnerTerminationFutures 这个 Map 中。
+         * 这通常是为了避免重复注册相同的作业 ID。
+         */
         Preconditions.checkState(!jobManagerRunnerTerminationFutures.containsKey(jobId));
+        /**
+         * 将传入的 jobManagerRunnerTerminationFuture 存入 jobManagerRunnerTerminationFutures 这个 Map 中，以 jobId 作为键。
+         */
         jobManagerRunnerTerminationFutures.put(jobId, jobManagerRunnerTerminationFuture);
 
         // clean up the pending termination future
         jobManagerRunnerTerminationFuture.thenRunAsync(
                 () -> {
+                    /**
+                     * 首先从 jobManagerRunnerTerminationFutures 中移除当前作业的终止 Future。
+                     */
                     final CompletableFuture<Void> terminationFuture =
                             jobManagerRunnerTerminationFutures.remove(jobId);
 
                     //noinspection ObjectEquality
+                    /**
+                     * 它检查移除的 Future 是否为 null 或者是否与最初注册的 Future 相同。如果不同，则重新将其放入 Map 中。
+                     * 这里的逻辑可能用于处理一种特殊情况，即在 Future 完成前，可能有人尝试替换或者重置这个 Future。
+                     * 由于 Future 的完成状态是不可逆的，一旦完成就不能被重置，
+                     * 所以这段代码可能是一个防止并发修改 Map 的措施。
+                     * 如果两个 Future 不同，那么将原始的 Future 放回 Map 中可能是为了保持 Map 中 Future 的正确引用。
+                     */
                     if (terminationFuture != null
                             && terminationFuture != jobManagerRunnerTerminationFuture) {
                         jobManagerRunnerTerminationFutures.put(jobId, terminationFuture);
@@ -1577,11 +1759,22 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         }
         return optionalJobInformation;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 异步等待某个作业管理器（JobManager）终止的，并在其终止后执行特定的动作（action）
+    */
     private CompletableFuture<Void> waitForTerminatingJob(
             JobID jobId, JobGraph jobGraph, ThrowingConsumer<JobGraph, ?> action) {
+        /**
+         * CompletableFuture<Void> 类型的变量 jobManagerTerminationFuture，它代表了作业管理器的终止操作。
+         */
         final CompletableFuture<Void> jobManagerTerminationFuture =
                 getJobTerminationFuture(jobId)
+                        /**
+                         * 方法用于处理 Future 在执行过程中可能发生的异常。当 Future 完成且发生异常时，
+                         * 这个方法会接收异常作为参数，并允许你提供一个函数来处理这个异常
+                         */
                         .exceptionally(
                                 (Throwable throwable) -> {
                                     throw new CompletionException(
@@ -1591,19 +1784,41 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                                                             jobId),
                                                     throwable));
                                 });
-
+        /**
+         * 异步等待 jobManagerTerminationFuture 完成
+         */
         return FutureUtils.thenAcceptAsyncIfNotDone(
                 jobManagerTerminationFuture,
                 getMainThreadExecutor(),
                 FunctionUtils.uncheckedConsumer(
+                        /**
+                         * 首先从 jobManagerRunnerTerminationFutures 列表中移除当前作业的ID，
+                         * 为了清理状态或避免重复处理。然后，调用 action.accept(jobGraph)，
+                         */
                         (ignored) -> {
                             jobManagerRunnerTerminationFutures.remove(jobId);
+                            /**
+                             * 出发this::persistAndRunJob执行
+                             */
                             action.accept(jobGraph);
                         }));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @VisibleForTesting
     CompletableFuture<Void> getJobTerminationFuture(JobID jobId) {
+        /**
+         * Map<JobID, CompletableFuture<Void>> jobManagerRunnerTerminationFutures 是一个 Map 数据结构，
+         * 其键是 JobID 类型，值是 CompletableFuture<Void> 类型。这个 Map 用于存储所有作业管理器的终止 Future
+         */
+        /**
+         * getOrDefault 是 Map 接口中的一个方法，它尝试获取与给定键（在本例中是 jobId）关联的值。
+         * 如果 Map 中存在该键，则返回对应的值（即与 jobId 关联的 CompletableFuture<Void>）。
+         * 如果 Map 中不存在该键（即没有与 jobId 关联的 Future），则 getOrDefault 方法返回其第二个参数作为默认值。
+         */
         return jobManagerRunnerTerminationFutures.getOrDefault(
                 jobId, CompletableFuture.completedFuture(null));
     }
@@ -1621,20 +1836,47 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         return CompletableFuture.runAsync(() -> terminateJob(jobId), getMainThreadExecutor());
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为 JobGraph 中的作业顶点（JobVertex）应用并行度覆盖
+    */
     private void applyParallelismOverrides(JobGraph jobGraph) {
+        /**
+         * 创建一个新的 HashMap 来存储并行度覆盖信息。键是作业顶点的ID，值是对应的并行度值。
+         */
         Map<String, String> overrides = new HashMap<>();
+        /**
+         * pipeline.jobvertex-parallelism-overrides"
+         * 从两个地方获取并行度覆盖配置：全局配置 configuration 和作业图 jobGraph 的特定配置。
+         */
         overrides.putAll(configuration.get(PipelineOptions.PARALLELISM_OVERRIDES));
         overrides.putAll(jobGraph.getJobConfiguration().get(PipelineOptions.PARALLELISM_OVERRIDES));
+        /**
+         * 遍历作业顶点
+         */
         for (JobVertex vertex : jobGraph.getVertices()) {
+            /**
+             * 对于每个作业顶点，尝试从 overrides 映射中获取其并行度覆盖值。如果找到了覆盖值（即 override 不为 null）
+             */
             String override = overrides.get(vertex.getID().toHexString());
             if (override != null) {
+                /**
+                 * 首先获取当前作业顶点的并行度，然后将覆盖值从字符串转换为整数。
+                 */
                 int currentParallelism = vertex.getParallelism();
                 int overrideParallelism = Integer.parseInt(override);
+                /**
+                 * 记录一条日志，说明正在更改作业顶点的并行度。
+                 */
                 log.info(
                         "Changing job vertex {} parallelism from {} to {}",
                         vertex.getID(),
                         currentParallelism,
                         overrideParallelism);
+                /**
+                 * 使用 setParallelism 方法应用新的并行度覆盖值。
+                 */
                 vertex.setParallelism(overrideParallelism);
             }
         }

@@ -36,6 +36,11 @@ import java.util.Collection;
  * there exists a valid {@link ClassLoaderLease}. A {@link ClassLoaderLease} becomes invalid once it
  * gets released.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * LibraryCacheManager负责创建和管理用户代码类加载器。
+*/
 public interface LibraryCacheManager {
 
     /**
@@ -79,6 +84,11 @@ public interface LibraryCacheManager {
     }
 
     /** Lease which allows to signal when the user code class loader is no longer needed. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 允许在不再需要用户代码类加载器时发出信号
+    */
     interface ClassLoaderLease extends ClassLoaderHandle {
 
         /**

@@ -44,6 +44,11 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
 
 /** Factory for {@link SlotPoolService} and {@link SchedulerNG}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * SlotPoolService、SchedulerNG的工厂
+*/
 public interface SlotPoolServiceSchedulerFactory {
 
     /**

@@ -29,6 +29,11 @@ import org.apache.flink.util.AutoCloseableAsync;
 import java.util.concurrent.CompletableFuture;
 
 /** Interface for a runner which executes a {@link JobMaster}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于执行JobMaster的运行程序的接口
+*/
 public interface JobManagerRunner extends AutoCloseableAsync {
 
     /**

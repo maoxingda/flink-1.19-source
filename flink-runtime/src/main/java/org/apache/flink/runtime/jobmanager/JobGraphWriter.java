@@ -29,6 +29,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 /** Allows to store and remove job graphs. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 存储和删除作业图
+*/
 public interface JobGraphWriter extends LocallyCleanableResource, GloballyCleanableResource {
     /**
      * Adds the {@link JobGraph} instance.

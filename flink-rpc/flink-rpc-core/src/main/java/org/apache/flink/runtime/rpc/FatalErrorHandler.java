@@ -19,6 +19,11 @@
 package org.apache.flink.runtime.rpc;
 
 /** Handler for fatal errors. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 致命错误的处理程序。
+*/
 public interface FatalErrorHandler {
 
     /**

@@ -36,6 +36,11 @@ import java.util.Collection;
 import java.util.Optional;
 
 /** Service used by the {@link JobMaster} to manage a slot pool. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * JobMaster 用于管理Slot的服务。
+*/
 public interface SlotPoolService extends AutoCloseable {
 
     /**
