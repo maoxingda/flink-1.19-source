@@ -151,71 +151,96 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
     public static final String JOB_MANAGER_NAME = "jobmanager";
 
     // ------------------------------------------------------------------------
-
+   /** JobMaster 组件中需要的参数，RpcTimeout、slotRequestTimeout*/
     private final JobMasterConfiguration jobMasterConfiguration;
-
+    /** JobMaster的唯一资源ID,区分JobMaster服务 */
     private final ResourceID resourceId;
-
+    /** 当前提交Job对应的JobGraph，从dispatcher获取 */
     private final JobGraph jobGraph;
-
+    /** JobMaster中RPC通信的超时时间 */
     private final Time rpcTimeout;
 
+    /** 高可用服务，用来获取ResourceManagerLeaderRetriever */
     private final HighAvailabilityServices highAvailabilityServices;
-
+    /** 对象数据写入到BlobStore,比如TaskInformation进行持久化 */
     private final BlobWriter blobWriter;
-
+    /** 心跳服务，用来创建TaskManager、ResourceManager组件之间的心跳服务 */
     private final HeartbeatServices heartbeatServices;
-
+    /** JobMaster的唯一资源ID,区分JobMaster服务 */
     private final ScheduledExecutorService futureExecutor;
+
 
     private final Executor ioExecutor;
 
     private final OnCompletionActions jobCompletionActions;
-
+    /** 定义系统异常处理的Handle实现类 */
     private final FatalErrorHandler fatalErrorHandler;
-
+    /** JobGraph中对应的类加载器，用来加载和实例化用户编写的代码*/
     private final ClassLoader userCodeLoader;
-
+    /** 用于管理SlotPool的服务 */
     private final SlotPoolService slotPoolService;
-
+    /** 初始化时间 */
     private final long initializationTimestamp;
 
     private final boolean retrieveTaskManagerHostName;
 
     // --------- ResourceManager --------
-
+    /**
+     * 用于获取ResourceManagerLeader节点组件，然后通过resourceManagerLeaderRetriever进行监控
+     * ，当ResourceManagerLeader节点状态发生变化了,会触发ResourceManagerLeaderListener.notifyLeaderAddress
+     * 返回最新的Leader节点
+     */
     private final LeaderRetrievalService resourceManagerLeaderRetriever;
 
     // --------- TaskManagers --------
-
+    /**
+     * 注册在JobManager中的TaskExecutor信息。当新的TaskExecutor启动时候，通知JobLeaderService中的监听器。
+     * 将TaskExecutor注册在registeredTaskManagers
+     */
     private final Map<ResourceID, TaskManagerRegistration> registeredTaskManagers;
-
+    /**
+     * 注册管理任务的Shuffle信息，比如注册Job、卸载job
+     */
     private final ShuffleMaster<?> shuffleMaster;
 
     // --------- Scheduler --------
-
+    /**调度Flink作业接口 任务调度器*/
     private final SchedulerNG schedulerNG;
-
+    /**
+     * Job状态监听器，当job状态发生改变后的异步操作。比如job执行完毕了，从高可用存储中一处当前job信息
+     */
     private final JobManagerJobStatusListener jobStatusListener;
-
+    /**
+     * Job中产生的metric监控之变，通过MetricGroup管理和存储
+     */
     private final JobManagerJobMetricGroup jobManagerJobMetricGroup;
 
     // -------- Misc ---------
 
     private final Map<String, Object> accumulators;
-
+    /** 追踪Job中的Partition信息，startTrackingPartition、stopTrackingAndReleasePartitions
+     *  启动和释放Taskexecutor、ShuffleMaster中的Partition信息
+     */
     private final JobMasterPartitionTracker partitionTracker;
 
+    /** 跟进已部署执行的Execution */
     private final ExecutionDeploymentTracker executionDeploymentTracker;
+    /** 用于协调执行的部署状态的组件 */
     private final ExecutionDeploymentReconciler executionDeploymentReconciler;
+    /** Failure Enricher启用自定义逻辑，并以标签的形式将元数据附加到JobMaster中跟踪的每种类型的故障。 */
     private final Collection<FailureEnricher> failureEnrichers;
 
     // -------- Mutable fields ---------
-
+    /** ResourceManager的地址信息*/
     @Nullable private ResourceManagerAddress resourceManagerAddress;
-
+    /**
+     * 创建与ResourceManager的RPC链接，JobManager启动的时候会调用registerJobManager方法向
+     * ResourceManager注册
+     */
     @Nullable private ResourceManagerConnection resourceManagerConnection;
-
+    /**
+     * 维护JobManager与ResourceManager之间的链接信息，内部包括ResourceManagerGateway、ResourceID
+     */
     @Nullable private EstablishedResourceManagerConnection establishedResourceManagerConnection;
 
     private HeartbeatManager<TaskExecutorToJobManagerHeartbeatPayload, AllocatedSlotReport>
@@ -1501,7 +1526,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
      * 监听ResourceManagerLeader leader变化会处罚notifyLeaderAddress
-     * 第一次也会处罚执行
+     * 第一次也会处罚执行，
     */
     private class ResourceManagerLeaderListener implements LeaderRetrievalListener {
 

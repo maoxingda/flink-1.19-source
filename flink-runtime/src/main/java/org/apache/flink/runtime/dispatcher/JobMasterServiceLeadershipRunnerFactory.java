@@ -68,23 +68,27 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
             long initializationTimestamp)
             throws Exception {
         /**
-         * taskVertices.size()
          * 如果没有顶点，说明作业是空的，方法将抛出异常
+         * 1.taskVertices.size() 小于0 则抛出异常
          */
         checkArgument(jobGraph.getNumberOfVertices() > 0, "The given job is empty");
 
         /**
-         * 从 configuration 中解析 JobMasterConfiguration，这通常包含作业管理器的特定配置
-         * 里面更多的是超时时间
+         * 从 configuration 中解析 JobMasterConfiguration，
+         * 这通常包含作业管理器的特定配置里面更多的是超时时间
+         * 服务与DefaultJobMasterServiceFactory
          */
         final JobMasterConfiguration jobMasterConfiguration =
                 JobMasterConfiguration.fromConfiguration(configuration);
         /**
-         * 从 highAvailabilityServices 中获取 JobResultStore 用于存储作业结果
+         * 从 highAvailabilityServices 中获取 JobResultStore对象 用于存储作业结果
+         * 服务与DefaultJobMasterServiceFactory
          */
         final JobResultStore jobResultStore = highAvailabilityServices.getJobResultStore();
         /**
-         * 从 highAvailabilityServices 中获取 JobManagerLeaderElection，进行作业管理器的领导者选举。
+         * 从 highAvailabilityServices 中获取 JobManagerLeaderElection(StandaloneLeaderElection)，进行作业管理器的领导者选举。
+         * LeaderElection.startLeaderElection进行选举(JobMasterServiceLeadershipRunner)
+         * 服务与DefaultJobMasterServiceFactory
          */
         final LeaderElection jobManagerLeaderElection =
                 highAvailabilityServices.getJobManagerLeaderElection(jobGraph.getJobID());
@@ -94,6 +98,7 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
          * SlotPoolServiceSchedulerFactory 是 SlotPoolService、SchedulerNG的工厂
          * SlotPoolService：JobMaster 用于管理Slot的服务。
          * SchedulerNG：用于调度Flink作业的接口。
+         * 服务与DefaultJobMasterServiceFactory
          */
         final SlotPoolServiceSchedulerFactory slotPoolServiceSchedulerFactory =
                 DefaultSlotPoolServiceSchedulerFactory.fromConfiguration(
@@ -133,6 +138,7 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
         /**
          * 创建了一个 DefaultJobMasterServiceFactory 实例，该工厂用于创建 JobMasterService 对象。
          * JobMasterService 是作业管理器的一个核心组件，它负责协调和管理作业的执行。
+         * 创建JobMaster(JobMasterService)使用到该工厂类
          */
         final DefaultJobMasterServiceFactory jobMasterServiceFactory =
                 new DefaultJobMasterServiceFactory(
@@ -152,6 +158,7 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
         /**
          * 创建了一个 DefaultJobMasterServiceProcessFactory 实例，它用于创建 JobMasterServiceProcess 对象。
          * JobMasterServiceProcess 封装了作业主服务的执行逻辑，并提供了对外部事件的响应。
+         * 创建DefaultJobMasterServiceProcess是使用到了该工厂类
          */
         final DefaultJobMasterServiceProcessFactory jobMasterServiceProcessFactory =
                 new DefaultJobMasterServiceProcessFactory(

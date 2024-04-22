@@ -27,6 +27,12 @@ import org.apache.flink.util.SerializedValue;
 import javax.annotation.Nullable;
 
 /** RPC Gateway interface for messages to the CheckpointCoordinator. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * Checkpoint相关的网关接口
+ * Task执行过程中向CheckpointCoordinator汇报当前Task的Checkpoint的执行情况
+*/
 public interface CheckpointCoordinatorGateway extends RpcGateway {
 
     void acknowledgeCheckpoint(

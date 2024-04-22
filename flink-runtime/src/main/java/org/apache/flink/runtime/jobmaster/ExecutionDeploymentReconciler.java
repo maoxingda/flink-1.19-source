@@ -24,6 +24,11 @@ import org.apache.flink.runtime.taskexecutor.ExecutionDeploymentReport;
 import java.util.Map;
 
 /** Component for reconciling the deployment state of executions. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于协调执行的部署状态的组件
+*/
 public interface ExecutionDeploymentReconciler {
 
     /** Factory for {@link ExecutionDeploymentReconciler}. */

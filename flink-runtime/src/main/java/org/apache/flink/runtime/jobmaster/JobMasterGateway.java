@@ -72,6 +72,11 @@ public interface JobMasterGateway
      * @param timeout of this operation
      * @return Future acknowledge of the operation
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 取消当前执行的作业。
+    */
     CompletableFuture<Acknowledge> cancel(@RpcTimeout Time timeout);
 
     /**
@@ -80,6 +85,11 @@ public interface JobMasterGateway
      * @param taskExecutionState New task execution state for a given task
      * @return Future flag of the task execution state update result
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 更新给定任务的任务执行状态。
+    */
     CompletableFuture<Acknowledge> updateTaskExecutionState(
             final TaskExecutionState taskExecutionState);
 

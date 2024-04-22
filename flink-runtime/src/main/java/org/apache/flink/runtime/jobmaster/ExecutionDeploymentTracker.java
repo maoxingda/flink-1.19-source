@@ -23,6 +23,11 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import java.util.Map;
 
 /** A tracker for deployed executions. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 跟进已部署执行的Execution
+*/
 public interface ExecutionDeploymentTracker {
 
     /**

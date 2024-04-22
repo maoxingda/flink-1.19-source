@@ -33,6 +33,11 @@ import java.util.concurrent.Executor;
  * Failure Enricher enabling custom logic and attaching metadata in the form of labels to each type
  * of failure as tracked in the JobMaster.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * Failure Enricher启用自定义逻辑，并以标签的形式将元数据附加到JobMaster中跟踪的每种类型的故障。
+*/
 @Experimental
 public interface FailureEnricher {
 

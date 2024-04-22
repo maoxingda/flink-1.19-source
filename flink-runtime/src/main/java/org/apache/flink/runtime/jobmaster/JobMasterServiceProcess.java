@@ -28,6 +28,11 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /** JobMasterServiceProcess is responsible for running a {@link JobMasterService}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * JobMasterServiceProcess负责运行 JobMasterService。
+*/
 public interface JobMasterServiceProcess extends AutoCloseableAsync {
 
     static JobMasterServiceProcess waitingForLeadership() {

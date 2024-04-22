@@ -43,6 +43,11 @@ import static org.apache.flink.util.Preconditions.checkState;
  * Delegate class responsible for checkpoints cleaning and counting the number of checkpoints yet to
  * clean.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 负责检查点清洁和计算尚未清洁的检查点数量的代表级。
+*/
 @ThreadSafe
 public class CheckpointsCleaner implements Serializable, AutoCloseableAsync {
     private static final Logger LOG = LoggerFactory.getLogger(CheckpointsCleaner.class);

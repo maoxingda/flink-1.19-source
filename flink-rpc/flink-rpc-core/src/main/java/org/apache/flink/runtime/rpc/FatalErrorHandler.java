@@ -34,5 +34,10 @@ public interface FatalErrorHandler {
      *
      * @param exception cause
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 发生致命错误时被调用。
+    */
     void onFatalError(Throwable exception);
 }

@@ -210,8 +210,8 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
 
     /** Enum to distinguish between initial job submission and re-submission for recovery. */
     protected enum ExecutionType {
-        SUBMISSION,
-        RECOVERY
+        SUBMISSION,//作业提交
+        RECOVERY //作业回复
     }
 
     public Dispatcher(
@@ -436,7 +436,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                     jobID,
                     initialClientHeartbeatTimeout);
             /**
-             * 将作业ID和对应的心跳超时时间存储到一个映射（很可能是 Map<JobID, Long>）中，以便后续使用。
+             * 将作业ID和对应的心跳超时时间存储到一个映射（ Map<JobID, Long>）中，以便后续使用。
              * Map<JobID, Long> uninitializedJobClientHeartbeatTimeout = new HashMap<>();
              */
             uninitializedJobClientHeartbeatTimeout.put(jobID, initialClientHeartbeatTimeout);
@@ -536,11 +536,11 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     *
+     * 基于各种情况进行校验，在符合条件的情况提交job
     */
     @Override
     public CompletableFuture<Acknowledge> submitJob(JobGraph jobGraph, Time timeout) {
-        /** 从传入的jobGraph中获取作业的唯一标识符jobID。 */
+        /** 从传入的jobGraph中获取作业的唯一标识符jobID。UUID */
         final JobID jobID = jobGraph.getJobID();
         log.info("Received JobGraph submission '{}' ({}).", jobGraph.getName(), jobID);
         /**
@@ -555,7 +555,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                         isTerminated -> {
                             /**
                              * 作业已经处于全局终止状态，则记录一条警告级别的日志，并返回一个异常完成的CompletableFuture，
-                             * 这个异常是DuplicateJobSubmissionException的一个实例，表示尝试提交一个已经全局终止的作业。
+                             * 如果JobId对应的状态是终止状态，则打印警告日志，将异步变成结果封装为DuplicateJobSubmissionException异常。
                              */
                             if (isTerminated) {
                                 log.warn(
@@ -583,6 +583,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                                         DuplicateJobSubmissionException.of(jobID));
                             /**
                              * 如果jobGraph的部分顶点（vertices）配置了资源，但系统当前不支持这种情况，
+                             * 一个顶点有已配置的资源，并且之前存在资源未知的顶点，方法就会返回true
                              * 则创建一个JobSubmissionException异常，并通过FutureUtils.completedExceptionally方法
                              * 返回一个异常完成的CompletableFuture。
                              */
@@ -631,15 +632,34 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
     private CompletableFuture<Boolean> isInGloballyTerminalState(JobID jobId) {
         return jobResultStore.hasJobResultEntryAsync(jobId);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 一个顶点有已配置的资源，并且之前存在资源未知的顶点，方法就会返回true
+    */
     private boolean isPartialResourceConfigured(JobGraph jobGraph) {
+        /**
+         * 定义hasVerticesWithUnknownResource变量用于追踪是否存在资源未知的顶点
+         */
         boolean hasVerticesWithUnknownResource = false;
+        /**
+         * 定义hasVerticesWithUnknownResource资源已配置的顶点
+         */
         boolean hasVerticesWithConfiguredResource = false;
-
+        /**
+         * 遍历作业图中的每一个顶点（jobVertex）
+         */
         for (JobVertex jobVertex : jobGraph.getVertices()) {
+            /**
+             * 对于每一个顶点，检查其最小资源要求（getMinResources()）。如果返回的资源规格是UNKNOWN，
+             * 则将hasVerticesWithUnknownResource设置为true。
+             */
             if (jobVertex.getMinResources() == ResourceSpec.UNKNOWN) {
                 hasVerticesWithUnknownResource = true;
             } else {
+                /**
+                 * 如果返回的资源规格不是UNKNOWN，则将hasVerticesWithConfiguredResource设置为true。
+                 */
                 hasVerticesWithConfiguredResource = true;
             }
 
@@ -650,7 +670,11 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
 
         return false;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 持久化运行Job,并对运行中的各种情况进行异步处理
+    */ 
     private CompletableFuture<Acknowledge> internalSubmitJob(JobGraph jobGraph) {
         /**
          * 读取pipeline.jobvertex-parallelism-overrides配置
@@ -672,7 +696,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         return waitForTerminatingJob(jobGraph.getJobID(), jobGraph, this::persistAndRunJob)
                 /**
                  * 用于处理作业完成或失败的情况。如果作业成功完成，ignored 参数将包含结果；如果作业失败，throwable 将包含异常。
-                 * handleTermination 方法用于处理这些完成或失败的情况。
+                 * handleTermination 方法用于处理这些完成或失败的情况，清理资源
                  */
                 .handle((ignored, throwable) -> handleTermination(jobGraph.getJobID(), throwable))
                 /**
@@ -681,7 +705,8 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                 .thenCompose(Function.identity())
                 /**
                  * CompletableFuture 完成时执行一些清理操作。在这里，
-                 * 它从 submittedAndWaitingTerminationJobIDs 列表中移除已完成（无论成功还是失败）的作业的ID。
+                 * 它从 Set<JobID> submittedAndWaitingTerminationJobIDs
+                 * 列表中移除已完成（无论成功还是失败）的作业的ID。
                  */
                 .whenComplete(
                         (ignored, throwable) ->
@@ -691,7 +716,13 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
 
     private CompletableFuture<Acknowledge> handleTermination(
             JobID jobId, @Nullable Throwable terminationThrowable) {
+        /**
+         * 首先，它检查terminationThrowable是否为null。如果terminationThrowable不为null，说明作业提交失败，并有一个异常与之关联。
+         */
         if (terminationThrowable != null) {
+            /**
+             * 如果terminationThrowable不为null，则调用globalResourceCleaner.cleanupAsync(jobId)来异步清理与指定作业ID关联的资源。
+             */
             return globalResourceCleaner
                     .cleanupAsync(jobId)
                     .handleAsync(
@@ -729,6 +760,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         jobGraphWriter.putJobGraph(jobGraph);
         /**
          * 设置JobGraph超时时间，内部有定时任务去判断是否超时
+         * expiredTimestamp <= currentTimestamp
          */
         initJobClientExpiredTime(jobGraph);
         /**
@@ -746,6 +778,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         /**
          * 确保作业管理器运行器注册表（jobManagerRunnerRegistry）中尚未注册与给定 JobGraph 的作业ID关联的运行器。
          * 如果已经注册，则会抛出异常。
+         * 总结：检查jobId是否已经注册，如果注册了则抛出异常
          */
         Preconditions.checkState(!jobManagerRunnerRegistry.isRegistered(jobGraph.getJobID()));
         /**
@@ -796,13 +829,10 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
 
         final CompletableFuture<CleanupJobState> cleanupJobStateFuture =
                 /**
-                 * 获取一个 `CompletableFuture`，它代表作业的结果。
+                 * 获取jobManagerRunner(CompletableFuture) 它代表jobManagerRunner启动结果。
                  */
                 jobManagerRunner
                         .getResultFuture()
-                        /**
-                         * 异步处理这个 `CompletableFuture` 的结果。当作业完成时，它会检查作业是否仍在注册表中，并根据作业的结果或异常进行相应的处理。
-                         */
                         .handleAsync(
                                 (jobManagerRunnerResult, throwable) -> {
                                     /** 检查作业是否仍在 jobManagerRunnerRegistry 中注册
@@ -821,13 +851,17 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                                                 jobManagerRunnerResult, executionType);
                                     } else {
                                         /**
-                                         * + 如果作业结果为空，则调用 `jobManagerRunnerFailed` 方法，并返回一个表示作业失败的 `CleanupJobState`。
+                                         * + 如果作业结果为空，则调用 `jobManagerRunnerFailed` 方法，
+                                         * 并返回一个表示作业失败的 `CleanupJobState`。
+                                         * 总结：如果作业结果为空，创建已经完成了的 CompletableFuture 实例
+                                         * 并设置值为jobManagerRunnerFailed
                                          */
                                         return CompletableFuture.completedFuture(
                                                 jobManagerRunnerFailed(
                                                         jobId, JobStatus.FAILED, throwable));
                                     }
                                 },
+                                /** 主线程中执行 */
                                 getMainThreadExecutor())
                         /**
                          * 是为了将异步操作的结果合并到 `cleanupJobStateFuture` 中。
@@ -877,9 +911,18 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                 cleanupError);
         return null;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理jobManagerRunnerResult结果
+    */
     private CompletableFuture<CleanupJobState> handleJobManagerRunnerResult(
             JobManagerRunnerResult jobManagerRunnerResult, ExecutionType executionType) {
+        /**
+         * 1.jobManagerRunnerResult是否表示初始化失败、并且executionType是否为RECOVERY
+         * 如果jobManagerRunner初始化失败、并且作业执行类型为RECOVERY恢复
+         *创建已经完成了的 CompletableFuture 实例并设置值为jobManagerRunnerFailed
+         */
         if (jobManagerRunnerResult.isInitializationFailure()
                 && executionType == ExecutionType.RECOVERY) {
             // fail fatally to make the Dispatcher fail-over and recover all jobs once more (which
@@ -890,6 +933,9 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                             JobStatus.INITIALIZING,
                             jobManagerRunnerResult.getInitializationFailure()));
         }
+        /**
+         * 获取ExecutionGraphInfo,处理作业达到终端状态的情况
+         */
         return jobReachedTerminalState(jobManagerRunnerResult.getExecutionGraphInfo());
     }
 
@@ -1326,7 +1372,8 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                                 + "by 'client.heartbeat.timeout'",
                         jobID);
                 /**
-                 * 取消作业
+                 * 取消作业、executionGraph
+                 * jobMasterGateway.cancel 取消请求的slot等
                  */
                 cancelJob(jobID, webTimeout);
             }
@@ -1533,13 +1580,23 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
     protected void onFatalError(Throwable throwable) {
         fatalErrorHandler.onFatalError(throwable);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 归档 executionGraphInfo
+    */
     @VisibleForTesting
     protected CompletableFuture<CleanupJobState> jobReachedTerminalState(
             ExecutionGraphInfo executionGraphInfo) {
+        /**
+         * 存储ExecutionGraphInfo
+         */
         final ArchivedExecutionGraph archivedExecutionGraph =
                 executionGraphInfo.getArchivedExecutionGraph();
         final JobStatus terminalJobStatus = archivedExecutionGraph.getState();
+        /**
+         * 校验JobStatus状态NON_TERMINAL(未终止)状态。则抛出异常。
+         */
         Preconditions.checkArgument(
                 terminalJobStatus.isTerminalState(),
                 "Job %s is in state %s which is not terminal.",
@@ -1549,9 +1606,17 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         // the failureInfo contains the reason for why job was failed/suspended, but for
         // finished/canceled jobs it may contain the last cause of a restart (if there were any)
         // for finished/canceled jobs we don't want to print it because it is misleading
+        /**
+         * 判断JobStatus状态
+         * 1.作业已挂起，这意味着它已停止，但尚未从潜在的HA作业存储中删除
+         * 2.作业失败，出现不可恢复的任务失败
+         */
         final boolean isFailureInfoRelatedToJobTermination =
                 terminalJobStatus == JobStatus.SUSPENDED || terminalJobStatus == JobStatus.FAILED;
-
+        /**
+         * 如果archivedExecutionGraph 存在失败信息，并且作业状态是作业已挂起、或者失败
+         * 则打印archivedExecutionGraph错误日志和Job状态
+         */
         if (archivedExecutionGraph.getFailureInfo() != null
                 && isFailureInfoRelatedToJobTermination) {
             log.info(
@@ -1560,14 +1625,25 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                     terminalJobStatus,
                     archivedExecutionGraph.getFailureInfo().getExceptionAsString().trim());
         } else {
+            /**
+             * 打印普通状态
+             * 方便用户查看
+             */
             log.info(
                     "Job {} reached terminal state {}.",
                     archivedExecutionGraph.getJobID(),
                     terminalJobStatus);
         }
-
+        /**
+         * 调用writeToExecutionGraphInfoStore方法将执行图信息写入存储。
+         */
         writeToExecutionGraphInfoStore(executionGraphInfo);
-
+        /**
+         * 作业的状态不是全局终端状态
+         * 结束状态包括（失败、取消、完成）
+         * 返回一个已经完成的CompletableFuture，并将异步变成结果设置为，
+         * CleanupJobState状态
+         */
         if (!terminalJobStatus.isGloballyTerminalState()) {
             return CompletableFuture.completedFuture(
                     CleanupJobState.localCleanup(terminalJobStatus));
@@ -1575,21 +1651,36 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
 
         // do not create an archive for suspended jobs, as this would eventually lead to
         // multiple archive attempts which we currently do not support
+        /**
+         * 这行代码调用archiveExecutionGraphToHistoryServer方法，
+         * 将executionGraphInfo作为参数，以异步方式（返回一个CompletableFuture<Acknowledge>）
+         * 将执行图信息归档到历史服务器。
+         */
         CompletableFuture<Acknowledge> archiveFuture =
                 archiveExecutionGraphToHistoryServer(executionGraphInfo);
 
+        /** 注册全局终止的作业到作业结果存储: */
         return archiveFuture.thenCompose(
                 ignored -> registerGloballyTerminatedJobInJobResultStore(executionGraphInfo));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 负责将一个全局终止的作业注册到作业结果存储中
+    */
     private CompletableFuture<CleanupJobState> registerGloballyTerminatedJobInJobResultStore(
             ExecutionGraphInfo executionGraphInfo) {
+        /** 获取JobId */
         final JobID jobId = executionGraphInfo.getJobId();
-
+        /** 获取ArchivedExecutionGraph 归档对象*/
         final AccessExecutionGraph archivedExecutionGraph =
                 executionGraphInfo.getArchivedExecutionGraph();
-
+        /** 获取当前ExecutionGraph 的状态*/
         final JobStatus terminalJobStatus = archivedExecutionGraph.getState();
+        /**
+         * 并检查这个状态是否是全局终止状态。如果不是，则抛出异常。
+         * 状态：已完成、取消、失败。
+         */
         Preconditions.checkArgument(
                 terminalJobStatus.isGloballyTerminalState(),
                 "Job %s is in state %s which is not globally terminal.",
@@ -1597,13 +1688,29 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                 terminalJobStatus);
 
         return jobResultStore
+                /**
+                 * 判断jobResultStore中是否存在jobId返回值 CompletableFuture<Boolean>
+                 */
                 .hasCleanJobResultEntryAsync(jobId)
                 .thenCompose(
                         hasCleanJobResultEntry ->
+                                /**
+                                 * 如果存在jobId 则返回一个Void的Future
+                                 * 否则创建脏目录写入
+                                 */
                                 createDirtyJobResultEntryIfMissingAsync(
                                         archivedExecutionGraph, hasCleanJobResultEntry))
+                /**
+                 * 使用`handleAsync`处理之前的异步操作的结果或可能抛出的异常
+                 */
                 .handleAsync(
+                        /**
+                         * 判断之前异步操作是否异常，如果异常则处理异常
+                         */
                         (ignored, error) -> {
+                            /**
+                             * 如果出现异常，调用fatalErrorHandler来处理致命
+                             */
                             if (error != null) {
                                 fatalErrorHandler.onFatalError(
                                         new FlinkException(
@@ -1612,6 +1719,9 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                                                         executionGraphInfo.getJobId()),
                                                 error));
                             }
+                            /**
+                             * 无论是否出现异常，最终都会返回一个`CleanupJobState`，
+                             */
                             return CleanupJobState.globalCleanup(terminalJobStatus);
                         },
                         getMainThreadExecutor());
@@ -1626,17 +1736,32 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
      * @param hasCleanJobResultEntry The decision the dirty entry check is based on.
      * @return {@code CompletableFuture} that completes as soon as the entry exists.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回藏条目
+    */
     private CompletableFuture<Void> createDirtyJobResultEntryIfMissingAsync(
             AccessExecutionGraph executionGraph, boolean hasCleanJobResultEntry) {
+        /** 获取JobId */
         final JobID jobId = executionGraph.getJobID();
+        /**
+         *
+         */
         if (hasCleanJobResultEntry) {
             log.warn("Job {} is already marked as clean but clean up was triggered again.", jobId);
+            /** 返回一个已经完成的Future对象，这个对象不返回任何结果（即它的泛型类型为Void） */
             return FutureUtils.completedVoidFuture();
         } else {
             return jobResultStore
+                    /** 判断藏目录中是否已经存在JobId*/
                     .hasDirtyJobResultEntryAsync(jobId)
                     .thenCompose(
                             hasDirtyJobResultEntry ->
+                                    /**
+                                     * 如果存在则返回一个已经完成的Void的Future对象
+                                     * 否则创建脏目录写入
+                                     */
                                     createDirtyJobResultEntryAsync(
                                             executionGraph, hasDirtyJobResultEntry));
         }
@@ -1650,12 +1775,18 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
      * @param hasDirtyJobResultEntry The decision the entry creation is based on.
      * @return {@code CompletableFuture} that completes as soon as the entry exists.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个脏目录，记录标志
+    */
     private CompletableFuture<Void> createDirtyJobResultEntryAsync(
             AccessExecutionGraph executionGraph, boolean hasDirtyJobResultEntry) {
         if (hasDirtyJobResultEntry) {
+            /** 返回一个已经完成的Future对象，这个对象不返回任何结果（即它的泛型类型为Void） */
             return FutureUtils.completedVoidFuture();
         }
-
+        /** 创建一个脏目录，记录标志 */
         return jobResultStore.createDirtyResultAsync(
                 new JobResultEntry(JobResult.createFrom(executionGraph)));
     }

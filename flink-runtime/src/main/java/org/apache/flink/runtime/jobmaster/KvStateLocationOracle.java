@@ -30,6 +30,11 @@ import java.util.concurrent.CompletableFuture;
  * location requests, the {@link TaskExecutor} have to register and unregister their respective
  * key-value states at the oracle.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 根据状态key查询特定Keyed State的位置信息
+*/
 public interface KvStateLocationOracle {
 
     /**

@@ -27,6 +27,11 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 
 /** {@code JobManagerRunner} collects running jobs represented by {@link JobManagerRunner}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用来注册维护JobManagerRunner、内部持有Map<JobID, JobManagerRunner> jobManagerRunners对象
+*/
 public interface JobManagerRunnerRegistry extends LocallyCleanableResource {
 
     /**

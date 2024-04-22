@@ -453,6 +453,11 @@ public abstract class RpcEndpoint implements RpcGateway, AutoCloseableAsync {
     // ------------------------------------------------------------------------
 
     /** Executor which executes runnables in the main thread context. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 在主线程上下文中执行可运行文件的执行器
+    */
     protected static class MainThreadExecutor implements ComponentMainThreadExecutor, Closeable {
         private static final Logger log = LoggerFactory.getLogger(MainThreadExecutor.class);
 

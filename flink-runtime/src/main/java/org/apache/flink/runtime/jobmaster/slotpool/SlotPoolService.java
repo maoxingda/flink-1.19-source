@@ -39,7 +39,7 @@ import java.util.Optional;
 /**
  * @授课老师(微信): yi_locus
  * email: 156184212@qq.com
- * JobMaster 用于管理Slot的服务。
+ * JobMaster用于管理SlotPool的服务。
 */
 public interface SlotPoolService extends AutoCloseable {
 

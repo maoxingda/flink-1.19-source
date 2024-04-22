@@ -23,9 +23,7 @@ public class SocketWordCountStreamGraph {
          * 创建StreamExecutionEnvironment
          */
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        // 指定Flink集群
-        String jobManagerAddress = "localhost:8081";
-        //env.registerCachedFile("file:///H:/a.txt","cache");
+        env.registerCachedFile("./a_conf/a.txt","cache");
         /** 设置检查点的时间间隔 */
         env.enableCheckpointing(5000);
         /** 设置检查点路径*/

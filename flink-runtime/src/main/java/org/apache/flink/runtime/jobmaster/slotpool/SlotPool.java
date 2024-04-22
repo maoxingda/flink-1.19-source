@@ -40,12 +40,23 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /** The Interface of a slot pool that manages slots. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 管理Slots的接口
+ * 在JobMaster中会通过SlotPool组件管理JobManager中的Slot计算资源。
+ * 每个JobMaster都会创建一个SlotPool实例。
+*/
 public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
 
     // ------------------------------------------------------------------------
     //  lifecycle
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动SlotPool,启动后JobManater会通过SlotPool向ResourceManager申请执行作业需要的资源
+    */
     void start(
             JobMasterId jobMasterId,
             String newJobManagerAddress,
@@ -106,6 +117,13 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      * @return A collection of accepted slot offers. The remaining slot offers are implicitly
      *     rejected.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 向ResourceManager成功申请资源后，ResourceManager会调用TaskExecutor的RPC 网关通信TaskExecutor提供申请到的Slot资源
+     * TaskExecutor接收到来自ResourceManager的slot分配请求后，调用offerSlots，向JobMaster提供已分配好的Slot资源信息
+     * offerSlot内部会将消息转换为AllocatedSlot对向，存储在allocatedSlots数据集中，在Job启动Task时，会从Slot数据集中获取slot信息
+    */
     Collection<SlotOffer> offerSlots(
             TaskManagerLocation taskManagerLocation,
             TaskManagerGateway taskManagerGateway,
@@ -157,6 +175,12 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      *     requested slot
      * @param timeout timeout for the allocation procedure
      * @return a newly allocated slot that was previously not available.
+     */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * JobManager成功申请到Slot计算资源后，开始调试和执行任务中的Task,此时TaskManager中的调度器会使用
+     * SlotPool申请到的计算资源，
      */
     default CompletableFuture<PhysicalSlot> requestNewAllocatedSlot(
             SlotRequestId slotRequestId, ResourceProfile resourceProfile, @Nullable Time timeout) {

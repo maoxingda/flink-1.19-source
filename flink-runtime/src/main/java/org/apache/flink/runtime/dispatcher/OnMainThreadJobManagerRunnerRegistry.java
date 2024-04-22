@@ -35,6 +35,11 @@ import java.util.concurrent.Executor;
  *
  * @see ComponentMainThreadExecutor
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 保护传递，其方式是只允许在组件的主线程上执行修改方法。
+*/
 public class OnMainThreadJobManagerRunnerRegistry
         implements JobManagerRunnerRegistry, WrappingProxy<JobManagerRunnerRegistry> {
 
