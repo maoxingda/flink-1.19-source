@@ -155,16 +155,25 @@ public class FileExecutionGraphInfoStore implements ExecutionGraphInfoStore {
             return null;
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将executionGraphInfo写入磁盘
+    */
     @Override
     public void put(ExecutionGraphInfo executionGraphInfo) throws IOException {
+        /** 获取JobId */
         final JobID jobId = executionGraphInfo.getJobId();
-
+        /** 获取ArchivedExecutionGraph */
         final ArchivedExecutionGraph archivedExecutionGraph =
                 executionGraphInfo.getArchivedExecutionGraph();
+        /** 获取JobStatus*/
         final JobStatus jobStatus = archivedExecutionGraph.getState();
+        /** 获取JobName */
         final String jobName = archivedExecutionGraph.getJobName();
-
+        /**
+         * 判断状态是否可以保存，如果不可以保存抛出异常
+         */
         Preconditions.checkArgument(
                 jobStatus.isTerminalState(),
                 "The job "
@@ -174,7 +183,7 @@ public class FileExecutionGraphInfoStore implements ExecutionGraphInfoStore {
                         + ") is not in a terminal state. Instead it is in state "
                         + jobStatus
                         + '.');
-
+        /**如果是位置状态，一样抛出异常 */
         switch (jobStatus) {
             case FINISHED:
                 numFinishedJobs++;
@@ -200,11 +209,23 @@ public class FileExecutionGraphInfoStore implements ExecutionGraphInfoStore {
         }
 
         // write the ArchivedExecutionGraph to disk
+        /** 将ArchivedExecutionGraph写入磁盘 */
         storeExecutionGraphInfo(executionGraphInfo);
-
+        /**
+         * 基于构建JobDetails基于archivedExecutionGraph（内部会用到ExecutionGraph中的结构）
+         */
         final JobDetails detailsForJob = JobDetails.createDetailsForJob(archivedExecutionGraph);
-
+        /**
+         * JobDetails放入缓存
+         * Cache<JobID, JobDetails> jobDetailsCache
+         *  key=JobId,value = JobDetails
+         */
         jobDetailsCache.put(jobId, detailsForJob);
+        /**
+         *
+         * LoadingCache<JobID, ExecutionGraphInfo> executionGraphInfoCache 放入缓存
+         * key=jobId,value=executionGraphInfo
+         */
         executionGraphInfoCache.put(jobId, executionGraphInfo);
     }
 
@@ -274,6 +295,11 @@ public class FileExecutionGraphInfoStore implements ExecutionGraphInfoStore {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将executionGraphInfo信息写入磁盘
+    */
     private void storeExecutionGraphInfo(ExecutionGraphInfo executionGraphInfo) throws IOException {
         final File archivedExecutionGraphFile =
                 getExecutionGraphFile(executionGraphInfo.getJobId());

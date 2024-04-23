@@ -96,6 +96,12 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
     @GuardedBy("lock")
     private State state = State.RUNNING;
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 定义一个已经完成的CompletableFuture<Void> 对象
+     * 返回值为null
+    */
     @GuardedBy("lock")
     private CompletableFuture<Void> sequentialOperation = FutureUtils.completedVoidFuture();
 
@@ -247,6 +253,10 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
      * 启动JobMasterService
+     * 记住uuid是在创建StandaloneLeaderElection的时候创建的
+     * 在StandaloneLeaderElection.startLeaderElection内部调用
+     * this.leaderContender.grantLeadership(leaderSessionID)
+     * 传递给JobMasterServiceLeadershipRunner，也就是该方法中的leaderSessionID
     */
     @Override
     public void grantLeadership(UUID leaderSessionID) {
@@ -262,30 +272,41 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
     */
     @GuardedBy("lock")
     private void startJobMasterServiceProcessAsync(UUID leaderSessionId) {
+        /**已完成的CompletableFuture<Void> 返回值为null */
         sequentialOperation =
-                /**
-                 * thenCompose 是一个方法，它接收一个函数作为参数，该函数返回另一个 CompletableFuture
-                 * thenCompose 会等待第一个 CompletableFuture 完成，然后执行提供的函数，并返回新 CompletableFuture 的结果
-                 */
+                /**  它用于链接两个异步操作，其中第二个操作依赖于第一个操作的结果。 */
                 sequentialOperation.thenCompose(
                         unused ->
+                                /**
+                                 * 如果Leader有效则执行第一个表达式
+                                 * 如果Leader无效则执行第二个，创建要给异常完成的Future
+                                 */
                                 supplyAsyncIfValidLeader(
                                                 leaderSessionId,
                                                 () ->
                                                         /**
                                                          * 调用 jobResultStore.hasJobResultEntryAsync(getJobID())。
-                                                         * 这个表达式似乎用于异步检查作业结果存储中是否存在特定作业的结果。
+                                                         * 这个表达式用于异步检查作业结果存储中是否存在特定作业的结果。
+                                                         * jobResultStore什么时候创建的？
+                                                         * 构建JobMasterRunner实体对象的时候创建的
                                                          */
                                                         jobResultStore.hasJobResultEntryAsync(
                                                                 getJobID()),
                                                 () ->
                                                         /**
-                                                         * 如果leaderSessionId无效，则创建一个异常完成的 Future，异常为 LeadershipLostException。
+                                                         * 如果leaderSessionId无效，
+                                                         * 返回异常完成的CompletableFuture(completeExceptionally)
                                                          */
                                                         FutureUtils.completedExceptionally(
                                                                 new LeadershipLostException(
                                                                         "The leadership is lost.")))
+                                        /**
+                                         * handle 方法来处理这个 CompletableFuture 的结果。如果异步操作成功完成，
+                                         * handle 方法中的函数将返回包含成功消息的新字符串。如果异步操作抛出异常，
+                                         * 函数将返回一个包含错误信息的字符串。
+                                         */
                                         .handle(
+                                                /** hasJobResult 结果为true false */
                                                 (hasJobResult, throwable) -> {
                                                     /**
                                                      * 在 handle 方法中，代码检查返回的 throwable 是否为 LeadershipLostException 的实例：
@@ -293,14 +314,14 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
                                                     if (throwable
                                                             instanceof LeadershipLostException) {
                                                         /**
-                                                         * 如果是，则调用 printLogIfNotValidLeader 方法打印日志，并返回 null。
+                                                         * 如果异常是LeadershipLostException，则打印日志并返回null。
                                                          */
                                                         printLogIfNotValidLeader(
                                                                 "verify job result entry",
                                                                 leaderSessionId);
                                                         return null;
                                                         /**
-                                                         * 如果不是 LeadershipLostException 但 throwable 不为 null，
+                                                         * 如果 throwable 不为 null，
                                                          * 则使用 ExceptionUtils.rethrow(throwable) 重新抛出异常。
                                                          */
                                                     } else if (throwable != null) {
@@ -315,7 +336,8 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
                                                                 leaderSessionId);
                                                     } else {
                                                         /**
-                                                         * 如果 hasJobResult 为 false，则调用 createNewJobMasterServiceProcessIfValidLeader 方法。
+                                                         * 如果 hasJobResult为 false(也就是Leader没有缓存到dirty、clean)
+                                                         * 则继续创建jobMasterServiceProcess、JobMaster
                                                          * 这个方法用于启动新的作业主服务进程。
                                                          */
                                                         createNewJobMasterServiceProcessIfValidLeader(
@@ -371,13 +393,25 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
         return new ExecutionGraphInfo(
                 jobMasterServiceProcessFactory.createArchivedExecutionGraph(jobStatus, null));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 标记为已经结束并返回JobManagerRunnerResult
+    */
     private void jobAlreadyDone(UUID leaderSessionId) {
+        /** 打印日志 */
         LOG.info(
                 "{} for job {} was granted leadership with leader id {}, but job was already done.",
                 getClass().getSimpleName(),
                 getJobID(),
                 leaderSessionId);
+        /**
+         * complete:在给定已经完成的值的情况下立即完成返回的 CompletableFuture 实例
+         * 如果任务没有完成，返回的值设置为给定值
+         * 返回JobManagerRunnerResult
+         * 内部包含ExecutionGraphInfo、ArchivedExecutionGraph
+         *
+         */
         resultFuture.complete(
                 JobManagerRunnerResult.forSuccess(
                         new ExecutionGraphInfo(
@@ -424,7 +458,7 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
         forwardResultFuture(leaderSessionId, jobMasterServiceProcess.getResultFuture());
         /**
          * 调用 confirmLeadership 方法，使用 leaderSessionId 和 jobMasterServiceProcess 中的 LeaderAddressFuture 来确认领导权
-         * 确认LeaderContender已接受由给定的LeaderId标识的领导者
+         * 总结确认LeaderContender已接受由给定的LeaderId标识的领导者
          * 内部调用leaderElection.confirmLeadership
          */
         confirmLeadership(leaderSessionId, jobMasterServiceProcess.getLeaderAddressFuture());
@@ -595,12 +629,20 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
         } else {
             /**
              * 如果 cause 不是 JVM 致命错误，
-             * CompletableFuture 对象，它代表了一个异步操作的结果
+             * 异常完成的CompletableFuture cause是异常
              */
             resultFuture.completeExceptionally(cause);
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 作用是状态为 JobMasterServiceLeadershipRunner状态State.RUNNING 是运行多线程（lambda 表达式）。
+     * 否则打印日志
+     * @param action 接受多线程实现类（表达式）
+     * @param actionDescription 字符串常量
+    */
     private void runIfStateRunning(Runnable action, String actionDescription) {
         synchronized (lock) {
             if (isRunning()) {
@@ -634,10 +676,9 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 同步方法，用于在确认当前会话是有效领导者时执行某个操作，如果不是领导者，则执行备选操作。
-     *  expectedLeaderId：期望的领导者会话的 UUID。
-     *  action：如果当前会话是有效领导者，则执行的 Runnable 对象。
-     *  noLeaderFallback：如果当前会话不是领导者，则执行的备选 Runnable 对象。
+     * 判断expectedLeaderId是否有效
+     * 如果有效则执行action
+     * 否则执行noLeaderFallback
      *
     */
     private void runIfValidLeader(
@@ -649,13 +690,12 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
         */
         synchronized (lock) {
             /**
-             * 如果当前leader有效
+             * 如果当前leaderId有效，则执行第一个Runnable对应的多线程
              */
             if (isValidLeader(expectedLeaderId)) {
-                /**  action.run() 会被执行 */
                 action.run();
             } else {
-                /** noLeaderFallback.run() */
+                /** 否则执行 第二个Runnable对应的多线程 */
                 noLeaderFallback.run();
             }
         }
@@ -665,8 +705,8 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
      * email: 156184212@qq.com
      * 查当前expectedLeaderId是否有效，如果有效，则执行一个提供的Runnable动作。
      * 如果expectedLeaderId无效，它可能会执行另一个操作
-     *  UUID expectedLeaderId: 期望的领导者ID。
-     *  Runnable action: 要在领导者有效时执行的动作。
+     * UUID expectedLeaderId: 期望的领导者ID。
+     * Runnable action: 要在领导者有效时执行的动作。
      *  String noLeaderFallbackCommandDescription: 如果领导者无效时，用于描述备选命令或操作的字符串，可能用于日志输出。
     */
     private void runIfValidLeader(
@@ -674,29 +714,52 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
         runIfValidLeader(
                 expectedLeaderId,
                 action,
-                /**
-                 * 接受两个参数：一个描述字符串和一个期望的领导者ID。我们可以推测这个方法的作用是，当领导者无效时，打印一条日志消息。
-                 */
                 () ->
                         printLogIfNotValidLeader(
                                 noLeaderFallbackCommandDescription, expectedLeaderId));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * CompletableFuture<T> resultFuture
+     * 校验Leader是否有效
+     * 则执行第一个线程表达式
+     * 否则执行第二个表达式
+    */
     private <T> CompletableFuture<T> supplyAsyncIfValidLeader(
             UUID expectedLeaderId,
             Supplier<CompletableFuture<T>> supplier,
             Supplier<CompletableFuture<T>> noLeaderFallback) {
+        /** 创建一个异步变成对象 用于接收结果*/
         final CompletableFuture<T> resultFuture = new CompletableFuture<>();
+        /**
+         * 校验Leader是否有效
+         * 则执行第一个线程表达式
+         * 否则执行第二个表达式
+         */
         runIfValidLeader(
                 expectedLeaderId,
+                /** forward 内部封装whenComplete*/
                 () -> FutureUtils.forward(supplier.get(), resultFuture),
                 () -> FutureUtils.forward(noLeaderFallback.get(), resultFuture));
-
+        /** CompletableFuture */
         return resultFuture;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 判断leaderSessionId是否有效
+    */
     @GuardedBy("lock")
     private boolean isValidLeader(UUID expectedLeaderId) {
+        /***
+         * 1.如果JobMasterRunner为运行状态
+         * 2.LeaderElection(StandaloneLeaderElection) != null
+         * 3.this.leaderContender != null && this.sessionID.equals(leaderSessionId)
+         * 当前传入的expectedLeaderId和StandaloneLeaderElection生成的leaderSessionId相同
+         * 注意：StandaloneLeaderElection创建的时候就会生成一个唯一id
+         */
         return isRunning()
                 && leaderElection != null
                 && leaderElection.hasLeadership(expectedLeaderId);
@@ -714,7 +777,7 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
             CompletableFuture<T> target,
             String forwardDescription) {
         /**
-         * source.whenComplete，它接受一个BiConsumer<T, Throwable>作为参数，这个BiConsumer会在source完成时（无论成功还是异常）被调用。
+         * 无论异步操作是正常完成还是抛出异常，whenComplete 都会执行其提供的回调函数
          */
         source.whenComplete(
                 /**
@@ -729,7 +792,7 @@ public class JobMasterServiceLeadershipRunner implements JobManagerRunner, Leade
                                     if (throwable != null) {
                                         /**
                                          * 如果throwable不为null，即source异常完成，
-                                         * 则调用target.completeExceptionally(throwable)来在target上异常完成，并传递相同的异常。
+                                         * 无论异步操作是正常完成还是抛出异常，whenComplete 都会执行其提供的回调函数。
                                          */
                                         target.completeExceptionally(throwable);
                                     } else {

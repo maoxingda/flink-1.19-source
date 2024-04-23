@@ -4,6 +4,7 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.java.ClosureCleaner;
 
 import java.io.Serializable;
+import java.util.function.Function;
 
 /**
  * @Author: 小Q
@@ -24,7 +25,9 @@ public class Clean {
 
         ClosureCleaner.clean(inner, ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL, false);
         //ClosureCleaner.ensureSerializable(inner);
-        System.out.println();
+        //System.out.println();
+        //System.out.println((true || false));
+        System.out.println(Function.identity());
     }
 
 

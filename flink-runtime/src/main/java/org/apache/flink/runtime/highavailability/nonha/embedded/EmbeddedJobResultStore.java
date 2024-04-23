@@ -60,11 +60,21 @@ public class EmbeddedJobResultStore extends AbstractThreadsafeJobResultStore {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 判断Map<JobID, JobResultEntry> dirtyJobResults结构中是否存放了JobId
+    */
     @Override
     public boolean hasDirtyJobResultEntryInternal(JobID jobId) {
         return dirtyJobResults.containsKey(jobId);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * Map<JobID, JobResultEntry> cleanJobResults结构中是否存放了JobId
+     */
     @Override
     public boolean hasCleanJobResultEntryInternal(JobID jobId) {
         return cleanJobResults.containsKey(jobId);

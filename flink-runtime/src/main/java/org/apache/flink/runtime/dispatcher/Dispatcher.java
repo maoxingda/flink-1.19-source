@@ -830,6 +830,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         final CompletableFuture<CleanupJobState> cleanupJobStateFuture =
                 /**
                  * 获取jobManagerRunner(CompletableFuture) 它代表jobManagerRunner启动结果。
+                 * CompletableFuture<JobManagerRunnerResult> resultFuture
                  */
                 jobManagerRunner
                         .getResultFuture()
@@ -847,14 +848,12 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                                      * 	+ 如果作业结果不为空，则调用 `handleJobManagerRunnerResult` 方法处理结果。
                                      */
                                     if (jobManagerRunnerResult != null) {
+                                        /**归档等操作*/
                                         return handleJobManagerRunnerResult(
                                                 jobManagerRunnerResult, executionType);
                                     } else {
                                         /**
-                                         * + 如果作业结果为空，则调用 `jobManagerRunnerFailed` 方法，
-                                         * 并返回一个表示作业失败的 `CleanupJobState`。
-                                         * 总结：如果作业结果为空，创建已经完成了的 CompletableFuture 实例
-                                         * 并设置值为jobManagerRunnerFailed
+                                         *  完成的CompletableFuture 返回结果为jobManagerRunnerFailed
                                          */
                                         return CompletableFuture.completedFuture(
                                                 jobManagerRunnerFailed(
@@ -927,6 +926,10 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                 && executionType == ExecutionType.RECOVERY) {
             // fail fatally to make the Dispatcher fail-over and recover all jobs once more (which
             // can only happen in HA mode)
+            /**
+             * 经完成的CompletableFuture,返回值为jobManagerRunnerFailed
+             * ExecutionType.RECOVERY，致命故障，使Dispatcher故障转移并再次恢复所有作业（HA模式）
+             */
             return CompletableFuture.completedFuture(
                     jobManagerRunnerFailed(
                             jobManagerRunnerResult.getExecutionGraphInfo().getJobId(),
@@ -1589,6 +1592,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
     protected CompletableFuture<CleanupJobState> jobReachedTerminalState(
             ExecutionGraphInfo executionGraphInfo) {
         /**
+         * 获取创建的ArchivedExecutionGraph
          * 存储ExecutionGraphInfo
          */
         final ArchivedExecutionGraph archivedExecutionGraph =
@@ -1614,8 +1618,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         final boolean isFailureInfoRelatedToJobTermination =
                 terminalJobStatus == JobStatus.SUSPENDED || terminalJobStatus == JobStatus.FAILED;
         /**
-         * 如果archivedExecutionGraph 存在失败信息，并且作业状态是作业已挂起、或者失败
-         * 则打印archivedExecutionGraph错误日志和Job状态
+         * 如果异常异常不为空，并且状态是挂起、失败则打印日志
          */
         if (archivedExecutionGraph.getFailureInfo() != null
                 && isFailureInfoRelatedToJobTermination) {
@@ -1690,13 +1693,14 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         return jobResultStore
                 /**
                  * 判断jobResultStore中是否存在jobId返回值 CompletableFuture<Boolean>
+                 * 将作业结果存储到干净的目录
                  */
                 .hasCleanJobResultEntryAsync(jobId)
                 .thenCompose(
                         hasCleanJobResultEntry ->
                                 /**
                                  * 如果存在jobId 则返回一个Void的Future
-                                 * 否则创建脏目录写入
+                                 * 将作业结果存储到干净的目录
                                  */
                                 createDirtyJobResultEntryIfMissingAsync(
                                         archivedExecutionGraph, hasCleanJobResultEntry))
@@ -1790,7 +1794,11 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         return jobResultStore.createDirtyResultAsync(
                 new JobResultEntry(JobResult.createFrom(executionGraph)));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将executionGraphInfo信息写入磁盘
+    */
     private void writeToExecutionGraphInfoStore(ExecutionGraphInfo executionGraphInfo) {
         try {
             executionGraphInfoStore.put(executionGraphInfo);
@@ -1802,14 +1810,20 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                     e);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * executionGraphInfo保存到归档历史文件
+    */
     private CompletableFuture<Acknowledge> archiveExecutionGraphToHistoryServer(
             ExecutionGraphInfo executionGraphInfo) {
 
         return historyServerArchivist
+                /** 进行归档*/
                 .archiveExecutionGraph(executionGraphInfo)
                 .handleAsync(
                         (Acknowledge ignored, Throwable throwable) -> {
+                            /** 归档过程中如果异常如果throwable != null 打印日志包括异常信息*/
                             if (throwable != null) {
                                 log.info(
                                         "Could not archive completed job {}({}) to the history server.",

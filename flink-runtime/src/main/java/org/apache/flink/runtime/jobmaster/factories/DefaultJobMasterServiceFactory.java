@@ -98,13 +98,17 @@ public class DefaultJobMasterServiceFactory implements JobMasterServiceFactory {
     @Override
     public CompletableFuture<JobMasterService> createJobMasterService(
             UUID leaderSessionId, OnCompletionActions onCompletionActions) {
-
+        /** 用于异步地执行lambda */
         return CompletableFuture.supplyAsync(
                 FunctionUtils.uncheckedSupplier(
                         () -> internalCreateJobMasterService(leaderSessionId, onCompletionActions)),
                 executor);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     private JobMasterService internalCreateJobMasterService(
             UUID leaderSessionId, OnCompletionActions onCompletionActions) throws Exception {
         /**

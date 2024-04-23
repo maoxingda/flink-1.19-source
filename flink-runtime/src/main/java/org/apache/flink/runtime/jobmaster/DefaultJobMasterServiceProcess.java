@@ -131,6 +131,7 @@ public class DefaultJobMasterServiceProcess
                                 jobInitializationException);
                         /**
                          * 调用resultFuture.complete方法，将初始化失败的结果传递给resultFuture。
+                         * 总结返回：JobManagerRunnerResult内部异常是初始化异常
                          */
                         resultFuture.complete(
                                 JobManagerRunnerResult.forInitializationFailure(
@@ -166,6 +167,8 @@ public class DefaultJobMasterServiceProcess
         /**
          * 获取JobMasterService的终止Future（getTerminationFuture()）。
          * 这个Future代表JobMasterService的终止状态，当JobMasterService终止时，这个Future会完成。
+         *  将jobMasterService.getGateway()设置给jobMasterGatewayFuture
+         *  将jobMasterService.getAddress()设置给leaderAddressFuture
          */
         jobMasterGatewayFuture.complete(jobMasterService.getGateway());
 
@@ -175,6 +178,7 @@ public class DefaultJobMasterServiceProcess
          */
         jobMasterService
                 .getTerminationFuture()
+                 /** 返回异常的CompletableFuture*/
                 .whenComplete(
                         (unused, throwable) -> {
                             synchronized (lock) {

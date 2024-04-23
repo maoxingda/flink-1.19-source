@@ -47,6 +47,11 @@ import java.util.function.Predicate;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** A collection of utility functions for dealing with exceptions and exception workflows. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于处理异常和异常工作流的实用程序函数集合
+*/
 @Internal
 public final class ExceptionUtils {
 

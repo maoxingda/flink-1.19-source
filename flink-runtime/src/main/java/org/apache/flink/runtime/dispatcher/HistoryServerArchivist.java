@@ -37,6 +37,11 @@ public interface HistoryServerArchivist {
      * @param executionGraphInfo to store on the history server
      * @return Future which is completed once the archiving has been completed.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的 ExecutionGraphInfo 存档到历史服务器上。
+    */
     CompletableFuture<Acknowledge> archiveExecutionGraph(ExecutionGraphInfo executionGraphInfo);
 
     static HistoryServerArchivist createHistoryServerArchivist(

@@ -85,11 +85,11 @@ public class JobMasterConfiguration {
         final Time slotRequestTimeout =
                 Time.milliseconds(configuration.get(JobManagerOptions.SLOT_REQUEST_TIMEOUT));
         /**
-         * 获取零食目录
+         * 获取临时目录
          */
         final String tmpDirectory = ConfigurationUtils.parseTempDirectories(configuration)[0];
         /**
-         * 注册充实相关的配置
+         * 注册重拾相关的配置
          */
         final RetryingRegistrationConfiguration retryingRegistrationConfiguration =
                 RetryingRegistrationConfiguration.fromConfiguration(configuration);

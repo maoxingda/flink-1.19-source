@@ -49,12 +49,20 @@ class JsonResponseHistoryServerArchivist implements HistoryServerArchivist {
         this.ioExecutor = Preconditions.checkNotNull(ioExecutor);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 归档executionGraphInfo
+    */
     @Override
     public CompletableFuture<Acknowledge> archiveExecutionGraph(
             ExecutionGraphInfo executionGraphInfo) {
         return CompletableFuture.runAsync(
                         ThrowingRunnable.unchecked(
                                 () ->
+                                        /**
+                                         * executionGraphInfo
+                                         */
                                         FsJobArchivist.archiveJob(
                                                 archivePath,
                                                 executionGraphInfo.getJobId(),

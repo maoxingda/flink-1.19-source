@@ -893,6 +893,11 @@ public class FutureUtils {
      * @param <T> type of the future
      * @return An exceptionally completed CompletableFuture
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回一个异常完成的CompletableFuture
+    */
     public static <T> CompletableFuture<T> completedExceptionally(Throwable cause) {
         CompletableFuture<T> result = new CompletableFuture<>();
         result.completeExceptionally(cause);
@@ -1236,6 +1241,7 @@ public class FutureUtils {
      * @param target future to forward the value to
      * @param <T> type of the value
      */
+
     public static <T> void forward(CompletableFuture<T> source, CompletableFuture<T> target) {
         source.whenComplete(forwardTo(target));
     }

@@ -72,6 +72,12 @@ public class DefaultJobMasterServiceProcessFactory implements JobMasterServicePr
         return jobId;
     }
 
+
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构建ArchivedExecutionGraph
+    */
     @Override
     public ArchivedExecutionGraph createArchivedExecutionGraph(
             JobStatus jobStatus, @Nullable Throwable cause) {

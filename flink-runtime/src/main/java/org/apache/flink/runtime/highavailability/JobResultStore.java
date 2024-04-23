@@ -73,10 +73,25 @@ public interface JobResultStore {
      * @return a successfully completed future with {@code true} if a {@code dirty} or {@code clean}
      *     {@link JobResultEntry} exists for the given {@code JobID}; otherwise {@code false}.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回存储是否已包含作业项的Future
+    */
     default CompletableFuture<Boolean> hasJobResultEntryAsync(JobID jobId) {
+        /**
+         * hasDirtyJobResultEntryAsync 判断 dirtyJobResults中是否存在jobId
+         */
         return hasDirtyJobResultEntryAsync(jobId)
                 .thenCombine(
+                        /**
+                         * 判断 Map<JobID, JobResultEntry> cleanJobResults 是否存在Jobid
+                         */
                         hasCleanJobResultEntryAsync(jobId),
+                        /**
+                         * 组合函数是 (result1, result2) -> result1 || result2，
+                         * result1 || result2表示只要有一个为true，则就返回ture
+                         */
                         (result1, result2) -> result1 || result2);
     }
 
@@ -88,6 +103,11 @@ public interface JobResultStore {
      * @return a successfully completed future with {@code true}, if a {@code dirty} entry exists
      *     for the given {@code JobID}; otherwise {@code false}.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回存储是否包含给定JobID dirty项的future。
+    */
     CompletableFuture<Boolean> hasDirtyJobResultEntryAsync(JobID jobId);
 
     /**

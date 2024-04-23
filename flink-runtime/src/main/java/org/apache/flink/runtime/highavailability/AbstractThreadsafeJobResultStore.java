@@ -98,7 +98,11 @@ public abstract class AbstractThreadsafeJobResultStore implements JobResultStore
                         hasDirtyJobResultEntryInternal(jobId)
                                 || hasCleanJobResultEntryInternal(jobId));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回存储是否包含给定JobID dirty项的future。
+     */
     @Override
     public CompletableFuture<Boolean> hasDirtyJobResultEntryAsync(JobID jobId) {
         return withReadLockAsync(() -> hasDirtyJobResultEntryInternal(jobId));

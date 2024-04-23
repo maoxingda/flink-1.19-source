@@ -30,8 +30,8 @@ taskmanager.memory.jvm-metaspace.size: 128m
 taskmanager.memory.jvm-overhead.min: 128m
 taskmanager.memory.jvm-overhead.max: 128m
 #心跳参数
-heartbeat.timeout: 50000
-heartbeat.interval: 10000
+#heartbeat.timeout: 50000
+#heartbeat.interval: 10000
 taskmanager.host: localhost
 taskmanager.memory.process.size: 1728m
 taskmanager.numberOfTaskSlots: 2

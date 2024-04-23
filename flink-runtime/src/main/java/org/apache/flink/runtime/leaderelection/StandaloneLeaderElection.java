@@ -29,6 +29,11 @@ import java.util.UUID;
  * implementation can be used for testing, and for cluster setups that do not tolerate failures of
  * the main components (e.g. ResourceManager or Dispatcher).
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * LeaderElection(StandaloneLeaderElection)
+*/
 public class StandaloneLeaderElection implements LeaderElection {
 
     private final Object lock = new Object();

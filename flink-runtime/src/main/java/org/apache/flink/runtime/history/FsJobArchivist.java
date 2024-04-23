@@ -66,16 +66,35 @@ public class FsJobArchivist {
      * @return path to where the archive was written, or null if no archive was created
      * @throws IOException
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的AccessExecutionGraph写入由JobManagerOptions#ARCHIVE_DIR指向的  FileSystem。
+    */
     public static Path archiveJob(
             Path rootPath, JobID jobId, Collection<ArchivedJson> jsonToArchive) throws IOException {
         try {
+            /** 获取文件系统 */
             FileSystem fs = rootPath.getFileSystem();
+            /** 构建归档文件路径 */
             Path path = new Path(rootPath, jobId.toString());
+            /**
+             * 在fs文件系统中创建一个新的输出流，
+             * 用于写入数据到path指定的路径。
+             * 这里使用的是NO_OVERWRITE模式，意味着如果路径已经存在，
+             * 则不会覆盖它，而是会抛出异常。
+             */
             OutputStream out = fs.create(path, FileSystem.WriteMode.NO_OVERWRITE);
-
+            /**
+             * 创建一个JsonGenerator对象，并使用它来写入JSON数据。
+             * 一个包含多个ArchivedJson对象的数组，每个ArchivedJson对象都是一个包含path和json字段的对象。
+             */
             try (JsonGenerator gen = jacksonFactory.createGenerator(out, JsonEncoding.UTF8)) {
                 gen.writeStartObject();
                 gen.writeArrayFieldStart(ARCHIVE);
+                /**
+                 * 循环jsonToArchive集合
+                 */
                 for (ArchivedJson archive : jsonToArchive) {
                     gen.writeStartObject();
                     gen.writeStringField(PATH, archive.getPath());
@@ -85,9 +104,14 @@ public class FsJobArchivist {
                 gen.writeEndArray();
                 gen.writeEndObject();
             } catch (Exception e) {
+                /**
+                 * 如果在写入JSON数据时发生异常，会捕获该异常，并删除已创建的归档文件（防止留下不完整的文件）。
+                 * 然后重新抛出捕获的异常。
+                 */
                 fs.delete(path, false);
                 throw e;
             }
+            /** 记录日志并返回路径 */
             LOG.info("Job {} has been archived at {}.", jobId, path);
             return path;
         } catch (IOException e) {

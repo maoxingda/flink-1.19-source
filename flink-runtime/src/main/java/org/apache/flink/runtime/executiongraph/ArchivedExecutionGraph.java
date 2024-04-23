@@ -365,6 +365,11 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
      * Create a sparse ArchivedExecutionGraph for a job. Most fields will be empty, only job status
      * and error-related fields are set.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为作业创建ArchivedExecutionGraph。大多数字段将为空，只设置作业状态和与错误相关的字段。
+    */
     public static ArchivedExecutionGraph createSparseArchivedExecutionGraph(
             JobID jobId,
             String jobName,
@@ -421,7 +426,11 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
                 checkpointingSettings,
                 initializationTimestamp);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构建ArchivedExecutionGraph
+    */
     private static ArchivedExecutionGraph createSparseArchivedExecutionGraph(
             JobID jobId,
             String jobName,
