@@ -30,6 +30,11 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /** BlobWriter is used to upload data to the BLOB store. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * BlobWriter用于将数据上载到BLOB存储。
+*/
 public interface BlobWriter {
 
     Logger LOG = LoggerFactory.getLogger(BlobWriter.class);

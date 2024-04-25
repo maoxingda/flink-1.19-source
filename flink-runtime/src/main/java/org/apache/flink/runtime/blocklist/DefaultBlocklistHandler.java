@@ -160,6 +160,11 @@ public class DefaultBlocklistHandler implements BlocklistHandler, AutoCloseable 
         return blocklistTracker.getAllBlockedNodeIds();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册一个监听器，以便监听“黑名单”事件
+    */
     @Override
     public void registerBlocklistListener(BlocklistListener blocklistListener) {
         assertRunningInMainThread();

@@ -68,6 +68,12 @@ import static org.apache.flink.util.Preconditions.checkState;
  * Factory of {@link TaskDeploymentDescriptor} to deploy {@link
  * org.apache.flink.runtime.taskmanager.Task} from {@link Execution}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * TaskDeploymentDescriptor的工厂，
+ * TaskDeploymentDescriptor用于从Execution部署到Task
+*/
 public class TaskDeploymentDescriptorFactory {
     /**
      * This is an expert option, that we do not want to expose in the documentation. The default

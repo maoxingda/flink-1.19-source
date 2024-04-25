@@ -52,6 +52,11 @@ public interface ExecutionGraphFactory {
      * @return restored {@link ExecutionGraph}
      * @throws Exception if the {@link ExecutionGraph} could not be created and restored
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 基于 JobGraph 创建和恢复 ExecutionGraph。
+    */
     ExecutionGraph createAndRestoreExecutionGraph(
             JobGraph jobGraph,
             CompletedCheckpointStore completedCheckpointStore,

@@ -46,6 +46,11 @@ public interface ExecutionDeploymentReconciler {
      * @param expectedDeployedExecutionIds map of expected executions and their current deployment
      *     status
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 协调给定任务执行器的所有报告/预期执行之间的部署状态。
+    */
     void reconcileExecutionDeployments(
             ResourceID taskExecutorHost,
             ExecutionDeploymentReport executionDeploymentReport,

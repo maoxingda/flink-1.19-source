@@ -93,7 +93,11 @@ public final class DefaultSlotPoolServiceSchedulerFactory
     public JobManagerOptions.SchedulerType getSchedulerType() {
         return schedulerNGFactory.getSchedulerType();
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 调用工厂类构建SchedulerNG
+    */
     @Override
     public SchedulerNG createScheduler(
             Logger log,

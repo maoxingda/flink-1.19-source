@@ -22,6 +22,11 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
 
 /** Interface for observers that monitor the status of a job. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于监视作业状态的接口。
+*/
 public interface JobStatusListener {
 
     /**

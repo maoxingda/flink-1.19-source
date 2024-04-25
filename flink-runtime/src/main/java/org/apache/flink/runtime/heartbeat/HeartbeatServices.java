@@ -43,6 +43,11 @@ public interface HeartbeatServices {
      * @param <O> Type of the outgoing payload
      * @return A new HeartbeatManager instance
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个不主动发送检测信号的检测信号管理器。
+    */
     <I, O> HeartbeatManager<I, O> createHeartbeatManager(
             ResourceID resourceId,
             HeartbeatListener<I, O> heartbeatListener,
@@ -62,6 +67,11 @@ public interface HeartbeatServices {
      * @param <O> Type of the outgoing payload
      * @return A new HeartbeatManager instance which actively sends heartbeats
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个检测信号管理器，该管理器主动向监视目标发送检测信号。
+    */
     <I, O> HeartbeatManager<I, O> createHeartbeatManagerSender(
             ResourceID resourceId,
             HeartbeatListener<I, O> heartbeatListener,

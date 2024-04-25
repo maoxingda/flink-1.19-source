@@ -46,6 +46,7 @@ import java.util.concurrent.CompletableFuture;
  * 管理Slots的接口
  * 在JobMaster中会通过SlotPool组件管理JobManager中的Slot计算资源。
  * 每个JobMaster都会创建一个SlotPool实例。
+ * SlotPool 管理Slot的接口
 */
 public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
 

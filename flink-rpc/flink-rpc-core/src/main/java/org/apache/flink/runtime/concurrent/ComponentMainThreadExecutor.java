@@ -33,6 +33,11 @@ import java.util.concurrent.TimeUnit;
 public interface ComponentMainThreadExecutor extends ScheduledExecutor {
 
     /** Returns true if the method was called in the thread of this executor. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 如果在该执行器的线程中调用了该方法，则返回true
+    */
     void assertRunningInMainThread();
 
     /** Dummy implementation of ComponentMainThreadExecutor. */

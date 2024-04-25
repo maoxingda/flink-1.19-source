@@ -60,6 +60,11 @@ public interface BlocklistHandler {
      *
      * @param blocklistListener the newly registered listener
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册一个新的阻止列表监听器
+    */
     void registerBlocklistListener(BlocklistListener blocklistListener);
 
     /**
@@ -67,6 +72,7 @@ public interface BlocklistHandler {
      *
      * @param blocklistListener the listener to deregister
      */
+    /** 取消注册阻止列表侦听器。 */
     void deregisterBlocklistListener(BlocklistListener blocklistListener);
 
     /** Factory to instantiate {@link BlocklistHandler}. */

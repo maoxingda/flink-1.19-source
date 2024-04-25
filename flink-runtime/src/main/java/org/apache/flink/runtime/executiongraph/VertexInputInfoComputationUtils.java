@@ -37,38 +37,69 @@ import static org.apache.flink.util.Preconditions.checkState;
 /** Util to compute {@link JobVertexInputInfo}s for execution job vertex. */
 public class VertexInputInfoComputationUtils {
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     public static Map<IntermediateDataSetID, JobVertexInputInfo> computeVertexInputInfos(
             ExecutionJobVertex ejv,
             Function<IntermediateDataSetID, IntermediateResult> intermediateResultRetriever)
             throws JobException {
+        /** 校验 并行度是否大于0 */
         checkState(ejv.isParallelismDecided());
+        /** 创建一个空的ArrayList来存储中间结果的信息 */
         final List<IntermediateResultInfo> intermediateResultInfos = new ArrayList<>();
+        /**
+         * 循环JobVertex的输入，也就是JobEdge
+         */
         for (JobEdge edge : ejv.getJobVertex().getInputs()) {
+            /** 得到IntermediateResult */
             IntermediateResult ires = intermediateResultRetriever.apply(edge.getSourceId());
+            /** 如果IntermediateResult 为空抛出异常 */
             if (ires == null) {
                 throw new JobException(
                         "Cannot connect this job graph to the previous graph. No previous intermediate result found for ID "
                                 + edge.getSourceId());
             }
+            /** 将intermediateResult封装到IntermediateResultWrapper 添加到集合中 */
             intermediateResultInfos.add(new IntermediateResultWrapper(ires));
         }
+        /**
+         * 继续转换最终构建为Map<IntermediateDataSetID, JobVertexInputInfo>
+         * 参数为并行度，IntermediateResult,是否支持动态设置并行度
+         */
         return computeVertexInputInfos(
                 ejv.getParallelism(), intermediateResultInfos, ejv.getGraph().isDynamic());
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 基于IntermediateResult构建出Map<IntermediateDataSetID, JobVertexInputInfo>
+    */
     public static Map<IntermediateDataSetID, JobVertexInputInfo> computeVertexInputInfos(
             int parallelism,
             List<? extends IntermediateResultInfo> inputs,
             boolean isDynamicGraph) {
-
+        /** 检查并行度 是否 >0 */
         checkArgument(parallelism > 0);
+        /**
+         * 创建Map<IntermediateDataSetID, JobVertexInputInfo>结构对象
+         */
         final Map<IntermediateDataSetID, JobVertexInputInfo> jobVertexInputInfos =
                 new LinkedHashMap<>();
-
+        /**
+         * 循环IntermediateResultInfo
+          */
         for (IntermediateResultInfo input : inputs) {
+            /** 获取并行度 */
             int sourceParallelism = input.getNumPartitions();
-
+            /** 如果输入是Pointwise 进入if 否则 else*/
             if (input.isPointwise()) {
+                /**
+                 * 构建jobVertexInputInfos
+                 * input.getResultId() = key
+                 */
                 jobVertexInputInfos.putIfAbsent(
                         input.getResultId(),
                         computeVertexInputInfoForPointwise(
@@ -103,20 +134,31 @@ public class VertexInputInfoComputationUtils {
      * @param isDynamicGraph whether is dynamic graph
      * @return the computed {@link JobVertexInputInfo}
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * POINTWISE 边的 对应的 JobVertexInputInfo}。
+     * 将根据子分区的数量将子分区均匀地分配给下游的子任务。
+     * 不同的下游子任务消耗的子分区数量大致相同。
+    */
     static JobVertexInputInfo computeVertexInputInfoForPointwise(
             int sourceCount,
             int targetCount,
             Function<Integer, Integer> numOfSubpartitionsRetriever,
             boolean isDynamicGraph) {
-
+        /**
+         * 创建List<ExecutionVertexInputInfo> 对象
+         */
         final List<ExecutionVertexInputInfo> executionVertexInputInfos = new ArrayList<>();
-
+        /**
+         * 如果上游并行度 >= 下游并行度
+         */
         if (sourceCount >= targetCount) {
             for (int index = 0; index < targetCount; index++) {
 
                 int start = index * sourceCount / targetCount;
                 int end = (index + 1) * sourceCount / targetCount;
-
+                /** 计算每个下游顶点应该消费的上游分区的范围（start到end-1） */
                 IndexRange partitionRange = new IndexRange(start, end - 1);
                 IndexRange subpartitionRange =
                         computeConsumedSubpartitionRange(
@@ -229,6 +271,11 @@ public class VertexInputInfoComputationUtils {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 包装类，内部存放IntermediateResult
+    */
     private static class IntermediateResultWrapper implements IntermediateResultInfo {
         private final IntermediateResult intermediateResult;
 

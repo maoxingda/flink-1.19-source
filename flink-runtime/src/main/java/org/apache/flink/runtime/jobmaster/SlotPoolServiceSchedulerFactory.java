@@ -74,6 +74,11 @@ public interface SlotPoolServiceSchedulerFactory {
      * @return created SchedulerNG
      * @throws Exception if the scheduler creation fails
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建ScheduleNG
+    */
     SchedulerNG createScheduler(
             Logger log,
             JobGraph jobGraph,

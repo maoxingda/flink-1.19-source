@@ -257,6 +257,11 @@ public class DefaultJobMasterServiceProcess
         return jobMasterGatewayFuture;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * JobMasterServiceProcess的返回结果
+    */
     @Override
     public CompletableFuture<JobManagerRunnerResult> getResultFuture() {
         return resultFuture;

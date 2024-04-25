@@ -135,7 +135,11 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
         this.executionJobVertexFactory = checkNotNull(executionJobVertexFactory);
         this.nonFinishedHybridPartitionShouldBeUnknown = nonFinishedHybridPartitionShouldBeUnknown;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 基于 JobGraph 创建和恢复 ExecutionGraph。
+     */
     @Override
     public ExecutionGraph createAndRestoreExecutionGraph(
             JobGraph jobGraph,
@@ -150,8 +154,14 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
             MarkPartitionFinishedStrategy markPartitionFinishedStrategy,
             Logger log)
             throws Exception {
+        /**
+         * 构建执行部署监听器
+         */
         ExecutionDeploymentListener executionDeploymentListener =
                 new ExecutionDeploymentTrackerDeploymentListenerAdapter(executionDeploymentTracker);
+        /**
+         * 设置状态修改的监听器
+         */
         ExecutionStateUpdateListener combinedExecutionStateUpdateListener =
                 (execution, previousState, newState) -> {
                     executionStateUpdateListener.onStateUpdate(execution, previousState, newState);
@@ -159,7 +169,10 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
                         executionDeploymentTracker.stopTrackingDeploymentOf(execution);
                     }
                 };
-
+        /**
+         * 获取totalNumberOfSubTasks
+         *
+         */
         int totalNumberOfSubTasks =
                 StreamSupport.stream(jobGraph.getVertices().spliterator(), false)
                         .mapToInt(
@@ -168,7 +181,7 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
                                                 .getParallelismInfo(jobVertex.getID())
                                                 .getParallelism())
                         .sum();
-
+        /** 创建并初始化ExecutionGraph对象 */
         final ExecutionGraph newExecutionGraph =
                 DefaultExecutionGraphBuilder.buildGraph(
                         jobGraph,
@@ -201,16 +214,20 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
                         markPartitionFinishedStrategy,
                         nonFinishedHybridPartitionShouldBeUnknown,
                         jobManagerJobMetricGroup);
-
+        /** 获取CheckpointCoordinator */
         final CheckpointCoordinator checkpointCoordinator =
                 newExecutionGraph.getCheckpointCoordinator();
-
+        /** 如果 checkpointCoordinator 不为 null*/
         if (checkpointCoordinator != null) {
             // check whether we find a valid checkpoint
+            /**
+             * 检查是否存在有效的检查点
+             */
             if (!checkpointCoordinator.restoreInitialCheckpointIfPresent(
                     new HashSet<>(newExecutionGraph.getAllVertices().values()))) {
 
                 // check whether we can restore from a savepoint
+                /** 检查是否可以从保存点恢复 */
                 tryRestoreExecutionGraphFromSavepoint(
                         newExecutionGraph, jobGraph.getSavepointRestoreSettings());
             }

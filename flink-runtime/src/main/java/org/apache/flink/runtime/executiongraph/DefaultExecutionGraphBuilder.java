@@ -69,8 +69,18 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * Utility class to encapsulate the logic of building an {@link DefaultExecutionGraph} from a {@link
  * JobGraph}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 封装从 JobGraph 构建 DefaultExecutionGraph 的逻辑的实用程序类。
+*/
 public class DefaultExecutionGraphBuilder {
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 基于JobGraph构建出来DefaultExecutionGraph
+    */
     public static DefaultExecutionGraph buildGraph(
             JobGraph jobGraph,
             Configuration jobManagerConfig,
@@ -98,12 +108,13 @@ public class DefaultExecutionGraphBuilder {
             boolean nonFinishedHybridPartitionShouldBeUnknown,
             JobManagerJobMetricGroup jobManagerJobMetricGroup)
             throws JobExecutionException, JobException {
-
+        /** 校验是否为null ,否则抛出异常*/
         checkNotNull(jobGraph, "job graph cannot be null");
-
+        /** 获取Jobname */
         final String jobName = jobGraph.getName();
+        /** 获取jobId */
         final JobID jobId = jobGraph.getJobID();
-
+        /** 获取JobInformation */
         final JobInformation jobInformation =
                 new JobInformation(
                         jobId,
@@ -113,17 +124,30 @@ public class DefaultExecutionGraphBuilder {
                         jobGraph.getUserJarBlobKeys(),
                         jobGraph.getClasspaths());
 
+        /**
+         * jobmanager.execution.attempts-history-size 默认16 历史中保留的历史执行尝试的最大次数
+         */
         final int executionHistorySizeLimit =
                 jobManagerConfig.get(JobManagerOptions.MAX_ATTEMPTS_HISTORY_SIZE);
-
+        /**
+         * 分区组策略
+         *
+         */
         final PartitionGroupReleaseStrategy.Factory partitionGroupReleaseStrategyFactory =
                 PartitionGroupReleaseStrategyFactoryLoader.loadPartitionGroupReleaseStrategyFactory(
                         jobManagerConfig);
-
+        /**
+         *
+         * jobmanager.task-deployment.offload-shuffle-descriptors-to-blob-server.threshold-num
+         * 这是一个专家选项，我们不想在文档中公开。默认值几乎适用于所有情况
+         * blob服务器的阈值,默认64M
+         */
         final int offloadShuffleDescriptorsThreshold =
                 jobManagerConfig.get(
                         TaskDeploymentDescriptorFactory.OFFLOAD_SHUFFLE_DESCRIPTORS_THRESHOLD);
-
+        /**
+         * TaskDeploymentDescriptor的工厂
+         */
         final TaskDeploymentDescriptorFactory taskDeploymentDescriptorFactory;
         try {
             taskDeploymentDescriptorFactory =
@@ -139,6 +163,9 @@ public class DefaultExecutionGraphBuilder {
         }
 
         // create a new execution graph, if none exists so far
+        /**
+         * 创建一个新的执行图
+         */
         final DefaultExecutionGraph executionGraph =
                 new DefaultExecutionGraph(
                         jobInformation,
@@ -163,8 +190,11 @@ public class DefaultExecutionGraphBuilder {
                         taskDeploymentDescriptorFactory);
 
         // set the basic properties
-
+        /** 设置公共属性  */
         try {
+            /**
+             * 设置json格式
+             */
             executionGraph.setJsonPlan(JsonPlanGenerator.generatePlan(jobGraph));
         } catch (Throwable t) {
             log.warn("Cannot create JSON plan for job", t);
@@ -174,12 +204,20 @@ public class DefaultExecutionGraphBuilder {
 
         // initialize the vertices that have a master initialization hook
         // file output formats create directories here, input formats create splits
-
+        /**
+         * 初始化具有主初始化钩子文件的顶点输出格式在此处创建目录，输入格式创建拆分
+         */
+        /** 获取系统纳秒时间 */
         final long initMasterStart = System.nanoTime();
         log.info("Running initialization on master for job {} ({}).", jobName, jobId);
-
+        /**
+         * 循环JobVertext
+         *
+         */
         for (JobVertex vertex : jobGraph.getVertices()) {
+            /** 获取InvokableClass */
             String executableClass = vertex.getInvokableClassName();
+            /** 如果executableClass 则抛出异常 */
             if (executableClass == null || executableClass.isEmpty()) {
                 throw new JobSubmissionException(
                         jobId,
@@ -204,13 +242,18 @@ public class DefaultExecutionGraphBuilder {
                         t);
             }
         }
-
+        /** 打印日志 */
         log.info(
                 "Successfully ran initialization on master in {} ms.",
                 (System.nanoTime() - initMasterStart) / 1_000_000);
 
         // topologically sort the job vertices and attach the graph to the existing one
+        /**
+         * 对作业顶点进行拓扑排序，并将图形附加到现有图形
+         * id从小达到，source map sink
+         */
         List<JobVertex> sortedTopology = jobGraph.getVerticesSortedTopologicallyFromSources();
+        /** 打印日志 */
         if (log.isDebugEnabled()) {
             log.debug(
                     "Adding {} vertices from job graph {} ({}).",
@@ -218,6 +261,7 @@ public class DefaultExecutionGraphBuilder {
                     jobName,
                     jobId);
         }
+        /** 进行转换 */
         executionGraph.attachJobGraph(sortedTopology, jobManagerJobMetricGroup);
 
         if (log.isDebugEnabled()) {

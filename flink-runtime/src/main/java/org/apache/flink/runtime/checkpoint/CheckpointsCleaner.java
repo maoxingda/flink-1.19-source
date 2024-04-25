@@ -46,7 +46,7 @@ import static org.apache.flink.util.Preconditions.checkState;
 /**
  * @授课老师(微信): yi_locus
  * email: 156184212@qq.com
- * 负责检查点清洁和计算尚未清洁的检查点数量的代表级。
+ * 负责检查点清理和计算尚未清洁的检查点数量
 */
 @ThreadSafe
 public class CheckpointsCleaner implements Serializable, AutoCloseableAsync {

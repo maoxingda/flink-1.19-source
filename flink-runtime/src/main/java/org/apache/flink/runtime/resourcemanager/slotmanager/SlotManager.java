@@ -88,6 +88,11 @@ public interface SlotManager extends AutoCloseable {
      *
      * @param jobId job for which to clear the requirements
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通知插槽管理器应清除给定作业的资源要求
+    */
     void clearResourceRequirements(JobID jobId);
 
     /**

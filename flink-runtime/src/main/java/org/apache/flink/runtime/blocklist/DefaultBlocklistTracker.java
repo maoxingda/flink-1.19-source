@@ -39,6 +39,11 @@ public class DefaultBlocklistTracker implements BlocklistTracker {
      * @param newNode the new blocked node record
      * @return the add status
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试添加新的阻止节点记录。如果节点（由节点id标识）已经存在，则新添加的节点将与现有节点合并。
+    */
     private AddStatus tryAddOrMerge(BlockedNode newNode) {
         checkNotNull(newNode);
         final String nodeId = newNode.getNodeId();

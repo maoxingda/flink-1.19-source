@@ -211,7 +211,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
     /** Enum to distinguish between initial job submission and re-submission for recovery. */
     protected enum ExecutionType {
         SUBMISSION,//作业提交
-        RECOVERY //作业回复
+        RECOVERY //作业恢复
     }
 
     public Dispatcher(

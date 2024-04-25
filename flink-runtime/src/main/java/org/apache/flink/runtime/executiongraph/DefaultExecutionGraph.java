@@ -147,15 +147,18 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     private final CoordinatorStore coordinatorStore = new CoordinatorStoreImpl();
 
     /** Executor that runs tasks in the job manager's main thread. */
+    /** 在作业管理器的主线程中运行任务的执行器。 */
     @Nonnull private ComponentMainThreadExecutor jobMasterMainThreadExecutor;
 
     /** {@code true} if all source tasks are stoppable. */
     private boolean isStoppable = true;
 
     /** All job vertices that are part of this graph. */
+    /** 所有节点 存放map 方便基于id进行获取 */
     private final Map<JobVertexID, ExecutionJobVertex> tasks;
 
     /** All vertices, in the order in which they were created. * */
+    /** 所有顶点，按创建顺序排列 */
     private final List<ExecutionJobVertex> verticesInCreationOrder;
 
     /** All intermediate results that are part of this graph. */
@@ -191,6 +194,7 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     private final BlobWriter blobWriter;
 
     /** Number of total job vertices. */
+    /** 作业顶点总数 */
     private int numJobVerticesTotal;
 
     private final PartitionGroupReleaseStrategy.Factory partitionGroupReleaseStrategyFactory;
@@ -398,6 +402,11 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         notifyJobStatusHooks(state, null);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 设置主线程中运行任务的执行器。
+    */
     @Override
     public void start(@Nonnull ComponentMainThreadExecutor jobMasterMainThreadExecutor) {
         this.jobMasterMainThreadExecutor = jobMasterMainThreadExecutor;
@@ -816,22 +825,29 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         executionTopology.notifyExecutionGraphUpdated(this, vertices);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @Override
     public void attachJobGraph(
             List<JobVertex> verticesToAttach, JobManagerJobMetricGroup jobManagerJobMetricGroup)
             throws JobException {
-
+        /** 主线程中执行*/
         assertRunningInJobMasterMainThread();
-
+        /** 打印日志 */
         LOG.debug(
                 "Attaching {} topologically sorted vertices to existing job graph with {} "
                         + "vertices and {} intermediate results.",
                 verticesToAttach.size(),
                 tasks.size(),
                 intermediateResults.size());
-
+        /** 转换附加作业顶点 */
         attachJobVertices(verticesToAttach, jobManagerJobMetricGroup);
+        /**如果非动态则初始化JobVertices*/
         if (!isDynamic) {
+            /** 初始化JobVertices */
             initializeJobVertices(verticesToAttach);
         }
 
@@ -843,19 +859,31 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     }
 
     /** Attach job vertices without initializing them. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 附加作业顶点
+    */
     private void attachJobVertices(
             List<JobVertex> topologicallySorted, JobManagerJobMetricGroup jobManagerJobMetricGroup)
             throws JobException {
+        /**
+         * 循环JobVertex
+         */
         for (JobVertex jobVertex : topologicallySorted) {
-
+            /**
+             * 检查是input是否为空 source input为空
+             * 检查jobVertex是否关闭
+             */
             if (jobVertex.isInputVertex() && !jobVertex.isStoppable()) {
                 this.isStoppable = false;
             }
-
+            /** 获取顶点并行度相关的信息 最大并行度、最小并行度、当前并行度*/
             VertexParallelismInformation parallelismInfo =
                     parallelismStore.getParallelismInfo(jobVertex.getID());
 
             // create the execution job vertex and attach it to the graph
+            /** 创建执行作业顶点 */
             ExecutionJobVertex ejv =
                     executionJobVertexFactory.createExecutionJobVertex(
                             this,
@@ -863,39 +891,64 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
                             parallelismInfo,
                             coordinatorStore,
                             jobManagerJobMetricGroup);
-
+            /**
+             * 将ExecutionJobVertex 放入map结构 key=id,value=ExecutionJobVertex对象
+             */
             ExecutionJobVertex previousTask = this.tasks.putIfAbsent(jobVertex.getID(), ejv);
+            /**
+             * 如果存在相同的则抛出异常
+             */
             if (previousTask != null) {
                 throw new JobException(
                         String.format(
                                 "Encountered two job vertices with ID %s : previous=[%s] / new=[%s]",
                                 jobVertex.getID(), ejv, previousTask));
             }
-
+            /**
+             * 按照创建顺序放入List<ExecutionJobVertex> verticesInCreationOrder集合
+             */
             this.verticesInCreationOrder.add(ejv);
+            /** 作业顶点总数*/
             this.numJobVerticesTotal++;
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化JobVertices，内部构建ExecutionVertices
+    */
     private void initializeJobVertices(List<JobVertex> topologicallySorted) throws JobException {
+        /** 获取当前时间 */
         final long createTimestamp = System.currentTimeMillis();
-
+        /** 循环便利Job Vertex */
         for (JobVertex jobVertex : topologicallySorted) {
+            /**
+             *根据Id获取ExecutionJobVertex
+             */
             final ExecutionJobVertex ejv = tasks.get(jobVertex.getID());
+            /**
+             * 传入时间和ExecutionJobVertex构建内部ExecutionVertex
+             */
             initializeJobVertex(ejv, createTimestamp);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化给定的执行作业顶点，主要包括根据并行度创建执行顶点，以及连接到前置任务。
+     */
     @Override
     public void initializeJobVertex(
             ExecutionJobVertex ejv,
             long createTimestamp,
             Map<IntermediateDataSetID, JobVertexInputInfo> jobVertexInputInfos)
             throws JobException {
-
+        /** 检查是否为 null */
         checkNotNull(ejv);
         checkNotNull(jobVertexInputInfos);
-
+        /**
+         *
+         */
         jobVertexInputInfos.forEach(
                 (resultId, info) ->
                         this.vertexInputInfoStore.put(ejv.getJobVertexId(), resultId, info));
@@ -1618,7 +1671,11 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         executionStateUpdateListener.onStateUpdate(
                 execution.getAttemptId(), previousState, newExecutionState);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 主要目的是检查当前线程是否是作业主节点（Job Master）的主线程
+    */
     private void assertRunningInJobMasterMainThread() {
         if (!(jobMasterMainThreadExecutor
                 instanceof ComponentMainThreadExecutor.DummyComponentMainThreadExecutor)) {

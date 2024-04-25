@@ -134,9 +134,11 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
     private final ResourceID resourceId;
 
     /** All currently registered JobMasterGateways scoped by JobID. */
+    /** 存放jobId 对应的JobMasterregistration*/
     private final Map<JobID, JobManagerRegistration> jobManagerRegistrations;
 
     /** All currently registered JobMasterGateways scoped by ResourceID. */
+    /** 由ResourceID限定范围的所有当前注册的JobMasterGateways */
     private final Map<ResourceID, JobManagerRegistration> jmResourceIdRegistrations;
 
     /** Service to retrieve the job leader ids. */
@@ -363,7 +365,11 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
     // ------------------------------------------------------------------------
     //  RPC methods
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * ResourceManager处理注册消息
+    */
     @Override
     public CompletableFuture<RegistrationResponse> registerJobMaster(
             final JobMasterId jobMasterId,
@@ -371,16 +377,18 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
             final String jobManagerAddress,
             final JobID jobId,
             final Time timeout) {
-
+        /** 校验参数*/
         checkNotNull(jobMasterId);
         checkNotNull(jobManagerResourceId);
         checkNotNull(jobManagerAddress);
         checkNotNull(jobId);
-
+        /** 判断jobLeaderIdService中是否有jobID */
         if (!jobLeaderIdService.containsJob(jobId)) {
             try {
+                /** 如果没有则加入 Map<JobID, JobLeaderIdListener> jobLeaderIdListeners*/
                 jobLeaderIdService.addJob(jobId);
             } catch (Exception e) {
+                /** 打印异常 */
                 ResourceManagerException exception =
                         new ResourceManagerException(
                                 "Could not add the job " + jobId + " to the job id leader service.",
@@ -399,24 +407,27 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
         CompletableFuture<JobMasterId> jobMasterIdFuture;
 
         try {
+            /** 获取 JobId 对应的LeaderId*/
             jobMasterIdFuture = jobLeaderIdService.getLeaderId(jobId);
         } catch (Exception e) {
             // we cannot check the job leader id so let's fail
             // TODO: Maybe it's also ok to skip this check in case that we cannot check the leader
             // id
+            /** 如果异常则抛出异常*/
             ResourceManagerException exception =
                     new ResourceManagerException(
                             "Cannot obtain the "
                                     + "job leader id future to verify the correct job leader.",
                             e);
-
+            /** 判断是否是知名一场*/
             onFatalError(exception);
-
+            /** 打印日志*/
             log.debug(
                     "Could not obtain the job leader id future to verify the correct job leader.");
+            /** 设置异步状态为异常完成状态 value值为异常*/
             return FutureUtils.completedExceptionally(exception);
         }
-
+        /** 获取JobMaster的代理网关对象*/
         CompletableFuture<JobMasterGateway> jobMasterGatewayFuture =
                 getRpcService().connect(jobManagerAddress, jobMasterId, JobMasterGateway.class);
 
@@ -424,6 +435,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                 jobMasterGatewayFuture.thenCombineAsync(
                         jobMasterIdFuture,
                         (JobMasterGateway jobMasterGateway, JobMasterId leadingJobMasterId) -> {
+                            /** 如果过LeaderId 有限则调用内部方法进行注册*/
                             if (Objects.equals(leadingJobMasterId, jobMasterId)) {
                                 return registerJobMasterInternal(
                                         jobMasterGateway,
@@ -431,12 +443,14 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                                         jobManagerAddress,
                                         jobManagerResourceId);
                             } else {
+                                /** 打印日志 */
                                 final String declineMessage =
                                         String.format(
                                                 "The leading JobMaster id %s did not match the received JobMaster id %s. "
                                                         + "This indicates that a JobMaster leader change has happened.",
                                                 leadingJobMasterId, jobMasterId);
                                 log.debug(declineMessage);
+                                /** 返回异常相应结果*/
                                 return new RegistrationResponse.Failure(
                                         new FlinkException(declineMessage));
                             }
@@ -444,9 +458,12 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                         getMainThreadExecutor());
 
         // handle exceptions which might have occurred in one of the futures inputs of combine
+        /** 等待registrationResponseFuture执行结束执行handler*/
         return registrationResponseFuture.handleAsync(
                 (RegistrationResponse registrationResponse, Throwable throwable) -> {
+                    /** 如果异步变成存在异常 */
                     if (throwable != null) {
+                        /**根据日志级别打印日志*/
                         if (log.isDebugEnabled()) {
                             log.debug(
                                     "Registration of job manager {}@{} failed.",
@@ -459,7 +476,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                                     jobMasterId,
                                     jobManagerAddress);
                         }
-
+                        /**返回异步变成为失败*/
                         return new RegistrationResponse.Failure(throwable);
                     } else {
                         return registrationResponse;
@@ -980,24 +997,42 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
      * @param jobManagerResourceId ResourceID of the JobMaster
      * @return RegistrationResponse
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册一个新的JobMaster
+    */
     private RegistrationResponse registerJobMasterInternal(
             final JobMasterGateway jobMasterGateway,
             JobID jobId,
             String jobManagerAddress,
             ResourceID jobManagerResourceId) {
+        /**
+         * Map<JobID, JobManagerRegistration>
+         * 判断是否已经注册过
+         */
         if (jobManagerRegistrations.containsKey(jobId)) {
+            /**获取历史注册的JobManagerRegistration*/
             JobManagerRegistration oldJobManagerRegistration = jobManagerRegistrations.get(jobId);
-
+            /***
+             * 判断JobMasterId 和fencingToken是否一直
+             *
+             */
             if (Objects.equals(
                     oldJobManagerRegistration.getJobMasterId(),
                     jobMasterGateway.getFencingToken())) {
+
                 // same registration
+                /** 如果一样则代表同意给注册 打印日志返回*/
                 log.debug(
                         "Job manager {}@{} was already registered.",
                         jobMasterGateway.getFencingToken(),
                         jobManagerAddress);
             } else {
                 // tell old job manager that he is no longer the job leader
+                /**
+                 * 关闭老的注册
+                 */
                 closeJobManagerConnection(
                         oldJobManagerRegistration.getJobID(),
                         ResourceRequirementHandling.RETAIN,
@@ -1011,10 +1046,16 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
             }
         } else {
             // new registration for the job
+            /**
+             * 创建新的JobManagerRegistration对象
+             */
             JobManagerRegistration jobManagerRegistration =
                     new JobManagerRegistration(jobId, jobManagerResourceId, jobMasterGateway);
+            /** 维护到jobId,JobManagerRegistration 对应的Map结构*/
             jobManagerRegistrations.put(jobId, jobManagerRegistration);
+            /** 维护到jobManagerResourceId,JobManagerRegistration 对应的Map结构*/
             jmResourceIdRegistrations.put(jobManagerResourceId, jobManagerRegistration);
+            /** 注册一个新的阻止列表监听器 */
             blocklistHandler.registerBlocklistListener(jobMasterGateway);
         }
 
@@ -1128,32 +1169,48 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
      *     corresponding job should be handled
      * @param cause The exception which cause the JobManager failed.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 关闭JobManagerConnection
+    */
     protected void closeJobManagerConnection(
             JobID jobId, ResourceRequirementHandling resourceRequirementHandling, Exception cause) {
+        /** 从Map结构中移除jobId 对应的JobManagerRegistration*/
         JobManagerRegistration jobManagerRegistration = jobManagerRegistrations.remove(jobId);
-
+        /** 判断一处对象是否为null */
         if (jobManagerRegistration != null) {
+            /** 获取jobManagerResourceId */
             final ResourceID jobManagerResourceId =
                     jobManagerRegistration.getJobManagerResourceID();
+            /**获取JobMaster网关*/
             final JobMasterGateway jobMasterGateway = jobManagerRegistration.getJobManagerGateway();
+            /** 获取JobMasterId*/
             final JobMasterId jobMasterId = jobManagerRegistration.getJobMasterId();
+            /** 打印日志 */
 
             log.info(
                     "Disconnect job manager {}@{} for job {} from the resource manager.",
                     jobMasterId,
                     jobMasterGateway.getAddress(),
                     jobId);
-
+            /** 取消监控心跳目标 */
             jobManagerHeartbeatManager.unmonitorTarget(jobManagerResourceId);
-
+            /***
+             * Map<ResourceID, JobManagerRegistration> jmResourceIdRegistrations
+             * 移除资源id对应的注册
+             */
             jmResourceIdRegistrations.remove(jobManagerResourceId);
+            /** 取消注册阻止列表侦听器。 */
             blocklistHandler.deregisterBlocklistListener(jobMasterGateway);
 
             if (resourceRequirementHandling == ResourceRequirementHandling.CLEAR) {
+                /** 通知插槽管理器应清除给定作业的资源要求*/
                 slotManager.clearResourceRequirements(jobId);
             }
 
             // tell the job manager about the disconnect
+            /** 断开ResourceManager链接*/
             jobMasterGateway.disconnectResourceManager(getFencingToken(), cause);
         } else {
             log.debug("There was no registered job manager for job {}.", jobId);

@@ -166,10 +166,10 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
     private final BlobWriter blobWriter;
     /** 心跳服务，用来创建TaskManager、ResourceManager组件之间的心跳服务 */
     private final HeartbeatServices heartbeatServices;
-    /** JobMaster的唯一资源ID,区分JobMaster服务 */
+    /** 带延迟定时调度的线程池 执行定时任务的*/
     private final ScheduledExecutorService futureExecutor;
 
-
+    /** 提交运行一个任务 */
     private final Executor ioExecutor;
 
     private final OnCompletionActions jobCompletionActions;
@@ -276,7 +276,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
             throws Exception {
 
         super(rpcService, RpcServiceUtils.createRandomName(JOB_MANAGER_NAME), jobMasterId);
-
+        /** 心跳时候会触发 实现类中的方法 */
         final ExecutionDeploymentReconciliationHandler executionStateReconciliationHandler =
                 new ExecutionDeploymentReconciliationHandler() {
 
@@ -316,33 +316,45 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                         }
                     }
                 };
-
+        /** 跟进已部署执行的Execution */
         this.executionDeploymentTracker = executionDeploymentTracker;
+        /** 用于协调执行的部署状态的组件 */
         this.executionDeploymentReconciler =
                 executionDeploymentReconcilerFactory.create(executionStateReconciliationHandler);
-
+        /** JobMaster配置 */
         this.jobMasterConfiguration = checkNotNull(jobMasterConfiguration);
+        /** JobMaster的唯一资源ID,区分JobMaster服务 */
         this.resourceId = checkNotNull(resourceId);
+        /** JobGraph */
         this.jobGraph = checkNotNull(jobGraph);
+        /** RPC超时时间 */
         this.rpcTimeout = jobMasterConfiguration.getRpcTimeout();
+        /** 高可用服务 */
         this.highAvailabilityServices = checkNotNull(highAvailabilityService);
+        /** ExecutionJobVertex.getTaskInformationOrBlobKey 触发 */
         this.blobWriter = jobManagerSharedServices.getBlobWriter();
+        /** 待延迟、定时调度的线程池 */
         this.futureExecutor = jobManagerSharedServices.getFutureExecutor();
+        /** 提交运行一个任务 */
         this.ioExecutor = jobManagerSharedServices.getIoExecutor();
+        /** Flink作业达到终端状态后用于完成操作的接口。 */
         this.jobCompletionActions = checkNotNull(jobCompletionActions);
+        /** 致命错误 */
         this.fatalErrorHandler = checkNotNull(fatalErrorHandler);
         this.userCodeLoader = checkNotNull(userCodeLoader);
         this.initializationTimestamp = initializationTimestamp;
+        /**  获取jobmanager.retrieve-taskmanager-hostname */
         this.retrieveTaskManagerHostName =
                 jobMasterConfiguration
                         .getConfiguration()
                         .get(JobManagerOptions.RETRIEVE_TASK_MANAGER_HOSTNAME);
-
+        /** 创建jobName */
         final String jobName = jobGraph.getName();
+        /** 创建jobName */
         final JobID jid = jobGraph.getJobID();
 
         log.info("Initializing job '{}' ({}).", jobName, jid);
-
+        /** 构建ResourceManager监听的ResourceManager Leader*/
         resourceManagerLeaderRetriever =
                 highAvailabilityServices.getResourceManagerLeaderRetriever();
 
@@ -353,14 +365,14 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                         this::getNodeIdOfTaskManager,
                         getMainThreadExecutor(),
                         log);
-
+        /** 创建SlotPoolService*/
         this.slotPoolService =
                 checkNotNull(slotPoolServiceSchedulerFactory)
                         .createSlotPoolService(
                                 jid,
                                 createDeclarativeSlotPoolFactory(
                                         jobMasterConfiguration.getConfiguration()));
-
+        /** 追终Partition相关的 */
         this.partitionTracker =
                 checkNotNull(partitionTrackerFactory)
                         .create(
@@ -369,37 +381,49 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                                                     registeredTaskManagers.get(resourceID))
                                             .map(TaskManagerRegistration::getTaskExecutorGateway);
                                 });
-
+        /** 注册管理任务的Shuffle信息，比如注册Job、卸载job */
         this.shuffleMaster = checkNotNull(shuffleMaster);
-
+        /** 监控JobManagerMetric*/
         this.jobManagerJobMetricGroup = jobMetricGroupFactory.create(jobGraph);
+        /** 监控job status*/
         this.jobStatusListener = new JobManagerJobStatusListener();
 
         this.failureEnrichers = checkNotNull(failureEnrichers);
-
+        /**调度Flink作业接口 任务调度器*/
         this.schedulerNG =
                 createScheduler(
                         slotPoolServiceSchedulerFactory,
                         executionDeploymentTracker,
                         jobManagerJobMetricGroup,
                         jobStatusListener);
-
+        /** 心跳服务 */
         this.heartbeatServices = checkNotNull(heartbeatServices);
+        /** 心跳管理*/
         this.taskManagerHeartbeatManager = NoOpHeartbeatManager.getInstance();
+        /** 心跳服务 */
         this.resourceManagerHeartbeatManager = NoOpHeartbeatManager.getInstance();
-
+        /** 链接ResourceManager对象*/
         this.resourceManagerConnection = null;
+        /**  与ResourceManagers*/
         this.establishedResourceManagerConnection = null;
 
         this.accumulators = new HashMap<>();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建作业调度器
+    */
     private SchedulerNG createScheduler(
             SlotPoolServiceSchedulerFactory slotPoolServiceSchedulerFactory,
             ExecutionDeploymentTracker executionDeploymentTracker,
             JobManagerJobMetricGroup jobManagerJobMetricGroup,
             JobStatusListener jobStatusListener)
             throws Exception {
+        /**
+         * 通过工厂方式创建SchedulerNG
+         */
         final SchedulerNG scheduler =
                 slotPoolServiceSchedulerFactory.createScheduler(
                         log,
@@ -423,16 +447,25 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                         jobStatusListener,
                         failureEnrichers,
                         blocklistHandler::addNewBlockedNodes);
-
+        /** 返回SchedulerNG对象 */
         return scheduler;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个不主动发送检测信号的检测信号管理器。
+    */
     private HeartbeatManager<Void, Void> createResourceManagerHeartbeatManager(
             HeartbeatServices heartbeatServices) {
         return heartbeatServices.createHeartbeatManager(
                 resourceId, new ResourceManagerHeartbeatListener(), getMainThreadExecutor(), log);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个检测信号管理器，该管理器主动向监视目标发送检测信号。
+     */
     private HeartbeatManager<TaskExecutorToJobManagerHeartbeatPayload, AllocatedSlotReport>
             createTaskManagerHeartbeatManager(HeartbeatServices heartbeatServices) {
         return heartbeatServices.createHeartbeatManagerSender(
@@ -1325,7 +1358,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
          * 打印日志
          */
         log.info("Connecting to ResourceManager {}", resourceManagerAddress);
-        /** 创建 ResourceManagerConnection 对象 */
+        /** 创建 ResourceManagerConnection 对象 与ResourceManager建立链接 */
         resourceManagerConnection =
                 new ResourceManagerConnection(
                         log,
@@ -1337,7 +1370,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                         resourceManagerAddress.getResourceManagerId(),
                         futureExecutor);
         /**
-         * start 方法来启动 resourceManagerConnection
+         * start 方法来启动 resourceManagerConnection 进行注册
          */
         resourceManagerConnection.start();
     }
@@ -1617,6 +1650,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                         ResourceManagerGateway gateway,
                         ResourceManagerId fencingToken,
                         long timeoutMillis) {
+                    /** 获取超时时间 */
                     Time timeout = Time.milliseconds(timeoutMillis);
                     /**
                      * 向ResourceManaer注册JobMaster

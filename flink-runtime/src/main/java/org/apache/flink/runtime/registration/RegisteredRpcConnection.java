@@ -98,7 +98,7 @@ public abstract class RegisteredRpcConnection<
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     *
+     * 开始向Resourcemanager进行注册
     */
     public void start() {
         /**

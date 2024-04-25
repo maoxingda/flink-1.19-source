@@ -660,6 +660,11 @@ public class ExecutionJobVertex
     }
 
     /** Factory to create {@link ExecutionJobVertex}. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建ExecutionJobVertex
+    */
     public static class Factory {
         ExecutionJobVertex createExecutionJobVertex(
                 InternalExecutionGraphAccessor graph,
@@ -668,6 +673,10 @@ public class ExecutionJobVertex
                 CoordinatorStore coordinatorStore,
                 JobManagerJobMetricGroup jobManagerJobMetricGroup)
                 throws JobException {
+            /**
+             * 构建ExecutionJobVertex
+             * 主要参数jobVertex,并行度相关信息、监控指标
+             */
             return new ExecutionJobVertex(
                     graph, jobVertex, parallelismInfo, coordinatorStore, jobManagerJobMetricGroup);
         }

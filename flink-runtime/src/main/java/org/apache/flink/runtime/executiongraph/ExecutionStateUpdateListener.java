@@ -20,6 +20,11 @@ package org.apache.flink.runtime.executiongraph;
 import org.apache.flink.runtime.execution.ExecutionState;
 
 /** A listener that is called when an execution switched to a new state. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 当执行切换到新状态时调用的侦听器。
+*/
 public interface ExecutionStateUpdateListener {
     void onStateUpdate(
             ExecutionAttemptID execution, ExecutionState previousState, ExecutionState newState);

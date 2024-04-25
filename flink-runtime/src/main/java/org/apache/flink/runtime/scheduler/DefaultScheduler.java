@@ -151,17 +151,22 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
                 jobStatusListener,
                 executionGraphFactory,
                 vertexParallelismStore);
-
+        /** log日志对象 */
         this.log = log;
-
+        /** log日志对象 */
         this.delayExecutor = checkNotNull(delayExecutor);
+        /** log日志对象 */
         this.userCodeLoader = checkNotNull(userCodeLoader);
+        /** log日志对象 */
         this.executionOperations = checkNotNull(executionOperations);
+
+        /** log日志对象 */
         this.shuffleMaster = checkNotNull(shuffleMaster);
-
+         /** log日志对象 */
         this.reservedAllocationRefCounters = new HashMap<>();
+        /** log日志对象 */
         this.reservedAllocationByExecutionVertex = new HashMap<>();
-
+        /** log日志对象 */
         final FailoverStrategy failoverStrategy =
                 failoverStrategyFactory.create(
                         getSchedulingTopology(), getResultPartitionAvailabilityChecker());
@@ -170,15 +175,15 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
                 failoverStrategy,
                 jobGraph.getName(),
                 jobGraph.getJobID());
-
+        /** log日志对象 */
         final Context taskFailureCtx =
                 DefaultFailureEnricherContext.forTaskFailure(
                         this.jobInfo, jobManagerJobMetricGroup, ioExecutor, userCodeLoader);
-
+        /** log日志对象 */
         final Context globalFailureCtx =
                 DefaultFailureEnricherContext.forGlobalFailure(
                         this.jobInfo, jobManagerJobMetricGroup, ioExecutor, userCodeLoader);
-
+        /** log日志对象 */
         this.executionFailureHandler =
                 new ExecutionFailureHandler(
                         getSchedulingTopology(),
@@ -188,17 +193,18 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
                         failureEnrichers,
                         taskFailureCtx,
                         globalFailureCtx);
-
+        /** log日志对象 */
         this.schedulingStrategy =
                 schedulingStrategyFactory.createInstance(this, getSchedulingTopology());
-
+        /** log日志对象 */
         this.executionSlotAllocator =
                 checkNotNull(executionSlotAllocatorFactory)
                         .createInstance(new DefaultExecutionSlotAllocationContext());
-
+        /** log日志对象 */
         this.verticesWaitingForRestart = new HashSet<>();
+        /** log日志对象 */
         startUpAction.accept(mainThreadExecutor);
-
+        /** log日志对象 */
         this.executionDeployer =
                 executionDeployerFactory.createInstance(
                         log,

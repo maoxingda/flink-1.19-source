@@ -218,7 +218,11 @@ public interface ExecutionGraph extends AccessExecutionGraph {
 
     @Nonnull
     ComponentMainThreadExecutor getJobMasterMainThreadExecutor();
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构建ExecutionVertex
+    */
     default void initializeJobVertex(ExecutionJobVertex ejv, long createTimestamp)
             throws JobException {
         initializeJobVertex(
@@ -237,6 +241,11 @@ public interface ExecutionGraph extends AccessExecutionGraph {
      *     first Execution with.
      * @param jobVertexInputInfos The input infos of this job vertex.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化给定的执行作业顶点，主要包括根据并行度创建执行顶点，以及连接到前置任务。
+    */
     void initializeJobVertex(
             ExecutionJobVertex ejv,
             long createTimestamp,

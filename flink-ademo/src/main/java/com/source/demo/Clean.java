@@ -26,8 +26,8 @@ public class Clean {
         ClosureCleaner.clean(inner, ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL, false);
         //ClosureCleaner.ensureSerializable(inner);
         //System.out.println();
-        //System.out.println((true || false));
-        System.out.println(Function.identity());
+        System.out.println((true || false));
+        //System.out.println(Function.identity());
     }
 
 

@@ -18,6 +18,11 @@
 package org.apache.flink.runtime.executiongraph.failover;
 
 /** Strategy to decide whether to restart failed tasks and the delay to do the restarting. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 是否重新启动失败任务的策略以及重新启动的延迟
+*/
 public interface RestartBackoffTimeStrategy {
 
     /**

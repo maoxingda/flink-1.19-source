@@ -56,6 +56,11 @@ import static org.apache.flink.runtime.scheduler.SchedulerBase.computeVertexPara
 /** Factory for {@link DefaultScheduler}. */
 public class DefaultSchedulerFactory implements SchedulerNGFactory {
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建SchedulerNG
+    */
     @Override
     public SchedulerNG createInstance(
             final Logger log,
@@ -81,6 +86,11 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
             final BlocklistOperations blocklistOperations)
             throws Exception {
 
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * SlotPool 管理Slot的
+        */
         final SlotPool slotPool =
                 slotPoolService
                         .castInto(SlotPool.class)
@@ -89,6 +99,7 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
                                         new IllegalStateException(
                                                 "The DefaultScheduler requires a SlotPool."));
 
+        /** 用于创建DefaultScheduler的组件。 */
         final DefaultSchedulerComponents schedulerComponents =
                 createSchedulerComponents(
                         jobGraph.getJobType(),
@@ -96,6 +107,7 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
                         jobMasterConfiguration,
                         slotPool,
                         slotRequestTimeout);
+        /** 是否重新启动失败任务的策略以及重新启动的延迟 */
         final RestartBackoffTimeStrategy restartBackoffTimeStrategy =
                 RestartBackoffTimeStrategyFactoryLoader.createRestartBackoffTimeStrategyFactory(
                                 jobGraph.getSerializedExecutionConfig()
@@ -110,7 +122,7 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
                 restartBackoffTimeStrategy,
                 jobGraph.getName(),
                 jobGraph.getJobID());
-
+        /** 创建ExecutionGraph的工厂类 */
         final ExecutionGraphFactory executionGraphFactory =
                 new DefaultExecutionGraphFactory(
                         jobMasterConfiguration,
@@ -123,11 +135,11 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
                         blobWriter,
                         shuffleMaster,
                         partitionTracker);
-
+        /** 清理检查点 */
         final CheckpointsCleaner checkpointsCleaner =
                 new CheckpointsCleaner(
                         jobMasterConfiguration.get(CheckpointingOptions.CLEANER_PARALLEL_MODE));
-
+        /** 创建DefaultScheduler */
         return new DefaultScheduler(
                 log,
                 jobGraph,

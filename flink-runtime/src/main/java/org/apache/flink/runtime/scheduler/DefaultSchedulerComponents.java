@@ -42,6 +42,11 @@ import static org.apache.flink.util.Preconditions.checkArgument;
  * Components to create a {@link DefaultScheduler}. Currently only supports {@link
  * PipelinedRegionSchedulingStrategy}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于创建DefaultScheduler的组件。
+*/
 public class DefaultSchedulerComponents {
 
     private final SchedulingStrategyFactory schedulingStrategyFactory;

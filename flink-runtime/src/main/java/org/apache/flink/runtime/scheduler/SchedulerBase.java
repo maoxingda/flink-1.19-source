@@ -219,7 +219,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
                 MetricOptions.JobStatusMetricsSettings.fromConfiguration(jobMasterConfiguration);
         this.deploymentStateTimeMetrics =
                 new DeploymentStateTimeMetrics(jobGraph.getJobType(), jobStatusMetricsSettings);
-
+        /** 构建ExecutionGraph */
         this.executionGraph =
                 createAndRestoreExecutionGraph(
                         completedCheckpointStore,
@@ -366,7 +366,11 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
     public static VertexParallelismStore computeVertexParallelismStore(JobGraph jobGraph) {
         return computeVertexParallelismStore(jobGraph.getVertices());
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构建ExecutionGraph
+    */
     private ExecutionGraph createAndRestoreExecutionGraph(
             CompletedCheckpointStore completedCheckpointStore,
             CheckpointsCleaner checkpointsCleaner,
@@ -376,7 +380,10 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
             JobStatusListener jobStatusListener,
             VertexParallelismStore vertexParallelismStore)
             throws Exception {
-
+        /**
+         * executionGraphFactory的createAndRestoreExecutionGraph方法创建一个新的ExecutionGraph对象。
+         * 多个参数，包括作业图（jobGraph）、检查点存储库、检查点清理器、检查点ID计数器、初始化时间戳、顶点尝试次数存储库、顶点并行度存储库
+         */
         final ExecutionGraph newExecutionGraph =
                 executionGraphFactory.createAndRestoreExecutionGraph(
                         jobGraph,
@@ -391,12 +398,14 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
                         deploymentStateTimeMetrics,
                         getMarkPartitionFinishedStrategy(),
                         log);
-
+        /** 设置内部任务失败监听器： */
         newExecutionGraph.setInternalTaskFailuresListener(
                 new UpdateSchedulerNgOnInternalFailuresListener(this));
+        /** 用于监视作业状态的监听器。 */
         newExecutionGraph.registerJobStatusListener(jobStatusListener);
+        /** 设置主线程中运行任务的执行器。 */
         newExecutionGraph.start(mainThreadExecutor);
-
+        /** 返回 newExecutionGraph */
         return newExecutionGraph;
     }
 
