@@ -40,5 +40,10 @@ public interface InitializeOnMaster {
      * @throws IOException The initialization may throw exceptions, which may cause the job to
      *     abort.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 在分布式程序执行开始之前，会在master（JobManager）上调用该方法。
+    */
     void initializeGlobal(int parallelism) throws IOException;
 }

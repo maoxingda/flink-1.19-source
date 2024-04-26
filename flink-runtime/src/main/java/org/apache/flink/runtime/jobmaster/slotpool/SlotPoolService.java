@@ -39,7 +39,7 @@ import java.util.Optional;
 /**
  * @授课老师(微信): yi_locus
  * email: 156184212@qq.com
- * JobMaster用于管理SlotPool的服务。
+ * JobMaster通过SlotPoolService用于管理SlotPool的服务。
 */
 public interface SlotPoolService extends AutoCloseable {
 
@@ -51,6 +51,11 @@ public interface SlotPoolService extends AutoCloseable {
      * @return {@link Optional#of} the target type if it can be cast; otherwise {@link
      *     Optional#empty()}
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试将此槽池服务转换为给定的clazz。
+    */
     default <T> Optional<T> castInto(Class<T> clazz) {
         if (clazz.isAssignableFrom(this.getClass())) {
             return Optional.of(clazz.cast(this));

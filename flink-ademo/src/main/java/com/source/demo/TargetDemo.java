@@ -9,6 +9,8 @@ public class TargetDemo {
 
             int start = index * sourceCount / targetCount;
             int end = (index + 1) * sourceCount / targetCount;
+            System.out.println(start);
+            System.out.println(end);
             System.out.println("start="+start + ",end="+end);
         }
     }

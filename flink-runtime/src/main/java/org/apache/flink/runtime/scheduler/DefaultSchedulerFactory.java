@@ -171,6 +171,7 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
                 executionGraphFactory,
                 shuffleMaster,
                 rpcTimeout,
+                /**  计算并行度并存储到Map结构 */
                 computeVertexParallelismStore(jobGraph),
                 new DefaultExecutionDeployer.Factory());
     }

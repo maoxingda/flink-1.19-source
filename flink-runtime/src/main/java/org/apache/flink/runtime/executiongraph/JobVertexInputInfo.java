@@ -23,6 +23,11 @@ import java.util.List;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** This class describe how a job vertex consume an input(intermediate result). */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 此类描述作业顶点如何使用输入（中间结果）
+*/
 public class JobVertexInputInfo {
 
     private final List<ExecutionVertexInputInfo> executionVertexInputInfos;

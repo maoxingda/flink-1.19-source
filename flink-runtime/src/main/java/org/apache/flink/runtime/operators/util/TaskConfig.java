@@ -251,6 +251,11 @@ public class TaskConfig implements Serializable {
      *
      * @param config The configuration holding the actual values.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个新的任务配置，用于包装给定的配置。
+    */
     public TaskConfig(Configuration config) {
         this.config = config;
     }

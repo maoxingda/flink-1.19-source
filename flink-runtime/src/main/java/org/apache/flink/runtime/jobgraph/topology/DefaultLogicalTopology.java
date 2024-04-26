@@ -38,20 +38,34 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** Default implementation of {@link LogicalTopology}. It is an adapter of {@link JobGraph}. */
 public class DefaultLogicalTopology implements LogicalTopology {
-
+    /**
+     * 用于存储 DefaultLogicalVertex 类型的对象。
+     * 基于JobVertex 对象的某种逻辑表示或封装
+     */
     private final List<DefaultLogicalVertex> verticesSorted;
-
+    /**
+     * 它的键是 JobVertexID 类型的对象，值是 DefaultLogicalVertex 类型的对象。
+     * 映射允许你通过作业顶点的 ID 快速查找对应的逻辑顶点。
+     */
     private final Map<JobVertexID, DefaultLogicalVertex> idToVertexMap;
-
+    /**
+     * 它的键是 IntermediateDataSetID 类型的对象，值是 DefaultLogicalResult 类型的对象。
+     * 这个映射可能用于存储中间数据集 ID 与它们对应的逻辑结果之间的映射关系。
+     */
     private final Map<IntermediateDataSetID, DefaultLogicalResult> idToResultMap;
 
     private DefaultLogicalTopology(final List<JobVertex> jobVertices) {
+        /** 校验是否为null */
         checkNotNull(jobVertices);
-
+        /** 初始化Map、List*/
         this.verticesSorted = new ArrayList<>(jobVertices.size());
         this.idToVertexMap = new HashMap<>();
         this.idToResultMap = new HashMap<>();
-
+        /**
+         * 调用 buildVerticesAndResults(jobVertices) 方法，传入 jobVertices 列表。
+         * 这个方法的具体实现没有给出，但我们可以推测它会处理传入的作业顶点列表，
+         * 并填充 verticesSorted、idToVertexMap 和 idToResultMap 这三个成员变量。
+         */
         buildVerticesAndResults(jobVertices);
     }
 
@@ -62,8 +76,14 @@ public class DefaultLogicalTopology implements LogicalTopology {
                 jobGraph.getVerticesSortedTopologicallyFromSources());
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 基于List<JobVertex> jobVertices构建DefaultLogicalTopology
+    */
     public static DefaultLogicalTopology fromTopologicallySortedJobVertices(
             final List<JobVertex> jobVertices) {
+        /** 它创建了一个新的 DefaultLogicalTopology 对象，并将传入的 jobVertices 列表作为构造函数的参数。 */
         return new DefaultLogicalTopology(jobVertices);
     }
 

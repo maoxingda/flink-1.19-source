@@ -32,15 +32,15 @@ import org.apache.flink.runtime.executiongraph.IntermediateResultPartition;
 /**
  * @授课老师(微信): yi_locus
  * email: 156184212@qq.com
- * 分布模式决定了生产任务的子任务与下游哪些子任务相连接。
+ * 分发模式
 */
 public enum DistributionPattern {
 
     /** Each producing sub task is connected to each sub task of the consuming task. */
-    /** 每个生产子任务都连接到消耗任务的每个子任务。 */
+    /** 全连接 每个生产子任务都连接到消耗任务的每个子任务。 */
     ALL_TO_ALL,
 
     /** Each producing sub task is connected to one or more subtask(s) of the consuming task. */
-    /** 每个生产子任务都连接到消耗任务的一个或多个子任务 */
+    /** 点对点 每个生产子任务都连接到消耗任务的一个或多个子任务 */
     POINTWISE
 }

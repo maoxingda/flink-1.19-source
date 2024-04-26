@@ -23,6 +23,11 @@ import java.io.Serializable;
 import static org.apache.flink.util.Preconditions.checkArgument;
 
 /** This class represents the range of index. The range is inclusive. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 此类表示索引的范围。范围包括在内。
+*/
 public class IndexRange implements Serializable {
 
     protected final int startIndex;

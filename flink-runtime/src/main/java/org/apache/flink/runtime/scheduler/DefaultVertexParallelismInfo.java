@@ -27,6 +27,11 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /** A {@link VertexParallelismInformation} implementation that provides common validation. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 管理顶点的并行度，最大并行度，最小并行度，当前并行度
+*/
 public class DefaultVertexParallelismInfo implements VertexParallelismInformation {
     private final int minParallelism;
     private int parallelism;

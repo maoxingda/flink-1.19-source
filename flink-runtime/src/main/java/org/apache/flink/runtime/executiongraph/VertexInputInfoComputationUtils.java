@@ -54,7 +54,7 @@ public class VertexInputInfoComputationUtils {
          * 循环JobVertex的输入，也就是JobEdge
          */
         for (JobEdge edge : ejv.getJobVertex().getInputs()) {
-            /** 得到IntermediateResult */
+            /** 得到IntermediateResult结果 */
             IntermediateResult ires = intermediateResultRetriever.apply(edge.getSourceId());
             /** 如果IntermediateResult 为空抛出异常 */
             if (ires == null) {
@@ -118,7 +118,7 @@ public class VertexInputInfoComputationUtils {
                                 input.isBroadcast()));
             }
         }
-
+        /** 返回结果 jobVertexInputInfos*/
         return jobVertexInputInfos;
     }
 
@@ -154,12 +154,16 @@ public class VertexInputInfoComputationUtils {
          * 如果上游并行度 >= 下游并行度
          */
         if (sourceCount >= targetCount) {
+            /** 循环目标并行度 */
             for (int index = 0; index < targetCount; index++) {
-
+                /** 计算每个下游顶点应该开始和结束的上游分区索引。 */
                 int start = index * sourceCount / targetCount;
                 int end = (index + 1) * sourceCount / targetCount;
                 /** 计算每个下游顶点应该消费的上游分区的范围（start到end-1） */
+                /**start 值在0 - targetCount-1 之间*/
+                /**start 值在0 - targetCount 之间*/
                 IndexRange partitionRange = new IndexRange(start, end - 1);
+                /** 计算子分区范围*/
                 IndexRange subpartitionRange =
                         computeConsumedSubpartitionRange(
                                 index,
@@ -243,6 +247,11 @@ public class VertexInputInfoComputationUtils {
      * @param isBroadcast whether the edge is broadcast
      * @return the computed subpartition range
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 计算子任务的已消耗子分区范围。这种计算算法将根据子分区的数量将子分区均匀地分配给下游的子任务。不同的下游子任务消耗的子分区数量大致相同。
+    */
     @VisibleForTesting
     static IndexRange computeConsumedSubpartitionRange(
             int consumerSubtaskIndex,

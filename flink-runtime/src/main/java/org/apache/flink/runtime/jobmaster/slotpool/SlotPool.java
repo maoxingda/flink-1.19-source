@@ -63,7 +63,11 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
             String newJobManagerAddress,
             ComponentMainThreadExecutor jmMainThreadScheduledExecutor)
             throws Exception;
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 关闭SlotPool
+    */
     void close();
 
     // ------------------------------------------------------------------------
@@ -76,6 +80,12 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      *
      * @param resourceManagerGateway The RPC gateway for the resource manager.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * SlotPool与ResourceManager建立链接。
+     * 创建链接后，SlotPool将能够从给定的ResourceManager请求资源。
+    */
     void connectToResourceManager(ResourceManagerGateway resourceManagerGateway);
 
     /**
@@ -85,6 +95,13 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      *
      * <p>The slot pool will still be able to serve slots from its internal pool.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * SlotPool断开与ResourceManager链接，
+     * 1.SlotPool将无法从资源管理器获取更多的资源
+     * 2.所有当前挂起的对资源管理器的请求都将被取消。
+    */
     void disconnectResourceManager();
 
     // ------------------------------------------------------------------------
@@ -97,6 +114,11 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      * @param resourceID identifying the TaskExecutor to register
      * @return true iff a new resource id was registered
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册/取消注册TaskManager和插槽
+    */
     boolean registerTaskManager(ResourceID resourceID);
 
     /**
@@ -106,6 +128,11 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      * @param cause for the releasing of the TaskManager
      * @return true iff a given registered resource id was removed
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从SlotPool中根据给定的ResourceId 释放TaskManager
+    */
     boolean releaseTaskManager(final ResourceID resourceId, final Exception cause);
 
     /**
@@ -161,6 +188,11 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      * @return the previously available slot with the given allocation id, if a slot with this
      *     allocation id exists
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 基于需求配置请求申请Slot
+    */
     Optional<PhysicalSlot> allocateAvailableSlot(
             SlotRequestId slotRequestId,
             AllocationID allocationID,
@@ -180,8 +212,8 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * JobManager成功申请到Slot计算资源后，开始调试和执行任务中的Task,此时TaskManager中的调度器会使用
-     * SlotPool申请到的计算资源，
+     *向资源管理器请求分配新的Slot。
+     * 此方法不会从池中已可用的Slot中返回Slot，而是将立即分配并返回的新插槽添加到池中。
      */
     default CompletableFuture<PhysicalSlot> requestNewAllocatedSlot(
             SlotRequestId slotRequestId, ResourceProfile resourceProfile, @Nullable Time timeout) {
@@ -201,6 +233,12 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      * @param timeout timeout for the allocation procedure
      * @return a newly allocated slot that was previously not available.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 向资源管理器请求分配新的插槽。此方法不会从池中已可用的插槽中返回插槽，
+     * 而是将请求并返回的新插槽添加到池中。
+    */
     CompletableFuture<PhysicalSlot> requestNewAllocatedSlot(
             SlotRequestId slotRequestId,
             ResourceProfile resourceProfile,

@@ -143,6 +143,7 @@ public class ExecutionJobVertex
         this.parallelismInfo = parallelismInfo;
 
         // verify that our parallelism is not higher than the maximum parallelism
+        /** 验证并行度是否不高于最大并行度 */
         if (this.parallelismInfo.getParallelism() > this.parallelismInfo.getMaxParallelism()) {
             throw new JobException(
                     String.format(
@@ -151,7 +152,7 @@ public class ExecutionJobVertex
                             this.parallelismInfo.getParallelism(),
                             this.parallelismInfo.getMaxParallelism()));
         }
-
+        /** 获取ResourceProfile 基于配置构建*/
         this.resourceProfile =
                 ResourceProfile.fromResourceSpec(jobVertex.getMinResources(), MemorySize.ZERO);
 

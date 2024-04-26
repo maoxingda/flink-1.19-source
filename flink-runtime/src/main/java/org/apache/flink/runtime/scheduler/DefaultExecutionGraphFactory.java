@@ -170,8 +170,7 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
                     }
                 };
         /**
-         * 获取totalNumberOfSubTasks
-         *
+         * 获取所有任务并行度总数 5
          */
         int totalNumberOfSubTasks =
                 StreamSupport.stream(jobGraph.getVertices().spliterator(), false)
@@ -232,7 +231,7 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
                         newExecutionGraph, jobGraph.getSavepointRestoreSettings());
             }
         }
-
+        /** 返回newExecutionGraph 对象 */
         return newExecutionGraph;
     }
 

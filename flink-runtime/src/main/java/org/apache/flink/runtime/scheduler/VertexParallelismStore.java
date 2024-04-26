@@ -24,6 +24,14 @@ import org.apache.flink.runtime.jobgraph.JobVertexID;
  * Contains the max parallelism per vertex, along with metadata about how these maxes were
  * calculated.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 包含每个顶点的最大并行度，以及关于如何计算这些最大并行度的元数据。
+ * DefaultVertexParallelismStore
+ *  Map<JobVertexID, VertexParallelismInformation> vertexToParallelismInfo =
+ *             new HashMap<>();
+ */
 public interface VertexParallelismStore {
     /**
      * Returns a given vertex's parallelism information.

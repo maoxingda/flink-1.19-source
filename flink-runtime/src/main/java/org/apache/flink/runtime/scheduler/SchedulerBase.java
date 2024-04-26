@@ -290,7 +290,12 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
         return KeyGroupRangeAssignment.computeDefaultMaxParallelism(
                 normalizeParallelism(vertex.getParallelism()));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 计算出每个顶点的最大并行度、最小并行度、当前并行度
+     * vertices、获取最大并行度函数、默认并行度函数，调用computeVertexParallelismStore
+     */
     public static VertexParallelismStore computeVertexParallelismStore(
             Iterable<JobVertex> vertices, Function<JobVertex, Integer> defaultMaxParallelismFunc) {
         return computeVertexParallelismStore(
@@ -308,25 +313,42 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
      * @param normalizeParallelismFunc a function for normalizing vertex parallelism
      * @return the computed parallelism store
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为所有给定的顶点计算 VertexParallelismStore，这将设置默认值，
+     * 并确保返回的存储包含有效的并行性，
+     * 其中有一个用于默认最大并行度计算的自定义函数和一个用于规范顶点并行度的自定义函数。
+    */
     public static VertexParallelismStore computeVertexParallelismStore(
             Iterable<JobVertex> vertices,
             Function<JobVertex, Integer> defaultMaxParallelismFunc,
             Function<Integer, Integer> normalizeParallelismFunc) {
+        /** 创建了一个DefaultVertexParallelismStore类的新实例，并将其引用赋值给变量store。 */
         DefaultVertexParallelismStore store = new DefaultVertexParallelismStore();
-
+        /** 循环Iterable<JobVertex> */
         for (JobVertex vertex : vertices) {
+            /** 通过normalizeParallelismFunc函数获取并行度 */
             int parallelism = normalizeParallelismFunc.apply(vertex.getParallelism());
-
+            /** 获取最大并行度 */
             int maxParallelism = vertex.getMaxParallelism();
             final boolean autoConfigured;
             // if no max parallelism was configured by the user, we calculate and set a default
+            /** 如果用户没有配置最大并行度，我们计算并设置一个默认值 */
             if (maxParallelism == JobVertex.MAX_PARALLELISM_DEFAULT) {
+                /** 设置最大默认值 */
                 maxParallelism = defaultMaxParallelismFunc.apply(vertex);
+                /** 设置自动配置标识*/
                 autoConfigured = true;
             } else {
+                /** 设置为不是自动配置标识*/
                 autoConfigured = false;
             }
-
+            /**
+             * 根据之前计算的并行度和最大并行度信息，以及 autoConfigured 的值，
+             * 创建一个新的 VertexParallelismInformation
+             * 为什么没有最小并行度，最小并行度为1
+             */
             VertexParallelismInformation parallelismInfo =
                     new DefaultVertexParallelismInfo(
                             parallelism,
@@ -338,6 +360,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
                                             ? Optional.empty()
                                             : Optional.of(
                                                     "Cannot override a configured max parallelism."));
+            /** 设置vertexId 对应的并行度对象 */
             store.setParallelismInfo(vertex.getID(), parallelismInfo);
         }
 
@@ -351,6 +374,12 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
      * @param vertices the vertices to compute parallelism for
      * @return the computed parallelism store
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 计算出每个顶点的最大并行度、最小并行度、当前并行度
+     * 获取最大并行度、vertices，调用computeVertexParallelismStore
+     */
     public static VertexParallelismStore computeVertexParallelismStore(
             Iterable<JobVertex> vertices) {
         return computeVertexParallelismStore(vertices, SchedulerBase::getDefaultMaxParallelism);
@@ -363,6 +392,13 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
      * @param jobGraph the job graph to retrieve vertices from
      * @return the computed parallelism store
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 计算出每个顶点的最大并行度、最小并行度、当前并行度
+     * DefaultVertexParallelismStore
+     * Map<JobVertexID, VertexParallelismInformation> vertexToParallelismInfo
+    */
     public static VertexParallelismStore computeVertexParallelismStore(JobGraph jobGraph) {
         return computeVertexParallelismStore(jobGraph.getVertices());
     }

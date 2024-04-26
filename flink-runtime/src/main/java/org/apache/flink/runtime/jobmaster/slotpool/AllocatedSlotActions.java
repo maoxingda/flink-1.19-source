@@ -24,6 +24,11 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 /** Interface for components which have to perform actions on allocated slots. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * Slot执行操作的组件的接口
+*/
 public interface AllocatedSlotActions {
 
     /**
@@ -33,5 +38,10 @@ public interface AllocatedSlotActions {
      * @param slotRequestId identifying the slot to release
      * @param cause of the slot release, null if none
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 基于SlotRequestId 请求ID 释放 Slot插槽。cause释放原因。
+    */
     void releaseSlot(@Nonnull SlotRequestId slotRequestId, @Nullable Throwable cause);
 }

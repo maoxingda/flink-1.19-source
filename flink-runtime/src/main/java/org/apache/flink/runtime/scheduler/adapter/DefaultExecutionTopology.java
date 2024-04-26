@@ -162,27 +162,49 @@ public class DefaultExecutionTopology implements SchedulingTopology {
     public EdgeManager getEdgeManager() {
         return edgeManager;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     private static Map<JobVertexID, DefaultLogicalPipelinedRegion>
             computeLogicalPipelinedRegionsByJobVertexId(final ExecutionGraph executionGraph) {
+        /**
+         * 获取 executionGraph 中的拓扑排序后的执行作业顶点（ExecutionJobVertex）。
+         * 然后，通过调用 getJobVertex 方法，将这些执行作业顶点转换为 JobVertex 对象，
+         *
+         */
         List<JobVertex> topologicallySortedJobVertices =
+                /**
+                 *  Iterable<ExecutionJobVertex> getVerticesTopologically();
+                 *  获取ExecutionJobVertex
+                 */
                 IterableUtils.toStream(executionGraph.getVerticesTopologically())
+                        /** 通过调用 getJobVertex 方法，将这些执行作业顶点转换为 JobVertex 对象 */
                         .map(ExecutionJobVertex::getJobVertex)
                         .collect(Collectors.toList());
-
+        /**
+         * 使用从拓扑排序后的作业顶点创建的 DefaultLogicalTopology 对象来计算逻辑上的管道化区域。
+         * 管道化区域可能表示作业中可以并行执行的部分
+         */
         Iterable<DefaultLogicalPipelinedRegion> logicalPipelinedRegions =
                 DefaultLogicalTopology.fromTopologicallySortedJobVertices(
                                 topologicallySortedJobVertices)
                         .getAllPipelinedRegions();
-
+        /** 初始化一个空的 HashMap，用于存储 JobVertexID 到 DefaultLogicalPipelinedRegion 的映射 */
         Map<JobVertexID, DefaultLogicalPipelinedRegion> logicalPipelinedRegionsByJobVertexId =
                 new HashMap<>();
+        /**
+         * 填充映射
+         * 双层循环遍历所有的逻辑管道化区域以及每个区域中的逻辑顶点（LogicalVertex）。对于每个逻辑顶点，
+         * 它将其 ID（JobVertexID）和所属的管道化区域添加到映射中。注意，这里可能存在多个逻辑顶点映射到同一个管道化区域的情况。
+         */
         for (DefaultLogicalPipelinedRegion logicalPipelinedRegion : logicalPipelinedRegions) {
             for (LogicalVertex vertex : logicalPipelinedRegion.getVertices()) {
                 logicalPipelinedRegionsByJobVertexId.put(vertex.getId(), logicalPipelinedRegion);
             }
         }
-
+        /** 返回映射 */
         return logicalPipelinedRegionsByJobVertexId;
     }
 
@@ -231,13 +253,22 @@ public class DefaultExecutionTopology implements SchedulingTopology {
             listener.notifySchedulingTopologyUpdated(this, newVertexIds);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据一个 DefaultExecutionGraph 对象来创建一个 DefaultExecutionTopology 对象。
+     * DefaultExecutionGraph用于表示 Flink 作业的执行图的类，
+     * DefaultExecutionTopology 则用于描述作业执行时的拓扑结构。
+    */
     public static DefaultExecutionTopology fromExecutionGraph(
             DefaultExecutionGraph executionGraph) {
         checkNotNull(executionGraph, "execution graph can not be null");
-
+        /** 从 executionGraph 对象中获取 EdgeManager 对象。EdgeManager 负责管理执行图中的边或者顶点之间的上下游关系。 */
         EdgeManager edgeManager = executionGraph.getEdgeManager();
-
+        /**
+         * 使用 lambda 表达式、edgeManager 通过 computeLogicalPipelinedRegionsByJobVertexId 方法计算得到的结果来创建
+         * 新的 DefaultExecutionTopology 对象。
+         */
         DefaultExecutionTopology schedulingTopology =
                 new DefaultExecutionTopology(
                         () ->
@@ -246,13 +277,17 @@ public class DefaultExecutionTopology implements SchedulingTopology {
                                         .collect(Collectors.toList()),
                         edgeManager,
                         computeLogicalPipelinedRegionsByJobVertexId(executionGraph));
-
+        /**
+         * 调用 schedulingTopology 的 notifyExecutionGraphUpdated 方法，
+         * 通知它执行图已更新。传入的第二个参数是一个列表，
+         * 该列表包含 executionGraph 中所有已初始化的执行作业顶点（ExecutionJobVertex）。
+         */
         schedulingTopology.notifyExecutionGraphUpdated(
                 executionGraph,
                 IterableUtils.toStream(executionGraph.getVerticesTopologically())
                         .filter(ExecutionJobVertex::isInitialized)
                         .collect(Collectors.toList()));
-
+        /** 返回拓扑结构 */
         return schedulingTopology;
     }
 

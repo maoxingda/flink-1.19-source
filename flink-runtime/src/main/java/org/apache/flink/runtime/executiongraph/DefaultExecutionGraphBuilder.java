@@ -125,6 +125,7 @@ public class DefaultExecutionGraphBuilder {
                         jobGraph.getClasspaths());
 
         /**
+         * 置在Flink中JobManager保留多少个已完成的job execution尝试的历史记录。
          * jobmanager.execution.attempts-history-size 默认16 历史中保留的历史执行尝试的最大次数
          */
         final int executionHistorySizeLimit =
@@ -142,11 +143,17 @@ public class DefaultExecutionGraphBuilder {
          * 这是一个专家选项，我们不想在文档中公开。默认值几乎适用于所有情况
          * blob服务器的阈值,默认64M
          */
+        /**
+         * 将shuffle描述符卸载到blob Server的阈值。
+         * 一旦shuffle描述符的数量超过此值，把shuffle描述符卸载到blob Server。
+         * 此默认值意味着JobManager需要序列化并传输2048个shuffle描述符（几乎32KB）给2048个消费者（总共64MB）。
+         */
         final int offloadShuffleDescriptorsThreshold =
                 jobManagerConfig.get(
                         TaskDeploymentDescriptorFactory.OFFLOAD_SHUFFLE_DESCRIPTORS_THRESHOLD);
         /**
          * TaskDeploymentDescriptor的工厂
+         * TaskDeploymentDescriptor用于从Execution部署到Task
          */
         final TaskDeploymentDescriptorFactory taskDeploymentDescriptorFactory;
         try {
@@ -192,11 +199,10 @@ public class DefaultExecutionGraphBuilder {
         // set the basic properties
         /** 设置公共属性  */
         try {
-            /**
-             * 设置json格式
-             */
+            /** 将来JobGrap转换为json格式设置到executionGraph jsonPlan字段中*/
             executionGraph.setJsonPlan(JsonPlanGenerator.generatePlan(jobGraph));
         } catch (Throwable t) {
+            /** 打印日志抛出异常 */
             log.warn("Cannot create JSON plan for job", t);
             // give the graph an empty plan
             executionGraph.setJsonPlan("{}");
@@ -212,12 +218,12 @@ public class DefaultExecutionGraphBuilder {
         log.info("Running initialization on master for job {} ({}).", jobName, jobId);
         /**
          * 循环JobVertext
-         *
+         * 判断executableClass是否存在
          */
         for (JobVertex vertex : jobGraph.getVertices()) {
-            /** 获取InvokableClass */
+            /** 获取InvokableClass org.apache.flink.streaming.runtime.tasks.OneInputStreamTask */
             String executableClass = vertex.getInvokableClassName();
-            /** 如果executableClass 则抛出异常 */
+            /** 如果executableClass不存在 则抛出异常 */
             if (executableClass == null || executableClass.isEmpty()) {
                 throw new JobSubmissionException(
                         jobId,
@@ -229,6 +235,10 @@ public class DefaultExecutionGraphBuilder {
             }
 
             try {
+                /**
+                 * 设置数据源切分、输出并行度，在JobMaster启动前调用
+                 * 初始化Master环境
+                 */
                 vertex.initializeOnMaster(
                         new SimpleInitializeOnMasterContext(
                                 classLoader,
@@ -270,17 +280,27 @@ public class DefaultExecutionGraphBuilder {
         }
 
         // configure the state checkpointing
+        /** 配置状态检查点 */
         if (isDynamicGraph) {
             // dynamic graph does not support checkpointing so we skip it
+            /** 动态图不支持检查点 */
             log.warn("Skip setting up checkpointing for a job with dynamic graph.");
         } else if (isCheckpointingEnabled(jobGraph)) {
+            /**
+             * 如果开启了检查点配置
+             * 则从JobGraph获取检查点配置
+             */
             JobCheckpointingSettings snapshotSettings = jobGraph.getCheckpointingSettings();
 
             // load the state backend from the application settings
+            /** 从应用程序设置加载状态后端 */
             final StateBackend applicationConfiguredBackend;
+            /**
+             * 获取默认的状态后端
+             */
             final SerializedValue<StateBackend> serializedAppConfigured =
                     snapshotSettings.getDefaultStateBackend();
-
+            /** 如果*/
             if (serializedAppConfigured == null) {
                 applicationConfiguredBackend = null;
             } else {

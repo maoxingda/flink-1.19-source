@@ -50,34 +50,61 @@ import static org.apache.flink.util.Preconditions.checkState;
  * Util to analyze inputs & outputs of {@link ExecutionJobVertex} and calculate network memory
  * requirement for slot sharing group (SSG).
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 分析 ExecutionJobVertex 的输入和输出，并计算插槽共享组（SSG）的网络内存需求。
+*/
 public class SsgNetworkMemoryCalculationUtils {
 
     /**
      * Calculates network memory requirement of {@link ExecutionJobVertex} and update {@link
      * ResourceProfile} of corresponding slot sharing group.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 计算ExecutionJobVertex的网络内存需求，并更新相应插槽共享组的ResourceProfile。
+    */
     public static void enrichNetworkMemory(
             SlotSharingGroup ssg,
             Function<JobVertexID, ExecutionJobVertex> ejvs,
             ShuffleMaster<?> shuffleMaster) {
-
+        /** 获取原始资源配置 */
         ResourceProfile original = ssg.getResourceProfile();
 
         // Updating network memory for UNKNOWN is also beneficial, but currently it's not
         // supported and the enriching logic only works for 'fine-grained resource management'.
+        /**
+         * 如果原始资源配置为 UNKNOWN 或其网络内存不为零，则方法直接返回，不进行任何操作。
+         */
         if (original.equals(ResourceProfile.UNKNOWN)
                 || !original.getNetworkMemory().equals(MemorySize.ZERO)) {
             return;
         }
-
+        /** 初始化一个 networkMemory 变量，用于存储计算得到的总网络内存大小。 */
         MemorySize networkMemory = MemorySize.ZERO;
+        /** 遍历 ssg 中的所有作业顶点 ID */
         for (JobVertexID jvId : ssg.getJobVertexIds()) {
+            /** 使用 ejvs 函数获取对应的 ExecutionJobVertex */
             ExecutionJobVertex ejv = ejvs.apply(jvId);
+            /**
+             * 构建TaskInputsOutputsDescriptor
+             */
             TaskInputsOutputsDescriptor desc = buildTaskInputsOutputsDescriptor(ejv, ejvs);
+            /**
+             * 使用 shuffleMaster 的 computeShuffleMemorySizeForTask 方法计算每个任务所需的 Shuffle 内存大小，
+             * 并累加到 networkMemory 变量中。
+             */
             MemorySize requiredNetworkMemory = shuffleMaster.computeShuffleMemorySizeForTask(desc);
             networkMemory = networkMemory.add(requiredNetworkMemory);
         }
-
+        /**
+         * 使用 ResourceProfile.newBuilder 方法构建一个新的 ResourceProfile 对象，
+         * 该对象具有与原始配置相同的 CPU 核心数、任务堆内存、任务非堆内存、管理内存和扩展资源，
+         * 但网络内存被设置为之前计算得到的 networkMemory。
+         * 然后，使用 setResourceProfile 方法将这个新的资源配置设置到 ssg 中。
+         */
         ResourceProfile enriched =
                 ResourceProfile.newBuilder()
                         .setCpuCores(original.getCpuCores())

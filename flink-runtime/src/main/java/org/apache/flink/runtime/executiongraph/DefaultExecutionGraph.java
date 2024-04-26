@@ -834,7 +834,7 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     public void attachJobGraph(
             List<JobVertex> verticesToAttach, JobManagerJobMetricGroup jobManagerJobMetricGroup)
             throws JobException {
-        /** 主线程中执行*/
+        /** 检查当前线程是否是作业主节点（Job Master）的主线程 */
         assertRunningInJobMasterMainThread();
         /** 打印日志 */
         LOG.debug(
@@ -852,6 +852,7 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         }
 
         // the topology assigning should happen before notifying new vertices to failoverStrategy
+        /** 根据一个 DefaultExecutionGraph 对象来创建一个 DefaultExecutionTopology 对象 */
         executionTopology = DefaultExecutionTopology.fromExecutionGraph(this);
 
         partitionGroupReleaseStrategy =
@@ -873,7 +874,7 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         for (JobVertex jobVertex : topologicallySorted) {
             /**
              * 检查是input是否为空 source input为空
-             * 检查jobVertex是否关闭
+             * 检查jobVertex.isStoppable是否为true
              */
             if (jobVertex.isInputVertex() && !jobVertex.isStoppable()) {
                 this.isStoppable = false;
@@ -922,13 +923,9 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         final long createTimestamp = System.currentTimeMillis();
         /** 循环便利Job Vertex */
         for (JobVertex jobVertex : topologicallySorted) {
-            /**
-             *根据Id获取ExecutionJobVertex
-             */
+            /** 根据ID获取 ExecutionJobVertex */
             final ExecutionJobVertex ejv = tasks.get(jobVertex.getID());
-            /**
-             * 传入时间和ExecutionJobVertex构建内部ExecutionVertex
-             */
+            /** 初始化 ExecutionJobVertex */
             initializeJobVertex(ejv, createTimestamp);
         }
     }
@@ -947,20 +944,29 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         checkNotNull(ejv);
         checkNotNull(jobVertexInputInfos);
         /**
-         *
+         * Map<JobVertexID, Map<IntermediateDataSetID, JobVertexInputInfo>>
+         * 遍历 jobVertexInputInfos 映射，并将每个输入信息存储到 vertexInputInfoStore 中，
+         * 键是 ejv 的作业顶点 ID 和 resultId。
          */
         jobVertexInputInfos.forEach(
                 (resultId, info) ->
                         this.vertexInputInfoStore.put(ejv.getJobVertexId(), resultId, info));
-
+        /**
+         * 构建ExecutionVertex、以及中间结果
+         */
         ejv.initialize(
                 executionHistorySizeLimit,
                 rpcTimeout,
                 createTimestamp,
                 this.initialAttemptCounts.getAttemptCounts(ejv.getJobVertexId()));
-
+        /**
+         * 设置顶点链接
+          */
         ejv.connectToPredecessors(this.intermediateResults);
-
+        /**
+         * 遍历ejv产生的所有中间结果集，并尝试将它们添加到 intermediateResults 映射中。
+         * 如果某个 ID 的结果集已经存在，则抛出一个异常。
+         */
         for (IntermediateResult res : ejv.getProducedDataSets()) {
             IntermediateResult previousDataSet =
                     this.intermediateResults.putIfAbsent(res.getId(), res);
@@ -971,21 +977,37 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
                                 res.getId(), res, previousDataSet));
             }
         }
-
+        /**
+         * Map<ExecutionVertexID, ExecutionVertex> executionVerticesById;
+         * Map<IntermediateResultPartitionID, IntermediateResultPartition>
+         *  注册执行顶点和结果分区
+         */
         registerExecutionVerticesAndResultPartitionsFor(ejv);
 
         // enrich network memory.
+        /** 获取Slot共享组*/
         SlotSharingGroup slotSharingGroup = ejv.getSlotSharingGroup();
+        /**
+         * 如果都初始化了
+         */
         if (areJobVerticesAllInitialized(slotSharingGroup)) {
             SsgNetworkMemoryCalculationUtils.enrichNetworkMemory(
                     slotSharingGroup, this::getJobVertex, shuffleMaster);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 判断SlotSharingGroup组下的JobVertex是否初始化
+    */
     private boolean areJobVerticesAllInitialized(final SlotSharingGroup group) {
+        /** 调用 group.getJobVertexIds() 方法，获取槽共享组中所有作业顶点的 ID，并遍历这些 ID。 */
         for (JobVertexID jobVertexId : group.getJobVertexIds()) {
+            /** 通过jobVertexId 获得ExecutionJobVertex对象*/
             final ExecutionJobVertex jobVertex = getJobVertex(jobVertexId);
+            /** 检查是否为null */
             checkNotNull(jobVertex, "Unknown job vertex %s", jobVertexId);
+            /** 检查作业顶点是否初始化 */
             if (!jobVertex.isInitialized()) {
                 return false;
             }
@@ -1674,7 +1696,7 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 主要目的是检查当前线程是否是作业主节点（Job Master）的主线程
+     * 检查当前线程是否是作业主节点（Job Master）的主线程
     */
     private void assertRunningInJobMasterMainThread() {
         if (!(jobMasterMainThreadExecutor

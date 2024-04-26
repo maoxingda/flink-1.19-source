@@ -28,6 +28,11 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /** Maintains the configured parallelisms for vertices, which should be defined by a scheduler. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 维护顶点的已配置并行性，这些并行性应由调度程序定义
+*/
 public class DefaultVertexParallelismStore implements MutableVertexParallelismStore {
 
     private static final Function<Integer, Optional<String>> RESCALE_MAX_REJECT =
