@@ -132,7 +132,7 @@ public class DefaultExecutionGraphBuilder {
                 jobManagerConfig.get(JobManagerOptions.MAX_ATTEMPTS_HISTORY_SIZE);
         /**
          * 分区组策略
-         *
+         * 用于决定何时发布 ConsumerdPartitionGroup的策略的接口。
          */
         final PartitionGroupReleaseStrategy.Factory partitionGroupReleaseStrategyFactory =
                 PartitionGroupReleaseStrategyFactoryLoader.loadPartitionGroupReleaseStrategyFactory(
@@ -154,6 +154,7 @@ public class DefaultExecutionGraphBuilder {
         /**
          * TaskDeploymentDescriptor的工厂
          * TaskDeploymentDescriptor用于从Execution部署到Task
+         * 后面详细讲解
          */
         final TaskDeploymentDescriptorFactory taskDeploymentDescriptorFactory;
         try {

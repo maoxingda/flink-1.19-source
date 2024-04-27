@@ -74,20 +74,26 @@ public class IntermediateResult {
     /** All consumer job vertex ids of this dataset. */
     private final List<JobVertexID> consumerVertices = new ArrayList<>();
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构建IntermediateResult
+    */
     public IntermediateResult(
             IntermediateDataSet intermediateDataSet,
             ExecutionJobVertex producer,
             int numParallelProducers,
             ResultPartitionType resultType) {
-
+        /** 检查intermediateDataSet是否为null，如果不是，则将其赋值给成员变量。 */
         this.intermediateDataSet = checkNotNull(intermediateDataSet);
+        /** 使用intermediateDataSet的ID来初始化成员变量id */
         this.id = checkNotNull(intermediateDataSet.getId());
-
+        /** 检查producer是否为null，如果不是，则将其赋值给成员变量 */
         this.producer = checkNotNull(producer);
-
+        /**  验证numParallelProducers是否大于或等于1，然后赋值给成员变量 */
         checkArgument(numParallelProducers >= 1);
         this.numParallelProducers = numParallelProducers;
-
+        /** 初始化一个数组，用于存储中间结果的分区。该数组的大小与并行生产者的数量相同。*/
         this.partitions = new IntermediateResultPartition[numParallelProducers];
 
         // we do not set the intermediate result partitions here, because we let them be initialized
@@ -95,13 +101,15 @@ public class IntermediateResult {
         // the execution vertex that produces them
 
         // assign a random connection index
+        /** 分配随机连接索引 */
         this.connectionIndex = (int) (Math.random() * Integer.MAX_VALUE);
 
         // The runtime type for this produced result
+        /** 检查resultType是否为null，如果不是，则将其赋值给成员变量 */
         this.resultType = checkNotNull(resultType);
-
+        /** 初始化一个哈希映射，可能用于缓存shuffle操作的描述信息。 */
         this.shuffleDescriptorCache = new HashMap<>();
-
+        /** 遍历intermediateDataSet的所有消费者，并将每个消费者的ID添加到consumerVertices列表中。 */
         intermediateDataSet
                 .getConsumers()
                 .forEach(jobEdge -> consumerVertices.add(jobEdge.getTarget().getID()));

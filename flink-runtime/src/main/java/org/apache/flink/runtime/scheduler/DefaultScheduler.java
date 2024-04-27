@@ -108,7 +108,11 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
     private final Map<ExecutionVertexID, AllocationID> reservedAllocationByExecutionVertex;
 
     protected final ExecutionDeployer executionDeployer;
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建DefaultScheduler
+    */
     protected DefaultScheduler(
             final Logger log,
             final JobGraph jobGraph,
@@ -204,7 +208,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
         this.verticesWaitingForRestart = new HashSet<>();
         /** log日志对象 */
         startUpAction.accept(mainThreadExecutor);
-        /** log日志对象 */
+        /** 构建ExecutionDeployer */
         this.executionDeployer =
                 executionDeployerFactory.createInstance(
                         log,

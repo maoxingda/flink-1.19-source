@@ -77,7 +77,11 @@ import java.util.concurrent.CompletableFuture;
  * 用于调度Flink作业的接口。
 */
 public interface SchedulerNG extends GlobalFailureHandler, AutoCloseableAsync {
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动调度器
+    */
     void startScheduling();
 
     void cancel();

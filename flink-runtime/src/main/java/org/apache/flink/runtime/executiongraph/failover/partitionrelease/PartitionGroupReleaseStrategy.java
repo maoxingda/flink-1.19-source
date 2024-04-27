@@ -29,6 +29,11 @@ import java.util.List;
  * Interface for strategies that decide when to release {@link ConsumedPartitionGroup
  * ConsumedPartitionGroups}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于决定何时发布  ConsumerdPartitionGroup ConsumerdParationGroups 的策略的接口。
+*/
 public interface PartitionGroupReleaseStrategy {
 
     /**
@@ -37,6 +42,7 @@ public interface PartitionGroupReleaseStrategy {
      * @param finishedVertex Id of the vertex that finished the execution
      * @return A list of {@link ConsumedPartitionGroup ConsumedPartitionGroups} that can be released
      */
+    /** 调用此方法会通知策略顶点已完成。 */
     List<ConsumedPartitionGroup> vertexFinished(ExecutionVertexID finishedVertex);
 
     /**
@@ -45,6 +51,7 @@ public interface PartitionGroupReleaseStrategy {
      *
      * @param executionVertexID Id of the vertex that is no longer in finished state.
      */
+    /** 调用此方法会通知策略顶点不再处于完成状态，例如，当顶点被重新执行时。 */
     void vertexUnfinished(ExecutionVertexID executionVertexID);
 
     /** Factory for {@link PartitionGroupReleaseStrategy}. */

@@ -186,27 +186,37 @@ public class ExecutionJobVertex
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * ExecutionVertex、IntermediateResult 初始化
+    */
     protected void initialize(
             int executionHistorySizeLimit,
             Time timeout,
             long createTimestamp,
             SubtaskAttemptNumberStore initialAttemptCounts)
             throws JobException {
-
+        /** 校验并行度必须大于了 否则抛出异常 */
         checkState(parallelismInfo.getParallelism() > 0);
+        /** 校验是否做过初始化 taskVertices ！= null */
         checkState(!isInitialized());
-
+        /** taskVertices 是一个ExecutionVertex类型的数组，其大小与并行度相同。 */
         this.taskVertices = new ExecutionVertex[parallelismInfo.getParallelism()];
-
+        /** inputs 是一个ArrayList，其初始容量设置为jobVertex的输入数量。 */
         this.inputs = new ArrayList<>(jobVertex.getInputs().size());
 
         // create the intermediate results
+        /** 基于jobVertex results数量构建  IntermediateResult[] producedDataSets数组 用来存储中间结果*/
         this.producedDataSets =
                 new IntermediateResult[jobVertex.getNumberOfProducedIntermediateDataSets()];
-
+        /***
+         * 代码遍历jobVertex产生的所有数据集（IntermediateDataSet），并为每个数据集创建一个IntermediateResult对象
+         */
         for (int i = 0; i < jobVertex.getProducedDataSets().size(); i++) {
+            /** 获取JobGraph的IntermediateDataSet */
             final IntermediateDataSet result = jobVertex.getProducedDataSets().get(i);
-
+            /** 构建IntermediateResult */
             this.producedDataSets[i] =
                     new IntermediateResult(
                             result,
@@ -216,7 +226,13 @@ public class ExecutionJobVertex
         }
 
         // create all task vertices
+        /**
+         * 根据并行度循环创建ExecutionVertex
+         */
         for (int i = 0; i < this.parallelismInfo.getParallelism(); i++) {
+            /**
+             * 循环中创建一个新的ExecutionVertex对象，并将其存储在this.taskVertices数组中。
+             */
             ExecutionVertex vertex =
                     createExecutionVertex(
                             this,
@@ -232,6 +248,7 @@ public class ExecutionJobVertex
 
         // sanity check for the double referencing between intermediate result partitions and
         // execution vertices
+        /** 中间结果分区和执行顶点之间双重引用的健全性检查 */
         for (IntermediateResult ir : this.producedDataSets) {
             if (ir.getNumberOfAssignedPartitions() != this.parallelismInfo.getParallelism()) {
                 throw new RuntimeException(
@@ -240,26 +257,42 @@ public class ExecutionJobVertex
         }
 
         // set up the input splits, if the vertex has any
+        /** 设置输入拆分，如果顶点有 */
         try {
+            /**
+             * 尝试从jobVertex中获取InputSplitSource。
+             * InputSplit是分布式计算中用于描述数据分区的对象，而InputSplitSource则是产生这些InputSplit的源。
+             */
             @SuppressWarnings("unchecked")
             InputSplitSource<InputSplit> splitSource =
                     (InputSplitSource<InputSplit>) jobVertex.getInputSplitSource();
-
+            /**
+             * 如果splitSource不为空，代码会更改当前线程的上下文类加载器为graph.getUserClassLoader()。上下文类加载器用于加载类，特别是在处理类路径和类加载器层次结构时。这里更改类加载器可能是为了确保在创建InputSplit时，能够使用用户提供的类加载器来加载相关类。
+             */
             if (splitSource != null) {
+                /** 获取Thread对象 */
                 Thread currentThread = Thread.currentThread();
+                /** 获取当前类加载器 */
                 ClassLoader oldContextClassLoader = currentThread.getContextClassLoader();
+                /** 设置上下文环境的类加载器 */
                 currentThread.setContextClassLoader(graph.getUserClassLoader());
                 try {
+                    /**
+                     * 使用splitSource的createInputSplits方法来创建InputSplit对象。
+                     * 这些InputSplit对象代表分布式数据集的分区，每个分区可以由一个子任务处理。
+                     */
                     inputSplits =
                             splitSource.createInputSplits(this.parallelismInfo.getParallelism());
-
+                    /** 设置给分配器 */
                     if (inputSplits != null) {
                         splitAssigner = splitSource.getInputSplitAssigner(inputSplits);
                     }
                 } finally {
+                    /** 恢复类加载器 */
                     currentThread.setContextClassLoader(oldContextClassLoader);
                 }
             } else {
+                /** 设置为null*/
                 inputSplits = null;
             }
         } catch (Throwable t) {
@@ -472,14 +505,25 @@ public class ExecutionJobVertex
     }
 
     // ---------------------------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 设置顶点链接
+    */
     public void connectToPredecessors(
             Map<IntermediateDataSetID, IntermediateResult> intermediateDataSets)
             throws JobException {
+        /**
+         * 它会检查一个状态，确保某个对象或系统已经被初始化。如果未初始化，则可能会抛出异常。
+         */
         checkState(isInitialized());
-
+        /**
+         * 从jobVertex对象中获取所有输入，存储在一个JobEdge的列表中。JobEdge表示任务顶点之间的连接关系。
+         */
         List<JobEdge> inputs = jobVertex.getInputs();
-
+        /**
+         * 如果日志的调试级别被启用，那么它会记录一些关于连接任务顶点到其前置任务的信息。
+         */
         if (LOG.isDebugEnabled()) {
             LOG.debug(
                     String.format(
@@ -487,9 +531,13 @@ public class ExecutionJobVertex
                             jobVertex.getID(), jobVertex.getName(), inputs.size()));
         }
 
+        /** 代码遍历所有输入，并对每一个JobEdge执行操作。 */
         for (int num = 0; num < inputs.size(); num++) {
+            /** 获取JobEdge */
             JobEdge edge = inputs.get(num);
-
+            /**
+             * 打印日志
+             */
             if (LOG.isDebugEnabled()) {
                 if (edge.getSource() == null) {
                     LOG.debug(
@@ -514,15 +562,26 @@ public class ExecutionJobVertex
             // fetch the intermediate result via ID. if it does not exist, then it either has not
             // been created, or the order
             // in which this method is called for the job vertices is not a topological order
+            /**
+             * 通过ID获取中间结果。如果它不存在，那么它要么没有
+             * 已创建，或者为作业顶点调用此方法的顺序不是拓扑顺序
+             */
+            /**
+             * 获取上游的IntermediateResult(对应JobGraph IndermediateDataset)
+             */
             IntermediateResult ires = intermediateDataSets.get(edge.getSourceId());
             if (ires == null) {
                 throw new JobException(
                         "Cannot connect this job graph to the previous graph. No previous intermediate result found for ID "
                                 + edge.getSourceId());
             }
-
+            /**
+             * 找到的IntermediateResult对象ires添加到当前对象的inputs列表中
+             */
             this.inputs.add(ires);
-
+            /**
+             * 将当前顶点与找到的中间结果ires连接起来
+             */
             EdgeManagerBuildUtil.connectVertexToResult(this, ires);
         }
     }

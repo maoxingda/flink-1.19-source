@@ -77,6 +77,7 @@ public class ExecutionVertex
     private final Time timeout;
 
     /** The name in the format "myTask (2/7)", cached to avoid frequent string concatenations. */
+    /** 名称格式为“myTask（2/7）”，缓存以避免频繁的字符串串联 */
     private final String taskNameWithSubtask;
 
     /** The current or latest execution attempt of this vertex's task. */
@@ -114,19 +115,24 @@ public class ExecutionVertex
             long createTimestamp,
             int executionHistorySizeLimit,
             int initialAttemptCount) {
-
+        /** 赋值JobVertex */
         this.jobVertex = jobVertex;
+        /** 子任务的索引，用于区分同一个作业顶点下的不同子任务。 */
         this.subTaskIndex = subTaskIndex;
+        /** 一个数组，包含该执行顶点产生的中间结果。 */
         this.executionVertexId = new ExecutionVertexID(jobVertex.getJobVertexId(), subTaskIndex);
+        /** 名称格式为“myTask（2/7）”，缓存以避免频繁的字符串串联 */
         this.taskNameWithSubtask =
                 String.format(
                         "%s (%d/%d)",
                         jobVertex.getJobVertex().getName(),
                         subTaskIndex + 1,
                         jobVertex.getParallelism());
-
+        /** 创建一个LinkedHashMap来存储中间结果分区。 */
         this.resultPartitions = new LinkedHashMap<>(producedDataSets.length, 1);
-
+        /**
+         * 遍历producedDataSets数组，为每个中间结果创建一个IntermediateResultPartition对象，并将其与该中间结果和分区的ID相关联。
+         */
         for (IntermediateResult result : producedDataSets) {
             IntermediateResultPartition irp =
                     new IntermediateResultPartition(
@@ -135,21 +141,27 @@ public class ExecutionVertex
                             subTaskIndex,
                             getExecutionGraphAccessor().getEdgeManager());
             result.setPartition(subTaskIndex, irp);
-
+            /**
+             * Map<IntermediateResultPartitionID, IntermediateResultPartition>
+             * 分区对应的结果放入Map结构
+             */
             resultPartitions.put(irp.getPartitionId(), irp);
         }
-
+        /** 创建一个新的ExecutionHistory对象，用于记录执行历史。 */
         this.executionHistory = new ExecutionHistory(executionHistorySizeLimit);
-
+        /** 将initialAttemptCount赋值给nextAttemptNumber，表示下一个尝试的编号 */
         this.nextAttemptNumber = initialAttemptCount;
-
+        /** 初始化为NUM_BYTES_UNKNOWN，表示输入字节数未知。 */
         this.inputBytes = NUM_BYTES_UNKNOWN;
-
+        /**  将传入的timeout赋值给成员变量 */
         this.timeout = timeout;
         this.inputSplits = new ArrayList<>();
-
+        /** 创建一个新的执行，并赋值给currentExecution */
         this.currentExecution = createNewExecution(createTimestamp);
-
+        /**
+         * Map<ExecutionAttemptID, Execution> currentExecutions
+         * 来注册当前执行到执行图中
+         */
         getExecutionGraphAccessor().registerExecution(currentExecution);
     }
 

@@ -26,6 +26,11 @@ import java.util.List;
  * An input split assigner distributes the {@link InputSplit}s among the instances on which a data
  * source exists.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 输入拆分分配器在数据源所在的实例之间分配
+*/
 @PublicEvolving
 public interface InputSplitAssigner {
 

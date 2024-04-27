@@ -45,21 +45,42 @@ public class EdgeManagerBuildUtil {
      * @param vertex the downstream consumer {@link ExecutionJobVertex}
      * @param intermediateResult the upstream consumed {@link IntermediateResult}
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 基于  DistributionPattern 计算  ExecutionJobVertex和  IntermediateResult之间的连接。
+    */
     static void connectVertexToResult(
             ExecutionJobVertex vertex, IntermediateResult intermediateResult) {
+        /** 从intermediateResult中获取分发模式。分发模式定义了数据如何在不同的任务之间分发和传输。 */
         final DistributionPattern distributionPattern =
                 intermediateResult.getConsumingDistributionPattern();
+        /**
+         * 从任务顶点的图（vertex.getGraph()）中获取关于此顶点对中间结果输入的信息。
+         * 包括如何读取或处理这个中间结果。
+         */
         final JobVertexInputInfo jobVertexInputInfo =
                 vertex.getGraph()
                         .getJobVertexInputInfo(vertex.getJobVertexId(), intermediateResult.getId());
 
         switch (distributionPattern) {
+            /**
+             * 如果分发模式是POINTWISE，则调用connectPointwise方法来进行点对点的连接。
+             * 这通常意味着每个任务顶点会接收到特定数量的中间结果，通常是与任务顶点数量相同的中间结果。
+             */
             case POINTWISE:
                 connectPointwise(vertex, intermediateResult, jobVertexInputInfo);
                 break;
+            /**
+             * 如果分发模式是ALL_TO_ALL，则调用connectAllToAll方法来进行全对全的连接。
+             * 这通常意味着每个任务顶点都会接收到所有中间结果，每个中间结果也会被所有任务顶点接收。
+             */
             case ALL_TO_ALL:
                 connectAllToAll(vertex, intermediateResult, jobVertexInputInfo);
                 break;
+            /**
+             * 如果分发模式不是POINTWISE或ALL_TO_ALL，则抛出IllegalArgumentException，表示不识别该分发模式。
+             */
             default:
                 throw new IllegalArgumentException("Unrecognized distribution pattern.");
         }
@@ -86,7 +107,11 @@ public class EdgeManagerBuildUtil {
                 throw new IllegalArgumentException("Unrecognized distribution pattern.");
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 设置ALL_TO_ALL分发模式下顶点和边的链接
+     */
     private static void connectAllToAll(
             ExecutionJobVertex jobVertex,
             IntermediateResult result,
@@ -111,17 +136,32 @@ public class EdgeManagerBuildUtil {
                 jobVertex.getGraph().getEdgeManager());
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 设置POINTWISE分发模式下顶点和边的链接
+    */
     private static void connectPointwise(
             ExecutionJobVertex jobVertex,
             IntermediateResult result,
             JobVertexInputInfo jobVertexInputInfo) {
-
+        /**
+         * 初始化一个LinkedHashMap，键是IndexRange（索引范围），值是List<Integer>（消费者索引列表）。
+         * 这个映射用来记录每个索引范围（即分区）对应的消费者（子任务）索引。
+         */
         Map<IndexRange, List<Integer>> consumersByPartition = new LinkedHashMap<>();
-
+        /**
+         * 遍历任务顶点的所有执行顶点输入信息，
+         */
         for (ExecutionVertexInputInfo executionVertexInputInfo :
                 jobVertexInputInfo.getExecutionVertexInputInfos()) {
+            /** 提取每个执行顶点的子任务索引  */
             int consumerIndex = executionVertexInputInfo.getSubtaskIndex();
+            /** 分区索引范围 */
             IndexRange range = executionVertexInputInfo.getPartitionIndexRange();
+            /**
+             * 并将子任务索引添加到对应分区索引范围的消费者列表中。
+             */
             consumersByPartition.compute(
                     range,
                     (ignore, consumers) -> {

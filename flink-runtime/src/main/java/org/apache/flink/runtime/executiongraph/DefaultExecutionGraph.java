@@ -165,6 +165,7 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     private final Map<IntermediateDataSetID, IntermediateResult> intermediateResults;
 
     /** The currently executed tasks, for callbacks. */
+    /** 当前执行的任务，用于回调。 */
     private final Map<ExecutionAttemptID, Execution> currentExecutions;
 
     /**
@@ -828,7 +829,7 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     *
+     * 转换初始化ExecutionGraph
     */
     @Override
     public void attachJobGraph(
@@ -855,6 +856,9 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         /** 根据一个 DefaultExecutionGraph 对象来创建一个 DefaultExecutionTopology 对象 */
         executionTopology = DefaultExecutionTopology.fromExecutionGraph(this);
 
+        /**
+         * 释放与 链接相关的阻塞中间结果分区SchedulelingPipelinedRegion只要区域的执行顶点完成。
+         */
         partitionGroupReleaseStrategy =
                 partitionGroupReleaseStrategyFactory.createInstance(getSchedulingTopology());
     }
@@ -988,7 +992,7 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         /** 获取Slot共享组*/
         SlotSharingGroup slotSharingGroup = ejv.getSlotSharingGroup();
         /**
-         * 如果都初始化了
+         * 构建ResourceProfile
          */
         if (areJobVerticesAllInitialized(slotSharingGroup)) {
             SsgNetworkMemoryCalculationUtils.enrichNetworkMemory(
@@ -1609,6 +1613,11 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 维护Map结构方便后面执行的时候使用
+    */
     private void registerExecutionVerticesAndResultPartitionsFor(
             ExecutionJobVertex executionJobVertex) {
         for (ExecutionVertex executionVertex : executionJobVertex.getTaskVertices()) {
