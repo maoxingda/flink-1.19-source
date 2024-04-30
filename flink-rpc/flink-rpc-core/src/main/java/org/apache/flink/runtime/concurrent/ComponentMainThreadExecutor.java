@@ -30,6 +30,11 @@ import java.util.concurrent.TimeUnit;
  * Interface for an executor that runs tasks in the main thread of an {@link
  * org.apache.flink.runtime.rpc.RpcEndpoint}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 在主线程中运行任务的执行器的接口
+*/
 public interface ComponentMainThreadExecutor extends ScheduledExecutor {
 
     /** Returns true if the method was called in the thread of this executor. */

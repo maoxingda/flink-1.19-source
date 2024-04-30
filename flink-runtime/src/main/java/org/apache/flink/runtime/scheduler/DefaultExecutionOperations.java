@@ -25,19 +25,37 @@ import org.apache.flink.runtime.executiongraph.Execution;
 import java.util.concurrent.CompletableFuture;
 
 /** Default implementation of {@link ExecutionOperations}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 对Execution等各种操作、部署、取消、标记失败
+*/
 public class DefaultExecutionOperations implements ExecutionOperations {
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * Execution部署
+    */
     @Override
     public void deploy(Execution execution) throws JobException {
         execution.deploy();
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * Execution取消
+     */
     @Override
     public CompletableFuture<?> cancel(Execution execution) {
         execution.cancel();
         return execution.getReleaseFuture();
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将执行标记为失败。
+    */
     @Override
     public void markFailed(Execution execution, Throwable cause) {
         execution.markFailed(cause);

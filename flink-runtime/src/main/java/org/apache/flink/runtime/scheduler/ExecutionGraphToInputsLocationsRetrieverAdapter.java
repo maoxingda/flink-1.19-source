@@ -36,6 +36,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
 
 /** An implementation of {@link InputsLocationsRetriever} based on the {@link ExecutionGraph}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于检索 ExecutionVertex 的输入位置的组件
+*/
 public class ExecutionGraphToInputsLocationsRetrieverAdapter implements InputsLocationsRetriever {
 
     private final ExecutionGraph executionGraph;

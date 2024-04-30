@@ -32,6 +32,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * Unique identifier for the attempt to execute a tasks. Multiple attempts happen in cases of
  * failures and recovery.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 尝试执行任务的唯一标识符。在失败和恢复的情况下会发生多次尝试。
+*/
 public class ExecutionAttemptID implements java.io.Serializable {
 
     private static final long serialVersionUID = 1L;

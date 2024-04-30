@@ -5,7 +5,7 @@
  * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * with the License.  You may obtain a copy of the License atd
  *
  *   http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -29,6 +29,11 @@ import java.util.stream.Collectors;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** Set of {@link LogicalVertex} that are connected through pipelined {@link LogicalResult}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 通过PipeLine连接的  LogicalVertex 的集合 LogicalResult
+*/
 public class DefaultLogicalPipelinedRegion implements LogicalPipelinedRegion {
 
     private final Map<JobVertexID, LogicalVertex> vertexById;

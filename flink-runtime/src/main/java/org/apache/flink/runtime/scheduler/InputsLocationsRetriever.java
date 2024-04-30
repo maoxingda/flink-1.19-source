@@ -28,6 +28,11 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /** Component to retrieve the inputs locations of an {@link ExecutionVertex}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于检索 ExecutionVertex 的输入位置的组件
+*/
 public interface InputsLocationsRetriever {
 
     /**
@@ -36,6 +41,11 @@ public interface InputsLocationsRetriever {
      * @param executionVertexId identifies the execution vertex
      * @return the consumed result partition groups
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取执行顶点的消耗结果分区组。
+    */
     Collection<ConsumedPartitionGroup> getConsumedPartitionGroups(
             ExecutionVertexID executionVertexId);
 
@@ -45,6 +55,11 @@ public interface InputsLocationsRetriever {
      * @param consumedPartitionGroup the consumed result partition group
      * @return the ids of producer execution vertices
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取已消耗结果分区组的生产者执行顶点。
+    */
     Collection<ExecutionVertexID> getProducersOfConsumedPartitionGroup(
             ConsumedPartitionGroup consumedPartitionGroup);
 
@@ -54,6 +69,11 @@ public interface InputsLocationsRetriever {
      * @param executionVertexId identifying the execution vertex
      * @return the task manager location future
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取执行顶点的任务管理器位置future。
+    */
     Optional<CompletableFuture<TaskManagerLocation>> getTaskManagerLocation(
             ExecutionVertexID executionVertexId);
 }

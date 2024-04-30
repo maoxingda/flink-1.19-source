@@ -76,6 +76,11 @@ import static org.apache.flink.util.Preconditions.checkState;
  * metadata file. For a state backend that stores metadata in database tables, the pointer could be
  * the table name and row key. The pointer is encoded as a String.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * CompletedCheckpoint描述了在所有所需任务确认检查点（及其状态）后的检查点，该检查点被认为是成功的。CompletedCheckpoint类包含检查点的所有元数据，即检查点ID、时间戳和作为检查点一部分的所有状态的句柄。
+*/
 @NotThreadSafe
 public class CompletedCheckpoint implements Serializable, Checkpoint {
 

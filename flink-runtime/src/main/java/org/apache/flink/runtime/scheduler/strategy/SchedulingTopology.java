@@ -25,6 +25,11 @@ import org.apache.flink.runtime.topology.Topology;
 import java.util.List;
 
 /** Topology of {@link SchedulingExecutionVertex}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * SchedulingExecutionVertex 的拓步
+*/
 public interface SchedulingTopology
         extends Topology<
                 ExecutionVertexID,
@@ -40,6 +45,11 @@ public interface SchedulingTopology
      * @return The respective scheduling vertex
      * @throws IllegalArgumentException If the vertex does not exist
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通过executionVertexId获取SchedulingExecutionVertex
+    */
     SchedulingExecutionVertex getVertex(ExecutionVertexID executionVertexId);
 
     /**
@@ -50,6 +60,11 @@ public interface SchedulingTopology
      * @return The respective scheduling result partition
      * @throws IllegalArgumentException If the partition does not exist
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通过intermediateResultPartitionId获得SchedulingResultPartition
+    */
     SchedulingResultPartition getResultPartition(
             IntermediateResultPartitionID intermediateResultPartitionId);
 
@@ -60,5 +75,11 @@ public interface SchedulingTopology
      *
      * @param listener the registered listener.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册一个调度拓扑侦听器。
+     * 每当更新调度拓扑时，都会通知此侦听器。
+    */
     void registerSchedulingTopologyListener(SchedulingTopologyListener listener);
 }

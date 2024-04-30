@@ -37,6 +37,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * Special {@link org.apache.flink.metrics.MetricGroup} representing everything belonging to a
  * specific job, running on the JobManager.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 特殊的 MetricGroup 表示属于特定作业的所有内容，在JobManager上运行。
+*/
 @Internal
 public class JobManagerJobMetricGroup extends JobMetricGroup<JobManagerMetricGroup> {
     private final Map<String, JobManagerOperatorMetricGroup> operators = new HashMap<>();

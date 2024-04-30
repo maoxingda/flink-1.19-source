@@ -27,6 +27,11 @@ import java.util.concurrent.CompletableFuture;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** The slot assignment for an {@link Execution}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ *  Execution 的插槽分配。
+*/
 class ExecutionSlotAssignment {
 
     private final ExecutionAttemptID executionAttemptId;

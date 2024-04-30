@@ -154,7 +154,9 @@ public class DefaultSchedulerFactory implements SchedulerNGFactory {
                 schedulerComponents.getSchedulingStrategyFactory(),
                 FailoverStrategyFactoryLoader.loadFailoverStrategyFactory(jobMasterConfiguration),
                 restartBackoffTimeStrategy,
+                /** 对Execution等各种操作、部署、取消、标记失败 */
                 new DefaultExecutionOperations(),
+                /** 记录对 ExecutionVertex ExecutionVertices 的修改，并允许检查顶点是否已修改。 */
                 new ExecutionVertexVersioner(),
                 schedulerComponents.getAllocatorFactory(),
                 initializationTimestamp,

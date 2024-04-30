@@ -70,17 +70,33 @@ public class EdgeManager {
         return partitionConsumers.computeIfAbsent(resultPartitionId, id -> new ArrayList<>());
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * Map<ExecutionVertexID, List<ConsumedPartitionGroup>> vertexConsumedPartitions
+     * 通过下游顶点获取vertex要写到哪个分区组
+    */
     private List<ConsumedPartitionGroup> getConsumedPartitionGroupsForVertexInternal(
             ExecutionVertexID executionVertexId) {
         return vertexConsumedPartitions.computeIfAbsent(executionVertexId, id -> new ArrayList<>());
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * Map<IntermediateResultPartitionID, List<ConsumerVertexGroup>> partitionConsumers
+     * 获取上游顶点输出的中间结果被哪个顶点组消费
+    */
     public List<ConsumerVertexGroup> getConsumerVertexGroupsForPartition(
             IntermediateResultPartitionID resultPartitionId) {
         return Collections.unmodifiableList(
                 getConsumerVertexGroupsForPartitionInternal(resultPartitionId));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * Map<ExecutionVertexID, List<ConsumedPartitionGroup>> vertexConsumedPartitions
+     * 通过下游顶点获取vertex要写到哪个分区组
+     */
     public List<ConsumedPartitionGroup> getConsumedPartitionGroupsForVertex(
             ExecutionVertexID executionVertexId) {
         return Collections.unmodifiableList(

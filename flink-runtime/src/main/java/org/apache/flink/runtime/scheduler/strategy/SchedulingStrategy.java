@@ -29,6 +29,11 @@ import java.util.Set;
  * Component which encapsulates the scheduling logic. It can react to execution state changes and
  * partition consumable events. Moreover, it is responsible for resolving task failures.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 封装调度逻辑的组件。它可以对执行状态更改和分区可消耗事件做出反应。此外，它还负责解决任务失败的问题。
+*/
 public interface SchedulingStrategy {
 
     /** Called when the scheduling is started (initial scheduling operation). */

@@ -442,6 +442,11 @@ public class MetricOptions {
     }
 
     /** Describes which job status metrics have been enabled. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 描述已启用哪些作业状态指标
+    */
     public static final class JobStatusMetricsSettings {
 
         private final boolean stateMetricsEnabled;

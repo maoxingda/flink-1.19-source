@@ -50,6 +50,11 @@ import java.util.Optional;
 import java.util.concurrent.Executor;
 
 /** Handler for the {@link ExecutionGraph} which offers some common operations. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 提供一些常见操作的  ExecutionGraph 的处理程序。
+*/
 public class ExecutionGraphHandler {
 
     private final ExecutionGraph executionGraph;

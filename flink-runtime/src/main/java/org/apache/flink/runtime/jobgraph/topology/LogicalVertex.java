@@ -23,6 +23,11 @@ import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.topology.Vertex;
 
 /** Represents a vertex in {@link LogicalTopology}, i.e. {@link JobVertex}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * LogicalTopology 中的顶点LogicalVertex ，即  JobVertex。
+*/
 public interface LogicalVertex
         extends Vertex<JobVertexID, IntermediateDataSetID, LogicalVertex, LogicalResult> {
 
@@ -31,5 +36,10 @@ public interface LogicalVertex
      *
      * @return the input {@link LogicalEdge}s
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取顶点的输入  LogicalEdge 。
+    */
     Iterable<? extends LogicalEdge> getInputs();
 }

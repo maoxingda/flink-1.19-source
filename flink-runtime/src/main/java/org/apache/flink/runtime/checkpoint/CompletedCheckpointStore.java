@@ -30,6 +30,11 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 /** A bounded LIFO-queue of {@link CompletedCheckpoint} instances. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 维护已经完成检查点存储相关的操作，获取最后一次检查点信息、获取所有的检查点
+*/
 public interface CompletedCheckpointStore {
 
     Logger LOG = LoggerFactory.getLogger(CompletedCheckpointStore.class);

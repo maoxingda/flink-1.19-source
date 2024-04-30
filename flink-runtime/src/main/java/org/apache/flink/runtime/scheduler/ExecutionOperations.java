@@ -25,6 +25,11 @@ import org.apache.flink.runtime.executiongraph.Execution;
 import java.util.concurrent.CompletableFuture;
 
 /** Operations on the {@link Execution}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 对Execution等各种操作、部署、取消、标记失败
+*/
 public interface ExecutionOperations {
 
     /**
@@ -33,6 +38,11 @@ public interface ExecutionOperations {
      * @param execution to deploy.
      * @throws JobException if the execution cannot be deployed to the assigned resource
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 部署Execution
+    */
     void deploy(Execution execution) throws JobException;
 
     /**
@@ -41,6 +51,11 @@ public interface ExecutionOperations {
      * @param execution to cancel
      * @return Future which completes when the cancellation is done
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 取消Execution
+    */
     CompletableFuture<?> cancel(Execution execution);
 
     /**
@@ -49,5 +64,10 @@ public interface ExecutionOperations {
      * @param execution to mark as failed.
      * @param cause of the execution failure
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将执行标记为失败。
+    */
     void markFailed(Execution execution, Throwable cause);
 }

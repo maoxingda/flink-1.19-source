@@ -32,11 +32,18 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** Default implementation of {@link LogicalVertex}. It is an adapter of {@link JobVertex}. */
 public class DefaultLogicalVertex implements LogicalVertex {
-
+    /** JobVertex */
     private final JobVertex jobVertex;
-
+    /**
+     * 最终的（不可变的）成员变量 resultRetriever。是一个函数式接口（Functional Interface）的实例，
+     * 具体来说，它是 Function 接口的一个实例。
+     * IntermediateDataSetID JobVertex 输出结果Id
+     * DefaultLogicalResult IntermediateDataSet拓步后的结构
+     */
     private final Function<IntermediateDataSetID, DefaultLogicalResult> resultRetriever;
-
+    /**
+     *  LogicalVertex输入的所有边List<LogicalEdge>
+     */
     private final List<LogicalEdge> inputEdges;
 
     DefaultLogicalVertex(
@@ -45,6 +52,7 @@ public class DefaultLogicalVertex implements LogicalVertex {
 
         this.jobVertex = checkNotNull(jobVertex);
         this.resultRetriever = checkNotNull(resultRetriever);
+        /** 根据 List<JobEdge> 循环构建出 List<LogicalEdge> inputEdges*/
         this.inputEdges =
                 jobVertex.getInputs().stream()
                         .map(DefaultLogicalEdge::new)
@@ -56,6 +64,12 @@ public class DefaultLogicalVertex implements LogicalVertex {
         return jobVertex.getID();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取JobVertext要消费的Input输入管道对应的IntermediateDataSet
+     * 最终封装为DefaultLogicalResult
+    */
     @Override
     public Iterable<DefaultLogicalResult> getConsumedResults() {
         return jobVertex.getInputs().stream()

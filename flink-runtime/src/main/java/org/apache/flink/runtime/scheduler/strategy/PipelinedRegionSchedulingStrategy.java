@@ -40,6 +40,11 @@ import static org.apache.flink.util.Preconditions.checkState;
 /**
  * {@link SchedulingStrategy} instance which schedules tasks in granularity of pipelined regions.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * Pipeline 的粒度调度任务
+*/
 public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
 
     private final SchedulerOperations schedulerOperations;

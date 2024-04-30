@@ -148,12 +148,20 @@ public enum ResultPartitionType {
     private final ReleaseBy releaseBy;
 
     /** ConsumingConstraint indicates when can the downstream consume the upstream. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 消费约束表示下游何时可以消费上游。
+    */
     private enum ConsumingConstraint {
         /** Upstream must be finished before downstream consume. */
+        /** 上游必须在下游消耗之前完成。 */
         BLOCKING,
         /** Downstream can consume while upstream is running. */
+        /** 下游可以在上游运行时消耗。 */
         CAN_BE_PIPELINED,
         /** Downstream must consume while upstream is running. */
+        /** 下游必须在上游运行时消耗。 */
         MUST_BE_PIPELINED
     }
 
@@ -189,6 +197,7 @@ public enum ResultPartitionType {
     }
 
     /** return if this partition's upstream and downstream support scheduling in the same time. */
+    /** 如果该分区的上下游同时支持调度，则返回。 */
     public boolean canBePipelinedConsumed() {
         return consumingConstraint == ConsumingConstraint.CAN_BE_PIPELINED
                 || consumingConstraint == ConsumingConstraint.MUST_BE_PIPELINED;

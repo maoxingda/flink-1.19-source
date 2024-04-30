@@ -32,6 +32,11 @@ import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 
 /** Handler for the {@link OperatorCoordinator OperatorCoordinators}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * OperatorCoordinator的处理程序
+*/
 public interface OperatorCoordinatorHandler {
 
     /**

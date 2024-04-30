@@ -37,20 +37,22 @@ import java.util.function.Function;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** Default implementation of {@link LogicalTopology}. It is an adapter of {@link JobGraph}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * JobGraph对应的 逻辑拓扑
+*/
 public class DefaultLogicalTopology implements LogicalTopology {
     /**
-     * 用于存储 DefaultLogicalVertex 类型的对象。
-     * 基于JobVertex 对象的某种逻辑表示或封装
+     * LogicalTopology 中的顶点LogicalVertex ，即  JobVertex 内部封装了JobVertex。
      */
     private final List<DefaultLogicalVertex> verticesSorted;
     /**
-     * 它的键是 JobVertexID 类型的对象，值是 DefaultLogicalVertex 类型的对象。
-     * 映射允许你通过作业顶点的 ID 快速查找对应的逻辑顶点。
+     * LogicalTopology 中的顶点LogicalVertex ，即  JobVertex 内部封装了JobVertex。
      */
     private final Map<JobVertexID, DefaultLogicalVertex> idToVertexMap;
     /**
-     * 它的键是 IntermediateDataSetID 类型的对象，值是 DefaultLogicalResult 类型的对象。
-     * 这个映射可能用于存储中间数据集 ID 与它们对应的逻辑结果之间的映射关系。
+     * 表示由  LogicalVertex 生成的数据集，即  IntermediateDataSet  内部封装了IntermediateDataSet。
      */
     private final Map<IntermediateDataSetID, DefaultLogicalResult> idToResultMap;
 
@@ -87,20 +89,36 @@ public class DefaultLogicalTopology implements LogicalTopology {
         return new DefaultLogicalTopology(jobVertices);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化 Map<JobVertexID, DefaultLogicalVertex> idToVertexMap
+     * 初始化 Map<IntermediateDataSetID, DefaultLogicalResult> idToResultMap
+    */
     private void buildVerticesAndResults(final Iterable<JobVertex> topologicallySortedJobVertices) {
+        /** 定义两个函数时接口实例*/
+        /** 接收 JobVertexID 返回DefaultLogicalVertex 对象 */
         final Function<JobVertexID, DefaultLogicalVertex> vertexRetriever = this::getVertex;
+        /** 接收 IntermediateDataSetID 作为参数，返回 DefaultLogicalResult 对象。 */
         final Function<IntermediateDataSetID, DefaultLogicalResult> resultRetriever =
                 this::getResult;
 
+        /** 循环 Iterable<JobVertex> */
         for (JobVertex jobVertex : topologicallySortedJobVertices) {
+            /** 为每个 JobVertex 创建一个 DefaultLogicalVertex 对象，并将 resultRetriever 作为参数传递给它的构造函数。 */
             final DefaultLogicalVertex logicalVertex =
                     new DefaultLogicalVertex(jobVertex, resultRetriever);
+            /** 将新创建的 logicalVertex 添加到 verticesSorted 列表中。 */
             this.verticesSorted.add(logicalVertex);
+            /** 将 logicalVertex 的 ID 作为键，logicalVertex 对象本身作为值，添加到 idToVertexMap 映射中。 */
             this.idToVertexMap.put(logicalVertex.getId(), logicalVertex);
-
+            /** 循环 List<IntermediateDataSet>*/
             for (IntermediateDataSet intermediateDataSet : jobVertex.getProducedDataSets()) {
+                /** 对于 jobVertex 产生的每个 IntermediateDataSet，创建一个 DefaultLogicalResult 对象，*/
                 final DefaultLogicalResult logicalResult =
                         new DefaultLogicalResult(intermediateDataSet, vertexRetriever);
+                /** 并将 vertexRetriever 作为参数传递给它的构造函数。然后，将 logicalResult 的 ID 作为键，
+                 * logicalResult 对象本身作为值，添加到 idToResultMap 映射中。 */
                 idToResultMap.put(logicalResult.getId(), logicalResult);
             }
         }
@@ -123,15 +141,26 @@ public class DefaultLogicalTopology implements LogicalTopology {
                         () -> new IllegalArgumentException("can not find result: " + resultId));
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构建Iterable<DefaultLogicalPipelinedRegion>
+    */
     @Override
     public Iterable<DefaultLogicalPipelinedRegion> getAllPipelinedRegions() {
         final Set<Set<LogicalVertex>> regionsRaw =
                 LogicalPipelinedRegionComputeUtil.computePipelinedRegions(verticesSorted);
-
+        /** 创建一个新的 HashSet，用于存储 DefaultLogicalPipelinedRegion 对象。 */
         final Set<DefaultLogicalPipelinedRegion> regions = new HashSet<>();
+        /** 循环 regionRaw */
         for (Set<LogicalVertex> regionVertices : regionsRaw) {
+            /**
+             * 将Set<LogicalVertex> 封装为DefaultLogicalPipelinedRegion
+             * 添加到set集合
+             */
             regions.add(new DefaultLogicalPipelinedRegion(regionVertices));
         }
+        /** Set<DefaultLogicalPipelinedRegion> */
         return regions;
     }
 }

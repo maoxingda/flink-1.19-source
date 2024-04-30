@@ -66,6 +66,11 @@ public interface FailureEnricher {
      * An interface used by the {@link FailureEnricher}. Context includes an executor pool for the
      * enrichers to run heavy operations, the Classloader used for code gen, and other metadata.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * FailureEnricher 使用的接口。上下文包括用于富集器运行繁重操作的执行器池、用于代码生成的Classloader以及其他元数据。
+    */
     @Experimental
     interface Context {
 

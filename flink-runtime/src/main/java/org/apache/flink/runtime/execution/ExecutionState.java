@@ -45,6 +45,25 @@ package org.apache.flink.runtime.execution;
  * <p>The states {@code FINISHED}, {@code CANCELED}, and {@code FAILED} are considered terminal
  * states.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 任务在执行过程中可以处于的所有状态的枚举。任务通常以 的状态开始，并根据此图切换状态：
+ * <pre>{@code
+ *  CREATED  -> SCHEDULED -> DEPLOYING -> INITIALIZING -> RUNNING -> FINISHED
+ *     |            |            |          |              |
+ *     |            |            |    +-----+--------------+
+ *     |            |            V    V
+ *     |            |         CANCELLING -----+----> CANCELED
+ *     |            |                         |
+ *     |            +-------------------------+
+ *     |
+ *     |                                   ... -> FAILED
+ *     V
+ * RECONCILING  -> INITIALIZING | RUNNING | FINISHED | CANCELED | FAILED
+ *
+ * }</pre>
+*/
 public enum ExecutionState {
     CREATED,
 

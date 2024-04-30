@@ -122,6 +122,9 @@ public final class DefaultSlotPoolServiceSchedulerFactory
             Collection<FailureEnricher> failureEnrichers,
             BlocklistOperations blocklistOperations)
             throws Exception {
+        /**
+         * 通过schedulerNGFactory工厂类 调用createInstance进行调度器的创建
+         */
         return schedulerNGFactory.createInstance(
                 log,
                 jobGraph,

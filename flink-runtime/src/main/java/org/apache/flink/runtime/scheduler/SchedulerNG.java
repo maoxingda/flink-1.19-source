@@ -83,11 +83,25 @@ public interface SchedulerNG extends GlobalFailureHandler, AutoCloseableAsync {
      * 启动调度器
     */
     void startScheduling();
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 取消调度管理
+    */
     void cancel();
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取JobStatus
+    */
     CompletableFuture<JobStatus> getJobTerminationFuture();
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 更新状态
+     * 部署完成后，这些任务并行实例会在任务管理器端运行。
+     * 任务在其生命周期的不同阶段会有不同的状态，当需要更新状态时，就会调用updateTaskExecutionState()方法。
+    */
     default boolean updateTaskExecutionState(TaskExecutionState taskExecutionState) {
         return updateTaskExecutionState(new TaskExecutionStateTransition(taskExecutionState));
     }

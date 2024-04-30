@@ -39,6 +39,11 @@ import java.util.stream.StreamSupport;
  * {@code RootExceptionHistoryEntry} extending {@link ExceptionHistoryEntry} by providing a list of
  * {@code ExceptionHistoryEntry} instances to store concurrently caught failures.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 收集有关触发调度程序故障处理的单个故障的信息。
+*/
 @NotThreadSafe
 public class RootExceptionHistoryEntry extends ExceptionHistoryEntry {
 

@@ -42,6 +42,11 @@ import java.util.stream.Collectors;
  *
  * @see DefaultScheduler
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 记录对 ExecutionVertex ExecutionVertices 的修改，并允许检查顶点是否已修改。
+*/
 public class ExecutionVertexVersioner {
 
     private final Map<ExecutionVertexID, Long> executionVertexToVersion = new HashMap<>();

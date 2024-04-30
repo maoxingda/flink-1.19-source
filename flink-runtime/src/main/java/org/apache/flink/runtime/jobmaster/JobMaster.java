@@ -144,6 +144,11 @@ import static org.apache.flink.util.Preconditions.checkState;
  *   <li>{@link #updateTaskExecutionState} updates the task execution state for given task
  * </ul>
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * JobMaster负责管理整个作业，盛情资源提交任务运行，心跳等
+*/
 public class JobMaster extends FencedRpcEndpoint<JobMasterId>
         implements JobMasterGateway, JobMasterService {
 
@@ -171,7 +176,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
 
     /** 提交运行一个任务 */
     private final Executor ioExecutor;
-
+    /** Flink作业达到终端状态后用于完成操作的接口 */
     private final OnCompletionActions jobCompletionActions;
     /** 定义系统异常处理的Handle实现类 */
     private final FatalErrorHandler fatalErrorHandler;
@@ -243,11 +248,17 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
      */
     @Nullable private EstablishedResourceManagerConnection establishedResourceManagerConnection;
 
+    /**
+     * TaskExecutorToJobManagerHeartbeatPayload 从TaskExecutor发送到JobManager的检测信号的有效负载。
+     * AllocatedSlotReport JobMaster从给定的TaskExecutor中当前分配的插槽的报告。此报告会定期发送到TaskExecutor，以便协调插槽分配的内部状态。
+     */
     private HeartbeatManager<TaskExecutorToJobManagerHeartbeatPayload, AllocatedSlotReport>
             taskManagerHeartbeatManager;
-
+    /**
+     * 心跳管理器
+     */
     private HeartbeatManager<Void, Void> resourceManagerHeartbeatManager;
-
+    /** 这个类负责管理所有｛@link BlockedNode｝并在资源上执行它们。 */
     private final BlocklistHandler blocklistHandler;
 
     // ------------------------------------------------------------------------
@@ -276,7 +287,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
             throws Exception {
 
         super(rpcService, RpcServiceUtils.createRandomName(JOB_MANAGER_NAME), jobMasterId);
-        /** 心跳时候会触发 实现类中的方法 */
+        /** 用于在状态不匹配的情况下触发操作的接口 */
         final ExecutionDeploymentReconciliationHandler executionStateReconciliationHandler =
                 new ExecutionDeploymentReconciliationHandler() {
 
@@ -331,7 +342,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
         this.rpcTimeout = jobMasterConfiguration.getRpcTimeout();
         /** 高可用服务 */
         this.highAvailabilityServices = checkNotNull(highAvailabilityService);
-        /** ExecutionJobVertex.getTaskInformationOrBlobKey 触发 */
+        /** 用于将对象数据写入BlobStore,主要是TaskInfomation的信息持久化 */
         this.blobWriter = jobManagerSharedServices.getBlobWriter();
         /** 待延迟、定时调度的线程池 */
         this.futureExecutor = jobManagerSharedServices.getFutureExecutor();
@@ -359,6 +370,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                 highAvailabilityServices.getResourceManagerLeaderRetriever();
 
         this.registeredTaskManagers = new HashMap<>();
+        /** 负责管理所有BlockedNode并在资源上执行它们。 */
         this.blocklistHandler =
                 blocklistHandlerFactory.create(
                         new JobMasterBlocklistContext(),

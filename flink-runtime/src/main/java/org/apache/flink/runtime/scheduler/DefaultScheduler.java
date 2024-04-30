@@ -81,32 +81,37 @@ import static org.apache.flink.util.Preconditions.checkState;
 
 /** The future default scheduler. */
 public class DefaultScheduler extends SchedulerBase implements SchedulerOperations {
-
+    /** 日志 */
     protected final Logger log;
-
+    /** 类加载器 */
     private final ClassLoader userCodeLoader;
-
+    /** 负责将插槽分配给 Execution 的集合的组件。 */
     protected final ExecutionSlotAllocator executionSlotAllocator;
-
+    /** 执行错误处理器 */
     private final ExecutionFailureHandler executionFailureHandler;
 
+    /** 调度执行器 */
     private final ScheduledExecutor delayExecutor;
-
+    /**调度策略 封装调度逻辑的组件 */
     private final SchedulingStrategy schedulingStrategy;
-
+    /** 对Execution等各种操作、部署、取消、标记失败 */
     private final ExecutionOperations executionOperations;
 
     private final Set<ExecutionVertexID> verticesWaitingForRestart;
-
+    /** shuffleMaster */
     private final ShuffleMaster<?> shuffleMaster;
-
+    /** 存储Allocation 分配的计数器 */
     private final Map<AllocationID, Long> reservedAllocationRefCounters;
 
     // once an execution vertex is assigned an allocation/slot, it will reserve the allocation
     // until it is assigned a new allocation, or it finishes and does not need the allocation
     // anymore. The reserved allocation information is needed for local recovery.
+    /**
+     * 一旦执行顶点被分配了一个分配/槽，它将保留该分配，直到它被分配了新的分配，或者它完成了并且不再需要该分配。本地恢复需要保留的分配信息。
+     */
+    /** 记录维护顶点分配的 AllocationID */
     private final Map<ExecutionVertexID, AllocationID> reservedAllocationByExecutionVertex;
-
+    /** 此部署程序负责部署执行。 */
     protected final ExecutionDeployer executionDeployer;
     /**
      * @授课老师(微信): yi_locus
@@ -118,6 +123,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
             final JobGraph jobGraph,
             final Executor ioExecutor,
             final Configuration jobMasterConfiguration,
+            /** Consumer 是一个函数式接口，它通常用于表示一个接受单一输入参数并且不返回结果的操作 */
             final Consumer<ComponentMainThreadExecutor> startUpAction,
             final ScheduledExecutor delayExecutor,
             final ClassLoader userCodeLoader,
@@ -157,37 +163,39 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
                 vertexParallelismStore);
         /** log日志对象 */
         this.log = log;
-        /** log日志对象 */
+        /** 部署执行器 */
         this.delayExecutor = checkNotNull(delayExecutor);
-        /** log日志对象 */
+        /** 用户类加载器 */
         this.userCodeLoader = checkNotNull(userCodeLoader);
-        /** log日志对象 */
+        /** 对Execution等各种操作、部署、取消、标记失败 */
         this.executionOperations = checkNotNull(executionOperations);
 
-        /** log日志对象 */
+        /** ShuffleMaster */
         this.shuffleMaster = checkNotNull(shuffleMaster);
-         /** log日志对象 */
+         /** Map<AllocationID, Long> */
         this.reservedAllocationRefCounters = new HashMap<>();
-        /** log日志对象 */
+        /** 记录维护顶点分配的 AllocationID */
         this.reservedAllocationByExecutionVertex = new HashMap<>();
-        /** log日志对象 */
+        /** 故障切换策略的新接口。 */
         final FailoverStrategy failoverStrategy =
                 failoverStrategyFactory.create(
                         getSchedulingTopology(), getResultPartitionAvailabilityChecker());
+        /** 打印日志 */
         log.info(
                 "Using failover strategy {} for {} ({}).",
                 failoverStrategy,
                 jobGraph.getName(),
                 jobGraph.getJobID());
-        /** log日志对象 */
+        /**
+         * FailureEnricher｝使用的接口。上下文包括用于富集器运行繁重操作的执行器池、用于代码生成的Classloader以及其他元数据。
+         */
         final Context taskFailureCtx =
                 DefaultFailureEnricherContext.forTaskFailure(
                         this.jobInfo, jobManagerJobMetricGroup, ioExecutor, userCodeLoader);
-        /** log日志对象 */
         final Context globalFailureCtx =
                 DefaultFailureEnricherContext.forGlobalFailure(
                         this.jobInfo, jobManagerJobMetricGroup, ioExecutor, userCodeLoader);
-        /** log日志对象 */
+        /** 创建处理程序以处理任务失败。 */
         this.executionFailureHandler =
                 new ExecutionFailureHandler(
                         getSchedulingTopology(),
@@ -197,18 +205,18 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
                         failureEnrichers,
                         taskFailureCtx,
                         globalFailureCtx);
-        /** log日志对象 */
+        /**调度策略 封装调度逻辑的组件 */
         this.schedulingStrategy =
                 schedulingStrategyFactory.createInstance(this, getSchedulingTopology());
-        /** log日志对象 */
+        /** 负责将插槽分配给 Execution */
         this.executionSlotAllocator =
                 checkNotNull(executionSlotAllocatorFactory)
                         .createInstance(new DefaultExecutionSlotAllocationContext());
-        /** log日志对象 */
+        /** Set<ExecutionVertexID> verticesWaitingForRestart */
         this.verticesWaitingForRestart = new HashSet<>();
-        /** log日志对象 */
+        /** 使用 startUpAction   */
         startUpAction.accept(mainThreadExecutor);
-        /** 构建ExecutionDeployer */
+        /** 此部署程序负责部署执行。 */
         this.executionDeployer =
                 executionDeployerFactory.createInstance(
                         log,

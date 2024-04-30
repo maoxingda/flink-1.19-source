@@ -32,10 +32,16 @@ import java.util.function.Supplier;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** Default implementation of {@link SchedulingExecutionVertex}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * SchedulelingExecutionVertex 的默认实现。
+ * 表示ExecutionVertex的调度
+*/
 class DefaultExecutionVertex implements SchedulingExecutionVertex {
-
+    /** ExecutionVertexId   */
     private final ExecutionVertexID executionVertexId;
-
+    /** */
     private final List<DefaultResultPartition> producedResults;
 
     private final Supplier<ExecutionState> stateSupplier;

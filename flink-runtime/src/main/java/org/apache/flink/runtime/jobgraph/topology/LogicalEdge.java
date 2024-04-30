@@ -23,6 +23,11 @@ import org.apache.flink.runtime.jobgraph.JobEdge;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 
 /** Represents an edge in {@link LogicalTopology}, i.e. {@link JobEdge}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 表示 LogicalTopology 中的LogicalEdge边，即 JobEdge
+*/
 public interface LogicalEdge {
 
     /** Returns the distribution pattern used for this edge. */

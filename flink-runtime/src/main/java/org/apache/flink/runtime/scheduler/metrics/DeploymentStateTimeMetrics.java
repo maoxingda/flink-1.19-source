@@ -42,6 +42,11 @@ import java.util.function.Predicate;
  * <p>Streaming: Measures from the start of the first deployment until all tasks have been deployed.
  * From that point on checkpoints can be triggered, and thus progress be made.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于捕获作业部署任务的时间的指标。
+*/
 public class DeploymentStateTimeMetrics
         implements ExecutionStateUpdateListener, StateTimeMetric, MetricsRegistrar {
 

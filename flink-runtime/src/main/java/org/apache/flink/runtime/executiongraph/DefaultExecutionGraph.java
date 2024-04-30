@@ -668,32 +668,56 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         return Collections.unmodifiableMap(this.tasks);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取ExecutionJobVertex顶点迭代器
+     * 里面存放的就是ExecutionJobVertex对象
+    */
     @Override
     public Iterable<ExecutionJobVertex> getVerticesTopologically() {
         // we return a specific iterator that does not fail with concurrent modifications
         // the list is append only, so it is safe for that
+        /** 获取ExecutionGraph中ExecutionJobVertex数量 3 */
         final int numElements = this.verticesInCreationOrder.size();
-
+        /** 返回一个新的 Iterable 对象 */
         return new Iterable<ExecutionJobVertex>() {
             @Override
             public Iterator<ExecutionJobVertex> iterator() {
                 return new Iterator<ExecutionJobVertex>() {
+                    /** 私有变量 `pos` 代表起始位置 */
                     private int pos = 0;
-
+                    /** 这个变量用于跟踪当前迭代的位置。 */
+                    /**
+                     * 这个方法检查是否还有更多的元素可以迭代。
+                     * 它比较 `pos` 和 `numElements` 的值，
+                     * 如果 `pos` 小于 `numElements`，则返回 `true`，否则返回 `false`。
+                     * @return
+                     */
                     @Override
                     public boolean hasNext() {
                         return pos < numElements;
                     }
 
+                    /** 返回迭代中的下一个元素 */
                     @Override
                     public ExecutionJobVertex next() {
+                        /** 它检查是否还有更多的元素（通过调用 `hasNext()`） */
+                        /**
+                         *它检查是否还有更多的元素（通过调用 `hasNext()`）。
+                         */
                         if (hasNext()) {
+                            /** 它就从 `verticesInCreationOrder` 列表中获取当前位置的元素 */
                             return verticesInCreationOrder.get(pos++);
                         } else {
+                            /** 如果没有更多的元素，则抛出一个 `NoSuchElementException` */
                             throw new NoSuchElementException();
                         }
                     }
 
+                    /**
+                     * 删除操作是不支持的，所以方法直接抛出一个 `UnsupportedOperationException`。
+                     */
                     @Override
                     public void remove() {
                         throw new UnsupportedOperationException();

@@ -31,6 +31,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * sent periodically to the TaskExecutor in order to reconcile the internal state of slot
  * allocations.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * JobMaster从给定的TaskExecutor中当前分配的插槽的报告。此报告会定期发送到TaskExecutor，以便协调插槽分配的内部状态。
+*/
 public class AllocatedSlotReport implements Serializable {
 
     private static final long serialVersionUID = 1L;

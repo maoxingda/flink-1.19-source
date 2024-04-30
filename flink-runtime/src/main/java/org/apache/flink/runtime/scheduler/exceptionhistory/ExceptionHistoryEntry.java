@@ -39,6 +39,11 @@ import java.util.concurrent.CompletableFuture;
  * {@code ExceptionHistoryEntry} collects information about a single failure that triggered the
  * scheduler's failure handling.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 收集有关触发调度程序故障处理的单个故障的信息。
+*/
 public class ExceptionHistoryEntry extends ErrorInfo {
 
     private static final long serialVersionUID = -3855285510064263701L;

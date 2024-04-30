@@ -22,6 +22,11 @@ package org.apache.flink.runtime.scheduler;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 
 /** This class helps to record version of an execution vertex. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 记录执行顶点的版本。
+*/
 public class ExecutionVertexVersion {
 
     private final ExecutionVertexID executionVertexId;

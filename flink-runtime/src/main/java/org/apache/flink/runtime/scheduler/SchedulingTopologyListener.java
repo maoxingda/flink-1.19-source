@@ -24,6 +24,11 @@ import org.apache.flink.runtime.scheduler.strategy.SchedulingTopology;
 import java.util.List;
 
 /** This listener will be notified whenever the scheduling topology is updated. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 每当更新调度拓扑时，都会通知此侦听器。
+*/
 public interface SchedulingTopologyListener {
 
     /**
@@ -32,6 +37,11 @@ public interface SchedulingTopologyListener {
      * @param schedulingTopology the scheduling topology which is just updated
      * @param newExecutionVertices the newly added execution vertices.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通知调度拓扑刚刚更新。
+    */
     void notifySchedulingTopologyUpdated(
             SchedulingTopology schedulingTopology, List<ExecutionVertexID> newExecutionVertices);
 }

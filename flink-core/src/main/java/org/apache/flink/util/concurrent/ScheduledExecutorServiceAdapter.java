@@ -29,6 +29,11 @@ import java.util.concurrent.TimeUnit;
  * Adapter class for a {@link ScheduledExecutorService} which shall be used as a {@link
  * ScheduledExecutor}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ *  ScheduledExecutorService 的适配器类，该适配器类应用作 ScheduledExecutor 。
+*/
 public class ScheduledExecutorServiceAdapter implements ScheduledExecutor {
 
     private final ScheduledExecutorService scheduledExecutorService;

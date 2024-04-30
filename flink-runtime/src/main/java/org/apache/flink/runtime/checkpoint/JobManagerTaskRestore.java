@@ -24,6 +24,11 @@ import javax.annotation.Nonnull;
 import java.io.Serializable;
 
 /** This class encapsulates the data from the job manager to restore a task. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 此类封装来自作业管理器的数据以恢复任务。
+*/
 public class JobManagerTaskRestore implements Serializable {
 
     private static final long serialVersionUID = 1L;

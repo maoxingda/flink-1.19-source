@@ -22,11 +22,26 @@ package org.apache.flink.runtime.checkpoint;
  * {@code CheckpointScheduling} provides methods for starting and stopping the periodic scheduling
  * of checkpoints.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 提供了启动和停止检查点定期调度的方法。
+*/
 public interface CheckpointScheduling {
 
     /** Starts the periodic scheduling if possible. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动定期计划
+    */
     void startCheckpointScheduler();
 
     /** Stops the periodic scheduling if possible. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 停止定期计划。
+    */
     void stopCheckpointScheduler();
 }

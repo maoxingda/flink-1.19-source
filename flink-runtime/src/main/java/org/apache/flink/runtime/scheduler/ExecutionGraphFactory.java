@@ -31,6 +31,11 @@ import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.slf4j.Logger;
 
 /** Factory for creating an {@link ExecutionGraph}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于创建  ExecutionGraph 的工厂。
+*/
 public interface ExecutionGraphFactory {
 
     /**

@@ -35,6 +35,11 @@ import java.util.Set;
  * Records the end of data event of each task, and allows for checking whether all tasks of a {@link
  * JobGraph} have reached the end of data.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 记录每个任务的数据结束事件，并允许检查 JobGraph 的所有任务是否已到达数据结束。
+*/
 public class VertexEndOfDataListener {
     private final ExecutionGraph executionGraph;
 

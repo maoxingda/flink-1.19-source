@@ -132,52 +132,62 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
 
 /** Base class which can be used to implement {@link SchedulerNG}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 可用于实现 SchedulerNG 的基类。
+*/
 public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling {
-
+    /** 日志 */
     private final Logger log;
-
+    /** JobGraph */
     private final JobGraph jobGraph;
-
+    /** Job信息 */
     protected final JobInfo jobInfo;
-
+    /** ExecutionGrap */
     private final ExecutionGraph executionGraph;
-
+    /** 调度层面的拓扑结构 */
     private final SchedulingTopology schedulingTopology;
-
+    /** 用于检索执行顶点的状态位置的组件 */
     protected final StateLocationRetriever stateLocationRetriever;
-
+    /** 用于检索 ExecutionVertex 的输入位置的组件 */
     protected final InputsLocationsRetriever inputsLocationsRetriever;
-
+    /** 已完成CheckPoint的存储对象*/
     private final CompletedCheckpointStore completedCheckpointStore;
-
+    /** 负责检查点清理和计算尚未清理的检查点数量 */
     private final CheckpointsCleaner checkpointsCleaner;
-
+    /** 检查点ID计数器 */
     private final CheckpointIDCounter checkpointIdCounter;
-
+    /** 特殊的 MetricGroup 表示属于特定作业的所有内容 */
     protected final JobManagerJobMetricGroup jobManagerJobMetricGroup;
-
+    /** 记录对 ExecutionVertex ExecutionVertices 的修改，并允许检查顶点是否已修改。 */
     protected final ExecutionVertexVersioner executionVertexVersioner;
-
+    /** 通用可查询状态逻辑的处理程序 */
     private final KvStateHandler kvStateHandler;
-
+    /** 提供一些常见操作的  ExecutionGraph 的处理程序。 */
     private final ExecutionGraphHandler executionGraphHandler;
-
+    /** OperatorCoordinator的处理程序 */
     protected final OperatorCoordinatorHandler operatorCoordinatorHandler;
-
+    /** 在主线程中运行任务的执行器的接口 */
     private final ComponentMainThreadExecutor mainThreadExecutor;
-
+    /** 收集有关触发调度程序故障处理的单个故障的信息。 */
     private final BoundedFIFOQueue<RootExceptionHistoryEntry> exceptionHistory;
-
+    /** 收集有关触发调度程序故障处理的单个故障的信息。 */
     private RootExceptionHistoryEntry latestRootExceptionEntry;
-
+    /** 用于创建  ExecutionGraph 的工厂。 */
     private final ExecutionGraphFactory executionGraphFactory;
-
+    /** 描述已启用哪些作业状态指标 */
     private final MetricOptions.JobStatusMetricsSettings jobStatusMetricsSettings;
-
+    /** 用于捕获作业部署任务的时间的指标。 */
     private final DeploymentStateTimeMetrics deploymentStateTimeMetrics;
-
+    /** 记录每个任务的数据结束事件，并允许检查 JobGraph 的所有任务是否已到达数据结束。 */
     private final VertexEndOfDataListener vertexEndOfDataListener;
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构建SchedulerBase调度器
+    */
     public SchedulerBase(
             final Logger log,
             final JobGraph jobGraph,
@@ -193,17 +203,23 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
             final ExecutionGraphFactory executionGraphFactory,
             final VertexParallelismStore vertexParallelismStore)
             throws Exception {
-
+        /**  log */
         this.log = checkNotNull(log);
+        /**  jobGraph */
         this.jobGraph = checkNotNull(jobGraph);
+        /**  jobInfo 获取jobId,jobname */
         this.jobInfo = new JobInfoImpl(jobGraph.getJobID(), jobGraph.getName());
+        /** 构建ExecutionGraph的工厂类 */
         this.executionGraphFactory = executionGraphFactory;
-
+        /** jobManagerJob的MetricGroup */
         this.jobManagerJobMetricGroup = checkNotNull(jobManagerJobMetricGroup);
+        /** 记录对 ExecutionVertex 修改的版本 */
         this.executionVertexVersioner = checkNotNull(executionVertexVersioner);
+        /** 主线程执行器 */
         this.mainThreadExecutor = mainThreadExecutor;
-
+        /** 负责检查点清理 */
         this.checkpointsCleaner = checkpointsCleaner;
+        /** 维护已经完成检查点存储相关的操作，获取最后一次检查点信息、获取所有的检查点 */
         this.completedCheckpointStore =
                 SchedulerUtils.createCompletedCheckpointStoreIfCheckpointingIsEnabled(
                         jobGraph,
@@ -211,12 +227,14 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
                         checkNotNull(checkpointRecoveryFactory),
                         ioExecutor,
                         log);
+        /** 检查点ID计数器 */
         this.checkpointIdCounter =
                 SchedulerUtils.createCheckpointIDCounterIfCheckpointingIsEnabled(
                         jobGraph, checkNotNull(checkpointRecoveryFactory));
-
+        /** 获取JobStatusMetrics JobStatus监控的配置 */
         this.jobStatusMetricsSettings =
                 MetricOptions.JobStatusMetricsSettings.fromConfiguration(jobMasterConfiguration);
+        /** 用于捕获作业部署任务的时间的指标 */
         this.deploymentStateTimeMetrics =
                 new DeploymentStateTimeMetrics(jobGraph.getJobType(), jobStatusMetricsSettings);
         /** 构建ExecutionGraph */
@@ -229,27 +247,30 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
                         mainThreadExecutor,
                         jobStatusListener,
                         vertexParallelismStore);
-
+         /** 获取调度拓扑图 */
         this.schedulingTopology = executionGraph.getSchedulingTopology();
-
+        /** 用于检索执行顶点的状态位置的组件 */
         stateLocationRetriever =
                 executionVertexId ->
                         getExecutionVertex(executionVertexId).getPreferredLocationBasedOnState();
+        /** 用于检索 ExecutionVertex 的输入位置的组件 */
         inputsLocationsRetriever =
                 new ExecutionGraphToInputsLocationsRetrieverAdapter(executionGraph);
-
+        /** 查询状态的处理程序  */
         this.kvStateHandler = new KvStateHandler(executionGraph);
+        /** ExecutionGraph 的处理程序 比如Checkpoint的操作*/
         this.executionGraphHandler =
                 new ExecutionGraphHandler(executionGraph, log, ioExecutor, this.mainThreadExecutor);
-
+        /** OperatorCoordinator的处理程序 */
         this.operatorCoordinatorHandler =
                 new DefaultOperatorCoordinatorHandler(executionGraph, this::handleGlobalFailure);
+        /** 初始化operatorCoordinatorHandler */
         operatorCoordinatorHandler.initializeOperatorCoordinators(this.mainThreadExecutor);
-
+        /** 调度程序故障处理的故障的信息  */
         this.exceptionHistory =
                 new BoundedFIFOQueue<>(
                         jobMasterConfiguration.get(WebOptions.MAX_EXCEPTION_HISTORY_SIZE));
-
+        /** 记录每个任务的数据结束事件 */
         this.vertexEndOfDataListener = new VertexEndOfDataListener(executionGraph);
     }
 

@@ -26,6 +26,11 @@ import org.apache.flink.runtime.topology.Result;
 import java.util.List;
 
 /** Representation of {@link IntermediateResultPartition}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ *  表示 IntermediateResultPartition 的调度
+*/
 public interface SchedulingResultPartition
         extends Result<
                 ExecutionVertexID,
@@ -38,6 +43,11 @@ public interface SchedulingResultPartition
      *
      * @return id of the intermediate result
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取中间结果的id。
+    */
     IntermediateDataSetID getResultId();
 
     /**
@@ -45,6 +55,11 @@ public interface SchedulingResultPartition
      *
      * @return result partition state
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取  ResultPartitionState
+    */
     ResultPartitionState getState();
 
     /**

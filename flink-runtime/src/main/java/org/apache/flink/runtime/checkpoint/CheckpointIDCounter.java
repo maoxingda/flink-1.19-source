@@ -23,6 +23,11 @@ import org.apache.flink.api.common.JobStatus;
 import java.util.concurrent.CompletableFuture;
 
 /** A checkpoint ID counter. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 检查点ID计数器
+*/
 public interface CheckpointIDCounter {
     int INITIAL_CHECKPOINT_ID = 1;
 

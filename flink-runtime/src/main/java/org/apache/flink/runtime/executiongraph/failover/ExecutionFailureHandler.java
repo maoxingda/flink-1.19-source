@@ -75,6 +75,11 @@ public class ExecutionFailureHandler {
      * @param taskFailureCtx Task failure Context used by FailureEnrichers
      * @param globalFailureCtx Global failure Context used by FailureEnrichers
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建处理程序以处理任务失败。
+    */
     public ExecutionFailureHandler(
             final SchedulingTopology schedulingTopology,
             final FailoverStrategy failoverStrategy,

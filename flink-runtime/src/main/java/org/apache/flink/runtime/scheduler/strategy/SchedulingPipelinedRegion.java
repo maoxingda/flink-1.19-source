@@ -24,6 +24,11 @@ import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
 import org.apache.flink.runtime.topology.PipelinedRegion;
 
 /** Pipelined region on execution level, i.e., {@link ExecutionGraph} level. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 执行级别的 PipelineRegion，即 ExecutionGraph级别。
+*/
 public interface SchedulingPipelinedRegion
         extends PipelinedRegion<
                 ExecutionVertexID,

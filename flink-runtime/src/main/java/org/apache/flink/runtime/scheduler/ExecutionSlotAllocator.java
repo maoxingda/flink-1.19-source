@@ -25,6 +25,11 @@ import java.util.List;
 import java.util.Map;
 
 /** Component responsible for assigning slots to a collection of {@link Execution}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 负责将插槽分配给 Execution 的集合的组件。
+*/
 public interface ExecutionSlotAllocator {
 
     /**
@@ -33,6 +38,11 @@ public interface ExecutionSlotAllocator {
      * @param executionAttemptIds executions to allocate slots for
      * @return Map of slot assignments to the executions
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为Execution的执行分配slot。
+    */
     Map<ExecutionAttemptID, ExecutionSlotAssignment> allocateSlotsFor(
             List<ExecutionAttemptID> executionAttemptIds);
 
@@ -42,5 +52,10 @@ public interface ExecutionSlotAllocator {
      * @param executionAttemptId identifying the {@link Execution} of which the slot request should
      *     be canceled.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 取消给定 Execution 正在进行的插槽请求。
+    */
     void cancel(ExecutionAttemptID executionAttemptId);
 }

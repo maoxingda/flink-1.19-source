@@ -30,6 +30,11 @@ import java.util.function.Function;
 /**
  * This class is responsible for managing all {@link BlockedNode}s and performing them on resources.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 这个类负责管理所有｛@link BlockedNode｝并在资源上执行它们。
+*/
 public interface BlocklistHandler {
 
     /**

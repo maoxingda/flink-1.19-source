@@ -121,23 +121,28 @@ public class Execution
     // --------------------------------------------------------------------------------------------
 
     /** The executor which is used to execute futures. */
+    /** 执行器。 */
     private final Executor executor;
 
     /** The execution vertex whose task this execution executes. */
+    /** 此执行所执行任务的执行顶点。 */
     private final ExecutionVertex vertex;
 
     /** The unique ID marking the specific execution instant of the task. */
+    /** 标记任务的特定执行时刻的唯一ID。 */
     private final ExecutionAttemptID attemptId;
 
     /**
      * The timestamps when state transitions occurred, indexed by {@link ExecutionState#ordinal()}.
      */
+    /** 状态转换发生时的开始时间戳， */
     private final long[] stateTimestamps;
 
     /**
      * The end timestamps when state transitions occurred, indexed by {@link
      * ExecutionState#ordinal()}.
      */
+    /** 状态转换发生时的结束时间戳  */
     private final long[] stateEndTimestamps;
 
     private final Time rpcTimeout;
@@ -145,10 +150,11 @@ public class Execution
     private final Collection<PartitionInfo> partitionInfos;
 
     /** A future that completes once the Execution reaches a terminal ExecutionState. */
+    /** 执行最终完成的执行状态 */
     private final CompletableFuture<ExecutionState> terminalStateFuture;
 
     private final CompletableFuture<?> releaseFuture;
-
+    /** 封装TaskManager的连接信息 */
     private final CompletableFuture<TaskManagerLocation> taskManagerLocationFuture;
 
     /**
@@ -168,9 +174,11 @@ public class Execution
     /**
      * Information to restore the task on recovery, such as checkpoint id and task state snapshot.
      */
+    /** 用于在恢复时恢复任务的信息，如检查点id和任务状态快照。 */
     @Nullable private JobManagerTaskRestore taskRestore;
 
     /** This field holds the allocation id once it was assigned successfully. */
+    /** 此字段保存成功分配后的分配id */
     @Nullable private AllocationID assignedAllocationID;
 
     // ------------------------ Accumulators & Metrics ------------------------
