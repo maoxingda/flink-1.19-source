@@ -61,16 +61,25 @@ public class PhysicalSlotRequestBulkCheckerImpl implements PhysicalSlotRequestBu
     public void start(final ComponentMainThreadExecutor mainThreadExecutor) {
         this.componentMainThreadExecutor = mainThreadExecutor;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 检查批量物理槽位请求（PhysicalSlotRequestBulk）是否超时的任务
+    */
     @Override
     public void schedulePendingRequestBulkTimeoutCheck(
             final PhysicalSlotRequestBulk bulk, Time timeout) {
         PhysicalSlotRequestBulkWithTimestamp bulkWithTimestamp =
                 new PhysicalSlotRequestBulkWithTimestamp(bulk);
+        /** 获取当前相对时间（以毫秒为单位） */
         bulkWithTimestamp.markUnfulfillable(clock.relativeTimeMillis());
         schedulePendingRequestBulkWithTimestampCheck(bulkWithTimestamp, timeout);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 该方法用于在特定的超时时间后调度一个任务来检查批量物理Slot请求（PhysicalSlotRequestBulkWithTimestamp）是否超时
+    */
     private void schedulePendingRequestBulkWithTimestampCheck(
             final PhysicalSlotRequestBulkWithTimestamp bulk, final Time timeout) {
         componentMainThreadExecutor.schedule(

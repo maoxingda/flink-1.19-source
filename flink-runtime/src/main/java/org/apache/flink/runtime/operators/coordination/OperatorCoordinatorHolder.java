@@ -197,10 +197,17 @@ public class OperatorCoordinatorHolder
     // ------------------------------------------------------------------------
     //  OperatorCoordinator Interface
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动所有Operator Coordinators
+    */
     public void start() throws Exception {
+        /** 检查是否在主线程中执行 */
         mainThreadExecutor.assertRunningInMainThread();
+        /** 检查上下文是否已初始化 schedulerExecutor != null*/
         checkState(context.isInitialized(), "Coordinator Context is not yet initialized");
+        /** 启动所有 Coordinators */
         coordinator.start();
     }
 

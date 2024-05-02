@@ -36,15 +36,23 @@ import org.apache.flink.annotation.PublicEvolving;
  * compared across JVM processes. The source for the timestamps is not affected by adjustments to
  * the system clock, so it never jumps. Relative time behaves similar to {@link System#nanoTime()}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 一种可以访问时间的时钟
+*/
 @PublicEvolving
 public abstract class Clock {
 
     /** Gets the current absolute time, in milliseconds. */
+    /** 获取当前绝对时间（以毫秒为单位） */
     public abstract long absoluteTimeMillis();
 
     /** Gets the current relative time, in milliseconds. */
+    /** 获取当前相对时间（以毫秒为单位） */
     public abstract long relativeTimeMillis();
 
     /** Gets the current relative time, in nanoseconds. */
+    /** 获取当前的相对时间，单位为纳秒 */
     public abstract long relativeTimeNanos();
 }

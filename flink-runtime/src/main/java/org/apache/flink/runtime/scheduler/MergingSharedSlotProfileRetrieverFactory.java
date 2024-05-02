@@ -62,6 +62,11 @@ class MergingSharedSlotProfileRetrieverFactory
      * Computes a merged {@link SlotProfile} of an execution slot sharing group within a bulk to
      * schedule.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 计算批量到模块内执行Slot共享组的合并  SlotProfile。
+    */
     private class MergingSharedSlotProfileRetriever implements SharedSlotProfileRetriever {
         /** All reserved {@link AllocationID}s of the job. */
         private final Set<AllocationID> reservedAllocationIds;

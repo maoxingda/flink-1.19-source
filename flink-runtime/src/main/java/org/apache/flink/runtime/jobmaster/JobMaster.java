@@ -1207,8 +1207,13 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
         taskManagerHeartbeatManager.stop();
         resourceManagerHeartbeatManager.stop();
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动SchedulerNG调度器（scheduler）
+    */
     private void startScheduling() {
+        /** 调用SchedulerNG startScheduling启动调度器 */
         schedulerNG.startScheduling();
     }
 
@@ -1424,7 +1429,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                     new EstablishedResourceManagerConnection(
                             resourceManagerGateway, resourceManagerResourceId);
             /**
-             * 将资源管理器网关注册为黑名单处理器的监听器。
+             * 注册一个新的阻止列表监听器
              */
             blocklistHandler.registerBlocklistListener(resourceManagerGateway);
             /**

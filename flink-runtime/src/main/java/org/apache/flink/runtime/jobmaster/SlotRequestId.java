@@ -32,6 +32,11 @@ import org.apache.flink.util.AbstractID;
  * org.apache.flink.runtime.clusterframework.types.AllocationID AllocationID}, which identifies the
  * request of a physical slot, issued from the SlotPool via the ResourceManager to the TaskManager.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 此ID标识从Execution到 SlotPool 或 PhysicalSlotProvider的Slot请求。
+*/
 public final class SlotRequestId extends AbstractID {
 
     private static final long serialVersionUID = -6072105912250154283L;

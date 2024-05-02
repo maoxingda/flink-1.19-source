@@ -61,6 +61,11 @@ public interface SlotStatusSyncer {
      * @return a {@link CompletableFuture} of the slot allocation, which will be completed
      *     exceptionally if the allocation fails
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从任务管理器分配一个插槽。
+    */
     CompletableFuture<Void> allocateSlot(
             InstanceID instanceId,
             JobID jobId,

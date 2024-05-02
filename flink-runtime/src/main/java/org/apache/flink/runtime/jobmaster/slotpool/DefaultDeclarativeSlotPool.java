@@ -120,13 +120,18 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
         this.slotToRequirementProfileMappings = new HashMap<>();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 该方法用于增加某个任务或作业的资源需求
+    */
     @Override
     public void increaseResourceRequirementsBy(ResourceCounter increment) {
         if (increment.isEmpty()) {
             return;
         }
         totalResourceRequirements = totalResourceRequirements.add(increment);
-
+        /** 向ResourcesManager发送消息 */
         declareResourceRequirements();
     }
 

@@ -46,5 +46,10 @@ public interface PhysicalSlotRequestBulkChecker {
      * @param timeout timeout after which the bulk should be canceled if it is still not
      *     fulfillable.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 开始跟踪  PhysicalSlotRequestBulk 超时检查
+    */
     void schedulePendingRequestBulkTimeoutCheck(PhysicalSlotRequestBulk bulk, Time timeout);
 }

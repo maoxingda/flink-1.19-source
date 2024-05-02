@@ -29,6 +29,11 @@ import org.apache.flink.util.clock.SystemClock;
 import java.util.Locale;
 
 /** Metrics that capture the time that a job spends in each {@link JobStatus}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 捕获作业在每个  JobStatus 中花费的时间的度量。
+*/
 public class JobStatusMetrics implements JobStatusListener, MetricsRegistrar {
 
     private final MetricOptions.JobStatusMetricsSettings jobStatusMetricsSettings;
@@ -55,14 +60,20 @@ public class JobStatusMetrics implements JobStatusListener, MetricsRegistrar {
         currentStatusTimestamp = initializationTimestamp;
         cumulativeStatusTimes = new long[JobStatus.values().length];
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册时间监控指标
+    */
     @Override
     public void registerMetrics(MetricGroup metricGroup) {
+        /** 循环所有的Job状态 */
         for (JobStatus jobStatus : JobStatus.values()) {
+            /** 如果 状态不是 终止状态、协调状态 */
             if (!jobStatus.isTerminalState() && jobStatus != JobStatus.RECONCILING) {
-
+                /** 获取是见状态监控 */
                 final StateTimeMetric stateTimeMetric = createTimeMetric(jobStatus);
-
+                /** 注册时间类型的监控 */
                 StateTimeMetric.register(
                         jobStatusMetricsSettings,
                         metricGroup,

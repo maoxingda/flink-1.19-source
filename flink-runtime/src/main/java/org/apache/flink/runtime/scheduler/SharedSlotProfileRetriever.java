@@ -26,6 +26,11 @@ import java.util.Set;
 
 /** Computes a {@link SlotProfile} to allocate a slot for executions, sharing the slot. */
 @FunctionalInterface
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 计算SlotProfile 以分配用于执行的插槽，共享该插槽。
+*/
 interface SharedSlotProfileRetriever {
     /**
      * Computes a {@link SlotProfile} of an execution slot sharing group.
@@ -34,6 +39,11 @@ interface SharedSlotProfileRetriever {
      * @param physicalSlotResourceProfile {@link ResourceProfile} of the slot.
      * @return {@link SlotProfile} to allocate for the {@code executionSlotSharingGroup}.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 计算执行Slot共享组的  SlotProfile。
+    */
     SlotProfile getSlotProfile(
             ExecutionSlotSharingGroup executionSlotSharingGroup,
             ResourceProfile physicalSlotResourceProfile);

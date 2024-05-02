@@ -34,6 +34,11 @@ import java.util.Set;
  * <p>ResourceCounter contains a set of {@link ResourceProfile ResourceProfiles} and their
  * associated counts. The counts are always positive (> 0).
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * ResourceProfile 的计数器。这个类是不可变的。
+*/
 public final class ResourceCounter {
 
     private final Map<ResourceProfile, Integer> resources;

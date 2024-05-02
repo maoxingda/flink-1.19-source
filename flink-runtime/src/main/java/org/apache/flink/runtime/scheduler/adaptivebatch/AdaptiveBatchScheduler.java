@@ -98,6 +98,11 @@ import static org.apache.flink.util.Preconditions.checkState;
  * This scheduler decides the parallelism of JobVertex according to the data volume it consumes. A
  * dynamically built up ExecutionGraph is used for this purpose.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 该调度器根据JobVertex所消耗的数据量来决定其并行度。动态构建的ExecutionGraph用于此目的。
+*/
 public class AdaptiveBatchScheduler extends DefaultScheduler {
 
     private final DefaultLogicalTopology logicalTopology;

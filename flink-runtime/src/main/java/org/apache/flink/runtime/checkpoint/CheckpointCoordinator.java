@@ -98,6 +98,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * acknowledgements. It also collects and maintains the overview of the state handles reported by
  * the tasks that acknowledge the checkpoint.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 检查点协调器协调操作员和状态的分布式快照。它通过向相关任务发送消息来触发检查点，并收集检查点确认。它还收集并维护由确认检查点的任务报告的状态句柄的概述。
+*/
 public class CheckpointCoordinator {
 
     private static final Logger LOG = LoggerFactory.getLogger(CheckpointCoordinator.class);

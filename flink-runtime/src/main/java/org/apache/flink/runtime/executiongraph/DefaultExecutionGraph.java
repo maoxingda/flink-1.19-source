@@ -1043,8 +1043,14 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         return true;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 状态转换
+     */
     @Override
     public void transitionToRunning() {
+        /** 将状态从CREATE 转换为RUNNING 如果失败则抛出异常 */
         if (!transitionState(JobStatus.CREATED, JobStatus.RUNNING)) {
             throw new IllegalStateException(
                     "Job may only be scheduled from state " + JobStatus.CREATED);
@@ -1215,19 +1221,30 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     // ------------------------------------------------------------------------
     //  State Transitions
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 状态转换
+    */
     @Override
     public boolean transitionState(JobStatus current, JobStatus newState) {
+        /** 状态转换 */
         return transitionState(current, newState, null);
     }
 
     private void transitionState(JobStatus newState, Throwable error) {
         transitionState(state, newState, error);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 状态转换
+     * 用于将作业的状态从当前状态（current）转换到新的状态（newState）
+    */
     private boolean transitionState(JobStatus current, JobStatus newState, Throwable error) {
         assertRunningInJobMasterMainThread();
         // consistency check
+        /** 如果是终结状态则抛出异常 */
         if (current.isTerminalState()) {
             String message = "Job is trying to leave terminal state " + current;
             LOG.error(message);
@@ -1235,6 +1252,7 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         }
 
         // now do the actual state transition
+        /** 现在进行实际的状态转换 */
         if (state == current) {
             state = newState;
             LOG.info(
@@ -1248,8 +1266,10 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
             stateTimestamps[newState.ordinal()] = System.currentTimeMillis();
             notifyJobStatusChange(newState);
             notifyJobStatusHooks(newState, error);
+            /** 转换成功返回 true */
             return true;
         } else {
+            /** 转换成功返回 false */
             return false;
         }
     }

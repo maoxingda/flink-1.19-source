@@ -18,6 +18,11 @@
 package org.apache.flink.runtime.jobmaster;
 
 /** Base interface for managers of services that are explicitly connected to / disconnected from. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 连接到/断开连接的服务的管理器的基本接口。
+*/
 public interface ServiceConnectionManager<S> {
 
     /**
@@ -25,6 +30,11 @@ public interface ServiceConnectionManager<S> {
      *
      * @param service service to connect to
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 连接到给定的服务。
+    */
     void connect(S service);
 
     /** Disconnect from the current service. */

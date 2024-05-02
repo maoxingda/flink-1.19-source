@@ -86,6 +86,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
 
 /** The speculative scheduler. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 推测性调度程序
+*/
 public class SpeculativeScheduler extends AdaptiveBatchScheduler
         implements SlowTaskDetectorListener {
 

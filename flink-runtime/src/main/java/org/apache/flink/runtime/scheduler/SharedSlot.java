@@ -62,6 +62,11 @@ import java.util.stream.Collectors;
  * {@link SlotSharingExecutionSlotAllocator} to remove it from the allocator and cancel its
  * underlying physical slot request if the request is not fulfilled yet.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 共享Slot实现
+*/
 class SharedSlot implements SlotOwner, PhysicalSlot.Payload {
     private static final Logger LOG = LoggerFactory.getLogger(SharedSlot.class);
 

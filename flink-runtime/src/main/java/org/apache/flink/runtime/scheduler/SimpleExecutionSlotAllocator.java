@@ -48,6 +48,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * A simple implementation of {@link ExecutionSlotAllocator}. No support for slot sharing,
  * co-location, nor local recovery.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ *  ExecutionSlotAllocator 的简单实现。不支持插槽共享、合用位置或本地恢复。
+*/
 public class SimpleExecutionSlotAllocator implements ExecutionSlotAllocator {
     private final PhysicalSlotProvider slotProvider;
 

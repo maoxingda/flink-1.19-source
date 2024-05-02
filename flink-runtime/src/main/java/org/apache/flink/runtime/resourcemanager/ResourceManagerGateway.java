@@ -85,6 +85,11 @@ public interface ResourceManagerGateway
      * @param resourceRequirements resource requirements
      * @return The confirmation that the requirements have been processed
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 生命资源请求
+    */
     CompletableFuture<Acknowledge> declareRequiredResources(
             JobMasterId jobMasterId,
             ResourceRequirements resourceRequirements,

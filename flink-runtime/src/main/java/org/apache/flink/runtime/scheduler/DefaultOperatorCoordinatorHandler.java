@@ -79,7 +79,11 @@ public class DefaultOperatorCoordinatorHandler implements OperatorCoordinatorHan
                     executionGraph.getCheckpointCoordinator());
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动所有Operator Coordinators
+    */
     @Override
     public void startAllOperatorCoordinators() {
         startOperatorCoordinators(coordinatorMap.values());

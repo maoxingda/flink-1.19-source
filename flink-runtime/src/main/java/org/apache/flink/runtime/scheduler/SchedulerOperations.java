@@ -24,6 +24,11 @@ import org.apache.flink.runtime.scheduler.strategy.SchedulingStrategy;
 import java.util.List;
 
 /** Component which is used by {@link SchedulingStrategy} to commit scheduling decisions. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * SchedulingStrategy 用于提交调度决策的组件
+*/
 public interface SchedulerOperations {
 
     /**
@@ -34,5 +39,10 @@ public interface SchedulerOperations {
      *
      * @param verticesToDeploy The execution vertices to deploy
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 用于分配Slot资源及执行Execution。
+    */
     void allocateSlotsAndDeploy(List<ExecutionVertexID> verticesToDeploy);
 }

@@ -88,25 +88,38 @@ public class DefaultSlotStatusSyncer implements SlotStatusSyncer {
         started = false;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从任务管理器分配一个插槽。
+    */
     @Override
     public CompletableFuture<Void> allocateSlot(
             InstanceID instanceId,
             JobID jobId,
             String targetAddress,
             ResourceProfile resourceProfile) {
+        /** 检查状态 */
         Preconditions.checkNotNull(instanceId);
         Preconditions.checkNotNull(jobId);
         Preconditions.checkNotNull(targetAddress);
         Preconditions.checkNotNull(resourceProfile);
         checkStarted();
+        /** 创建AllocationID */
         final AllocationID allocationId = new AllocationID();
+        /**
+         * 获取TaskManagerInfo
+         * TaskManagerTracker 跟踪TaskManager的资源和插槽状态
+         */
         final Optional<TaskManagerInfo> taskManager =
                 taskManagerTracker.getRegisteredTaskManager(instanceId);
         Preconditions.checkState(
                 taskManager.isPresent(),
                 "Could not find a registered task manager for instance id " + instanceId + '.');
+        /** 获取TaskExecutorGateway网关的动态代理 */
         final TaskExecutorGateway gateway =
                 taskManager.get().getTaskExecutorConnection().getTaskExecutorGateway();
+        /** 获取资源ID */
         final ResourceID resourceId = taskManager.get().getTaskExecutorConnection().getResourceID();
 
         LOG.info(
@@ -115,12 +128,22 @@ public class DefaultSlotStatusSyncer implements SlotStatusSyncer {
                 resourceId,
                 jobId,
                 resourceProfile);
-
+        /**
+         * 将Slot状态更新为PENDING
+         * FREE,
+         * PENDING,
+         * ALLOCATED
+         * FineGrainedTaskManagerRegistration.notifyAllocation
+         */
         taskManagerTracker.notifySlotStatus(
                 allocationId, jobId, instanceId, resourceProfile, SlotState.PENDING);
+        /**
+         *通知跟踪器获取给定作业的具有给定资源配置文件的资源
+         * 就是更新Map<JobID, JobScopedResourceTracker> trackers
+         */
         resourceTracker.notifyAcquiredResource(jobId, resourceProfile);
         pendingSlotAllocations.add(allocationId);
-
+        /** RPC开始调用请求资源 */
         // RPC call to the task manager
         CompletableFuture<Acknowledge> requestFuture =
                 gateway.requestSlot(
@@ -133,7 +156,7 @@ public class DefaultSlotStatusSyncer implements SlotStatusSyncer {
                         taskManagerRequestTimeout);
 
         CompletableFuture<Void> returnedFuture = new CompletableFuture<>();
-
+        /** 更新各个监控的状态 */
         FutureUtils.assertNoException(
                 requestFuture.handleAsync(
                         (Acknowledge acknowledge, Throwable throwable) -> {

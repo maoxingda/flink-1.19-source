@@ -590,13 +590,26 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
             closeJobManagerConnection(jobId, ResourceRequirementHandling.RETAIN, cause);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 1.Map<JobID, JobManagerRegistration> jobManagerRegistrations 从注册的JobMaster中获取JobManager注册的信息
+     * 2.如果JobMaster注册过，则调用slotManager.processResourceRequirements申请资源
+     * 如果没有注册过则封装错误返回
+    */
     @Override
     public CompletableFuture<Acknowledge> declareRequiredResources(
             JobMasterId jobMasterId, ResourceRequirements resourceRequirements, Time timeout) {
+        /**
+         * 1.Map<JobID, JobManagerRegistration> jobManagerRegistrations
+         * 从注册的JobMaster中获取JobManager注册的信息
+         */
         final JobID jobId = resourceRequirements.getJobId();
         final JobManagerRegistration jobManagerRegistration = jobManagerRegistrations.get(jobId);
-
+        /**
+         * 如果JobMaster注册过，则调用slotManager.processResourceRequirements申请资源
+         * 如果没有注册过则封装错误返回
+         */
         if (null != jobManagerRegistration) {
             if (Objects.equals(jobMasterId, jobManagerRegistration.getJobMasterId())) {
                 return getReadyToServeFuture()

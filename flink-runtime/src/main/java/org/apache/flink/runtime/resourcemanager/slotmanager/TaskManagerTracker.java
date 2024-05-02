@@ -114,6 +114,11 @@ interface TaskManagerTracker
      *
      * @param pendingSlotAllocations new pending slot allocations be recorded
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 清除以前所有挂起的插槽分配记录（如果有），并记录新的挂起插槽分配。
+    */
     void replaceAllPendingAllocations(
             Map<PendingTaskManagerId, Map<JobID, ResourceCounter>> pendingSlotAllocations);
 
@@ -122,6 +127,11 @@ interface TaskManagerTracker
      *
      * @param jobId of the given job
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 清除给定作业以前所有挂起的Slot分配记录。
+    */
     void clearPendingAllocationsOfJob(JobID jobId);
 
     /** Removes all state from the tracker. */

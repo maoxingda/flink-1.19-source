@@ -166,6 +166,11 @@ import java.util.stream.Collectors;
  * <p>2) Context methods, which are called by states, to either transition into another state or
  * access functionality of some component in the scheduler.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * SchedulerNG 实现，它使用声明性资源管理，并在没有足够的资源以配置的并行度运行的情况下自动调整并行度，
+*/
 public class AdaptiveScheduler
         implements SchedulerNG,
                 Created.Context,

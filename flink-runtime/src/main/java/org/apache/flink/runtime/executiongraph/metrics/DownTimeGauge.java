@@ -32,6 +32,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * failing, this gauge returns {@value NOT_FAILING}, and for jobs that are not running any more, it
  * returns {@value NO_LONGER_RUNNING}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 在作业处于故障/恢复状态时，返回作业不再运行的时间（以毫秒为单位）的指标。正在运行的作业返回的值自然为零。
+*/
 public class DownTimeGauge implements Gauge<Long> {
 
     public static final String METRIC_NAME = "downtime";

@@ -625,7 +625,11 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
     protected final ResultPartitionAvailabilityChecker getResultPartitionAvailabilityChecker() {
         return executionGraph.getResultPartitionAvailabilityChecker();
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * ExecutionGraph进行状态转换
+    */
     protected final void transitionToRunning() {
         executionGraph.transitionToRunning();
     }
@@ -685,10 +689,16 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
     // ------------------------------------------------------------------------
     // SchedulerNG
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动调度器以及内部服务
+    */
     @Override
     public final void startScheduling() {
+        /** 检查是否在主线程中执行 */
         mainThreadExecutor.assertRunningInMainThread();
+        /** 注册JobMaster的监控指标 */
         registerJobMetrics(
                 jobManagerJobMetricGroup,
                 executionGraph,
@@ -700,7 +710,18 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
         operatorCoordinatorHandler.startAllOperatorCoordinators();
         startSchedulingInternal();
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册JobMaster的监控指标
+     * MetricGroup metrics: 一个用于注册度量的组。
+     * JobStatusProvider jobStatusProvider: 一个提供作业状态的组件或接口。
+     * Gauge<Long> numberOfRestarts: 一个表示重启次数的度量规范（Gauge）。
+     * DeploymentStateTimeMetrics deploymentTimeMetrics: 部署状态时间相关的度量。
+     * Consumer<JobStatusListener> jobStatusListenerRegistrar: 一个消费者（Consumer），它接受一个JobStatusListener作为参数，并可能将其注册到某个地方以监听作业状态的变化。
+     * long initializationTimestamp: 作业的初始化时间戳。
+     * MetricOptions.JobStatusMetricsSettings jobStatusMetricsSettings: 作业状态度量的设置。
+    */
     public static void registerJobMetrics(
             MetricGroup metrics,
             JobStatusProvider jobStatusProvider,
@@ -709,16 +730,28 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
             Consumer<JobStatusListener> jobStatusListenerRegistrar,
             long initializationTimestamp,
             MetricOptions.JobStatusMetricsSettings jobStatusMetricsSettings) {
+        /**
+         * MetricGroup
+         * Map<String, Metric> metrics = new HashMap<>()
+         *
+         */
+        /** 返回作业不在运行的时常 */
         metrics.gauge(DownTimeGauge.METRIC_NAME, new DownTimeGauge(jobStatusProvider));
+        /** 返回作业运行时间（以毫秒为单位）的指标。 */
         metrics.gauge(UpTimeGauge.METRIC_NAME, new UpTimeGauge(jobStatusProvider));
+        /** 重启次数指标 */
         metrics.gauge(MetricNames.NUM_RESTARTS, numberOfRestarts::getValue);
         metrics.gauge(MetricNames.FULL_RESTARTS, numberOfRestarts::getValue);
-
+        /** 捕获作业在每个  JobStatus 中花费的时间的度量。 */
         final JobStatusMetrics jobStatusMetrics =
                 new JobStatusMetrics(initializationTimestamp, jobStatusMetricsSettings);
+        /** 注册任务状态对应的时间指标 */
         jobStatusMetrics.registerMetrics(metrics);
+        /**
+         * Consumer 是一个函数式接口，用于表示接受一个输入参数并且不返回结果的操作。
+         */
         jobStatusListenerRegistrar.accept(jobStatusMetrics);
-
+        /** 注册指标 捕获作业部署任务的时间的指标*/
         deploymentTimeMetrics.registerMetrics(metrics);
     }
 

@@ -33,6 +33,12 @@ import org.apache.flink.util.StringUtils;
  * is used when a task requests a logical slot from the SlotPool. Multiple logical slot requests can
  * map to one physical slot request (due to slot sharing).
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * JobManager通过ResourceManager从TaskManager分配的物理插槽的唯一标识符。
+ * 一旦JobManager（或其SlotPool）首次请求插槽，就会分配ID，并且在重试过程中保持不变。
+*/
 public class AllocationID extends AbstractID {
 
     private static final long serialVersionUID = 1L;

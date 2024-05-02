@@ -1133,7 +1133,20 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
     // ----------------------------------------------------------------------
     // Slot allocation RPCs
     // ----------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 请求Slot
+     * 1.SlotManager向TaskManager请求Slot资源
+     * 2.调用allocateSlotForJob申请资源
+     * @param slotId q2_dynamic
+     * @param jobId c54f8daa5bd96880e077d4e305322269
+     * @param allocationId 4f00d424725c364aa7ac2bacac5fd536
+     * @param resourceProfile 请求的资源
+     * @param targetAddress pekko.tcp://flink@localhost:6123/user/rpc/jobmanager_2
+     * @param resourceManagerId 00000000000000000000000000000000
+     * @param timeout 10000 ms
+    */
     @Override
     public CompletableFuture<Acknowledge> requestSlot(
             final SlotID slotId,
@@ -1166,9 +1179,10 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                         slotId, jobId, targetAddress, allocationId, resourceProfile));
 
         try {
+            /** 2.调用allocateSlotForJob申请资源 */
             final boolean isConnected =
                     allocateSlotForJob(jobId, slotId, allocationId, resourceProfile, targetAddress);
-
+            /** 3.申请成功后会向JobMaster发送offerSlots,告诉JobMaster这些资源分配给你可以启动任务了 */
             if (isConnected) {
                 offerSlotsToJobManager(jobId);
             }
@@ -1650,6 +1664,9 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             currentSlotOfferPerJob.put(jobId, slotOfferId);
 
             CompletableFuture<Collection<SlotOffer>> acceptedSlotsFuture =
+                    /**
+                     * 为作业经理提供给定的插槽。响应包含一组可接受的插槽。
+                     */
                     jobMasterGateway.offerSlots(
                             getResourceID(),
                             reservedSlots,

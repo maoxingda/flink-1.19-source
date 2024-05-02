@@ -19,6 +19,11 @@
 package org.apache.flink.runtime.metrics;
 
 /** Collection of metric names. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 度量名称的集合。
+*/
 public class MetricNames {
     private MetricNames() {}
 

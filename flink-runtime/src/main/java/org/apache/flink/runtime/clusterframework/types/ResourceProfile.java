@@ -60,6 +60,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *
  * The extended resources are compared ordered by the resource names.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 描述Slot的不可变资源配置文件，无论是在需要还是提供时。可以检查该配置文件是否符合另一个配置文件的要求，
+*/
 public class ResourceProfile implements Serializable {
 
     private static final long serialVersionUID = 1L;

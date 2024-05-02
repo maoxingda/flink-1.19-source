@@ -47,6 +47,11 @@ public interface OperatorCoordinatorHandler {
     void initializeOperatorCoordinators(ComponentMainThreadExecutor mainThreadExecutor);
 
     /** Start all operator coordinators. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动所有Operator Coordinators
+    */
     void startAllOperatorCoordinators();
 
     /** Dispose all operator coordinators. */

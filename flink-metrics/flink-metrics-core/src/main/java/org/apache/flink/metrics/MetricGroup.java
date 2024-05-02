@@ -32,6 +32,11 @@ import java.util.Map;
  *
  * <p>A MetricGroup is uniquely identified by it's place in the hierarchy and name.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * MetricGroup是  Metrics 和其他度量子群的命名容器(监控组)。
+*/
 @Public
 public interface MetricGroup {
 
@@ -106,6 +111,11 @@ public interface MetricGroup {
      * @param <T> return type of the gauge
      * @return the given gauge
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 向flink注册一个新的 Guge
+    */
     <T, G extends Gauge<T>> G gauge(String name, G gauge);
 
     /**

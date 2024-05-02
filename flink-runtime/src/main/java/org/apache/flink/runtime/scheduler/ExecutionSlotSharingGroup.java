@@ -27,6 +27,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 /** Represents execution vertices that will run the same shared slot. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 表示将运行同一共享Slot的执行顶点
+*/
 class ExecutionSlotSharingGroup {
 
     private final Set<ExecutionVertexID> executionVertexIds;

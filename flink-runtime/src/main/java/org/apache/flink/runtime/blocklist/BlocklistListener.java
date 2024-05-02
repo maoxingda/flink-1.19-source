@@ -24,6 +24,11 @@ import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 
 /** A listener that want to be notified when blocklist changes. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 当Blocklist列表发生更改时，希望得到通知的侦听器。
+*/
 public interface BlocklistListener {
 
     /**

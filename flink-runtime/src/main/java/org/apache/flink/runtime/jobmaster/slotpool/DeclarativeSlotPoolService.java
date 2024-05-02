@@ -149,6 +149,12 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
      */
     protected void onStart(ComponentMainThreadExecutor componentMainThreadExecutor) {}
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 检查某个条件是否满足。在这里，它检查 state 变量是否等于 State.STARTED。如果条件不满足（即服务没有启动），
+     * 它将抛出一个 IllegalStateException，并带有指定的错误消息。
+    */
     protected void assertHasBeenStarted() {
         Preconditions.checkState(
                 state == State.STARTED, "The DeclarativeSlotPoolService has to be started.");
@@ -298,21 +304,41 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
      */
     protected void onReleaseTaskManager(ResourceCounter previouslyFulfilledRequirement) {}
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @Override
     public void connectToResourceManager(ResourceManagerGateway resourceManagerGateway) {
+        /**
+         * 它检查 state 变量是否等于 State.STARTED。
+         */
         assertHasBeenStarted();
-
+        /** 连接到给定的服务。 */
         resourceRequirementServiceConnectionManager.connect(
                 resourceRequirements ->
+                        /**
+                         * 动态代理向resourceManager发送declareRequiredResources
+                         * 发送资源申请
+                         */
                         resourceManagerGateway.declareRequiredResources(
                                 jobMasterId, resourceRequirements, rpcTimeout));
 
         declareResourceRequirements(declarativeSlotPool.getResourceRequirements());
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     private void declareResourceRequirements(Collection<ResourceRequirement> resourceRequirements) {
+        /** 校验 DeclarativeSlotPoolService是否启动 */
         assertHasBeenStarted();
-
+        /**
+         * DeclareResourceRequirementServiceConnectionManager 用于声明资源需求的ServiceConnectionManager。
+         * declareResourceRequirements申请资源
+         */
         resourceRequirementServiceConnectionManager.declareResourceRequirements(
                 ResourceRequirements.create(jobId, jobManagerAddress, resourceRequirements));
     }

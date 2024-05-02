@@ -23,6 +23,11 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 
 /** Base class for service connection managers, taking care of the connection handling. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 服务连接管理器的基类，负责连接处理。
+*/
 public class AbstractServiceConnectionManager<S> implements ServiceConnectionManager<S> {
 
     protected final Object lock = new Object();

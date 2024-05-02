@@ -243,13 +243,20 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
                 .getVertices()
                 .forEach(ev -> cancelAllPendingSlotRequestsForVertex(ev.getId()));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 内部方法启动调度器
+    */
     @Override
     protected void startSchedulingInternal() {
+        /** 打印日志 */
         log.info(
                 "Starting scheduling with scheduling strategy [{}]",
                 schedulingStrategy.getClass().getName());
+        /** 状态转换 */
         transitionToRunning();
+        /** 根据调度策略启动调用 */
         schedulingStrategy.startScheduling();
     }
 
@@ -475,17 +482,22 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
     // ------------------------------------------------------------------------
     // SchedulerOperations
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 申请资源并调度
+    */
     @Override
     public void allocateSlotsAndDeploy(final List<ExecutionVertexID> verticesToDeploy) {
+        /** 记录顶点修改版本 */
         final Map<ExecutionVertexID, ExecutionVertexVersion> requiredVersionByVertex =
                 executionVertexVersioner.recordVertexModifications(verticesToDeploy);
-
+        /** 获取当前执行的顶点 即Execution */
         final List<Execution> executionsToDeploy =
                 verticesToDeploy.stream()
                         .map(this::getCurrentExecutionOfVertex)
                         .collect(Collectors.toList());
-
+        /** 分配Slot并部署执行。 */
         executionDeployer.allocateSlotsAndDeploy(executionsToDeploy, requiredVersionByVertex);
     }
 

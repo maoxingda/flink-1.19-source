@@ -110,19 +110,21 @@ public class DefaultResourceAllocationStrategy implements ResourceAllocationStra
             Map<JobID, Collection<ResourceRequirement>> missingResources,
             TaskManagerResourceInfoProvider taskManagerResourceInfoProvider,
             BlockedTaskManagerChecker blockedTaskManagerChecker) {
+        /** 初始化资源分配结果构建器 */
         final ResourceAllocationResult.Builder resultBuilder = ResourceAllocationResult.builder();
-
+        /** 获取可用资源 */
         final List<InternalResourceInfo> registeredResources =
                 getAvailableResources(
                         taskManagerResourceInfoProvider, resultBuilder, blockedTaskManagerChecker);
+        /** 获取待分配资源 */
         final List<InternalResourceInfo> pendingResources =
                 getPendingResources(taskManagerResourceInfoProvider, resultBuilder);
-
+        /** 计算当前总资源 */
         ResourceProfile totalCurrentResources =
                 Stream.concat(registeredResources.stream(), pendingResources.stream())
                         .map(internalResourceInfo -> internalResourceInfo.totalProfile)
                         .reduce(ResourceProfile.ZERO, ResourceProfile::merge);
-
+        /**尝试满足作业的资源需求*/
         for (Map.Entry<JobID, Collection<ResourceRequirement>> resourceRequirements :
                 missingResources.entrySet()) {
             final JobID jobId = resourceRequirements.getKey();
@@ -130,7 +132,7 @@ public class DefaultResourceAllocationStrategy implements ResourceAllocationStra
             final Collection<ResourceRequirement> unfulfilledJobRequirements =
                     tryFulfillRequirementsForJobWithResources(
                             jobId, resourceRequirements.getValue(), registeredResources);
-
+            /** 更新总资源 */
             if (!unfulfilledJobRequirements.isEmpty()) {
                 totalCurrentResources =
                         totalCurrentResources.merge(
@@ -147,6 +149,11 @@ public class DefaultResourceAllocationStrategy implements ResourceAllocationStra
         // tryFulFillRequiredResources will not update pendingResources even after new
         // PendingTaskManagers are created.
         // This is because the pendingResources are no longer needed afterward.
+        /**
+         * 与tryFulfillRequirementsForJobWithPendingResources不同，后者在创建新的PendingTaskManager后将pendingResources更新到最新状态
+         * tryFulFillRequiredResources即使在创建新的PendingTaskManager后也不会更新pendingResources
+         * 这是因为以后不再需要pendingResources
+         */
         tryFulFillRequiredResources(
                 registeredResources, pendingResources, totalCurrentResources, resultBuilder);
         return resultBuilder.build();
@@ -386,32 +393,48 @@ public class DefaultResourceAllocationStrategy implements ResourceAllocationStra
         return resourcesInTotal.getCpuCores().compareTo(minTotalCPU) >= 0
                 && resourcesInTotal.getTotalMemory().compareTo(minTotalMemory) >= 0;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     private void tryFulFillRequiredResources(
             List<InternalResourceInfo> availableRegisteredResources,
             List<InternalResourceInfo> availablePendingResources,
             ResourceProfile resourcesInTotal,
             ResourceAllocationResult.Builder resultBuilder) {
+        /** 计算总可用资源 */
         ResourceProfile resourcesAvailable =
                 Stream.concat(
                                 availableRegisteredResources.stream(),
                                 availablePendingResources.stream())
                         .map(internalResourceInfo -> internalResourceInfo.availableProfile)
                         .reduce(ResourceProfile.ZERO, ResourceProfile::merge);
-
+        /** 尝试满足资源需求 */
         tryFulFillRequiredResourcesWithAction(
                 resourcesAvailable, resourcesInTotal, resultBuilder::addPendingTaskManagerAllocate);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 循环尝试满足资源需求：当所需资源没有被完全满足时，进入循环。
+     * 创建待分配的 TaskManager：创建一个新的 PendingTaskManager
+     * 执行满足资源需求的动作：调用传入的 fulfillAction，将新创建的 PendingTaskManager 作为参数传入，
+     * 更新可用资源和所需资源总量：将新创建的 TaskManager 所占用的资源添加到 resourcesAvailable 和 resourcesInTotal 中。
+    */
     private void tryFulFillRequiredResourcesWithAction(
             ResourceProfile resourcesAvailable,
             ResourceProfile resourcesInTotal,
             Consumer<? super PendingTaskManager> fulfillAction) {
+        /** 循环尝试满足资源需求：当所需资源没有被完全满足时，进入循环 */
         while (!isRequiredResourcesFulfilled(resourcesAvailable, resourcesInTotal)) {
+            /** 创建待分配的 TaskManager：创建一个新的 PendingTaskManager */
             PendingTaskManager pendingTaskManager =
                     new PendingTaskManager(totalResourceProfile, numSlotsPerWorker);
             fulfillAction.accept(pendingTaskManager);
+            /** 更新可用资源 */
             resourcesAvailable = resourcesAvailable.merge(totalResourceProfile);
+            /** 更新总资源 */
             resourcesInTotal = resourcesInTotal.merge(totalResourceProfile);
         }
     }

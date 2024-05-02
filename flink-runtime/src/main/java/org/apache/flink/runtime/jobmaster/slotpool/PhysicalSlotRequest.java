@@ -22,6 +22,11 @@ import org.apache.flink.runtime.clusterframework.types.SlotProfile;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
 
 /** Represents a request for a physical slot. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 表示对物理Slot的请求
+*/
 public class PhysicalSlotRequest {
 
     private final SlotRequestId slotRequestId;

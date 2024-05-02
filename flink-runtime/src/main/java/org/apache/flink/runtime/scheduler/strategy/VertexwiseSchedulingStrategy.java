@@ -44,6 +44,12 @@ import static org.apache.flink.util.Preconditions.checkState;
  * indicates this strategy only supports batch jobs). Note that this strategy implements {@link
  * SchedulingTopologyListener}, so it can handle the updates of scheduling topology.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * SchedulingStrategy 实例，该实例按顶点粒度调度任务（表示该策略仅支持批处理作业）。
+ *
+*/
 public class VertexwiseSchedulingStrategy
         implements SchedulingStrategy, SchedulingTopologyListener {
 

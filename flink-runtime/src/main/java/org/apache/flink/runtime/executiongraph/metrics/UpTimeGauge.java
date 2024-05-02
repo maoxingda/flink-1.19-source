@@ -29,6 +29,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *
  * <p>For jobs that are not running any more, it returns {@value NO_LONGER_RUNNING}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 返回作业运行时间（以毫秒为单位）的指标。
+*/
 public class UpTimeGauge implements Gauge<Long> {
 
     public static final String METRIC_NAME = "uptime";

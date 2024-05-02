@@ -278,6 +278,11 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
         return physicalSlot;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 请求申请新的Slot
+    */
     @Override
     @Nonnull
     public CompletableFuture<PhysicalSlot> requestNewAllocatedSlot(
@@ -286,16 +291,18 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
             @Nonnull Collection<AllocationID> preferredAllocations,
             @Nullable Time timeout) {
         assertRunningInMainThread();
-
+        /** 打印日志 */
         log.debug(
                 "Request new allocated slot with slot request id {} and resource profile {}",
                 slotRequestId,
                 resourceProfile);
-
+        /** 构建PendingRequest */
         final PendingRequest pendingRequest =
                 PendingRequest.createNormalRequest(
                         slotRequestId, resourceProfile, preferredAllocations);
-
+        /**
+         * 调用内部方法 继续请求申请新的Slot
+         */
         return internalRequestNewSlot(pendingRequest, timeout);
     }
 
@@ -318,9 +325,17 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
 
         return internalRequestNewSlot(pendingRequest, null);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 请求申请新的Slot
+     */
     private CompletableFuture<PhysicalSlot> internalRequestNewSlot(
             PendingRequest pendingRequest, @Nullable Time timeout) {
+        /**
+         * 此时是在SlotPoolService方法中
+         *
+         */
         internalRequestNewAllocatedSlot(pendingRequest);
 
         if (timeout == null) {
@@ -348,10 +363,16 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
                 slotRequestId,
                 new TimeoutException("Pending slot request timed out in slot pool."));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     private void internalRequestNewAllocatedSlot(PendingRequest pendingRequest) {
         pendingRequests.put(pendingRequest.getSlotRequestId(), pendingRequest);
-
+        /**
+         * 获取DeclarativeSlotPool 向ResourceManager申请
+         */
         getDeclarativeSlotPool()
                 .increaseResourceRequirementsBy(
                         ResourceCounter.withResource(pendingRequest.getResourceProfile(), 1));

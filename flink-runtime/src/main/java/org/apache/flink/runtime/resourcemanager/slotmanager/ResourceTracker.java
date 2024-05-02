@@ -34,6 +34,11 @@ public interface ResourceTracker {
      * @param jobId the job that the resource requirements belongs to
      * @param resourceRequirements new resource requirements
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 向跟踪器通知新的或更新的 ResourceRequirements。
+    */
     void notifyResourceRequirements(
             JobID jobId, Collection<ResourceRequirement> resourceRequirements);
 
@@ -61,6 +66,11 @@ public interface ResourceTracker {
      *
      * @return missing resources for each jobs
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回  ResourceRequirements 的集合，该集合描述了相应作业缺少的资源。
+    */
     Map<JobID, Collection<ResourceRequirement>> getMissingResources();
 
     /**

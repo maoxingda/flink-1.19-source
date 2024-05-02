@@ -41,6 +41,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * an AllocatedSlot was allocated to the JobManager as soon as the TaskManager registered at the
  * JobManager. All slots had a default unknown resource profile.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * AllocatedSlot 表示JobMaster从TaskExecutor分配的插槽。它表示从TaskExecutor分配的资源的一部分。
+*/
 class AllocatedSlot implements PhysicalSlot {
 
     /** The ID under which the slot is allocated. Uniquely identifies the slot. */

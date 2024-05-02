@@ -68,6 +68,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /** Implementation of {@link SlotManager} supporting fine-grained resource management. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 细粒度资源管理
+*/
 public class FineGrainedSlotManager implements SlotManager {
     private static final Logger LOG = LoggerFactory.getLogger(FineGrainedSlotManager.class);
 
@@ -304,20 +309,32 @@ public class FineGrainedSlotManager implements SlotManager {
             slotStatusSyncer.freeInactiveSlots(jobId);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理请求的资源
+    */
     @Override
     public void processResourceRequirements(ResourceRequirements resourceRequirements) {
+        /** 检查基本配置是否为空 */
         checkInit();
+        /** 跳过重复的空资源需求。 */
         if (resourceRequirements.getResourceRequirements().isEmpty()
                 && resourceTracker.isRequirementEmpty(resourceRequirements.getJobId())) {
             // Skip duplicate empty resource requirements.
             return;
         }
-
+        /**
+         * 如果作业的总资源需求为空，则移除JobId,清除taskManagerTracker跟踪的TakManager的资源和插槽状态
+         */
         if (resourceRequirements.getResourceRequirements().isEmpty()) {
             LOG.info("Clearing resource requirements of job {}", resourceRequirements.getJobId());
             jobMasterTargetAddresses.remove(resourceRequirements.getJobId());
+            /**
+             * ResourceAllocator是否支持释放回收资源，Standalone不支持
+             */
             if (resourceAllocator.isSupported()) {
+                /** 清除给定作业以前所有挂起的Slot分配记录 */
                 taskManagerTracker.clearPendingAllocationsOfJob(resourceRequirements.getJobId());
             }
         } else {
@@ -325,12 +342,28 @@ public class FineGrainedSlotManager implements SlotManager {
                     "Received resource requirements from job {}: {}",
                     resourceRequirements.getJobId(),
                     resourceRequirements.getResourceRequirements());
+            /**
+             * 将JobID,JobMaster地址放入Map结构中
+             * 2e827cfcdc7ac1a9d3ec0e92ecc88702,pekko.tcp://flink@localhost:6123/user/rpc/jobmanager_2
+             */
             jobMasterTargetAddresses.put(
                     resourceRequirements.getJobId(), resourceRequirements.getTargetAddress());
         }
-
+        /**
+         * 调用resourceTracker.notifyResourceRequirements 通知跟踪器跟踪新的或更新的ResourceRequirements
+         * 1.将JobId 放入如下数据结构
+         * Map<JobID, JobScopedResourceTracker> trackers = new HashMap<>()
+         * JobScopedResourceTracker跟踪单个作业的资源
+         * 2.resourceRequirements 构建成如下结构 请求的CPU内存，numSlot数
+         *  private final Map<ResourceProfile, Integer> resources;
+         *  并添加到JobScopedResourceTracker.resourceRequirements对象中
+         *  说到底还是跟踪资源每个作业的资源
+         */
         resourceTracker.notifyResourceRequirements(
                 resourceRequirements.getJobId(), resourceRequirements.getResourceRequirements());
+        /**
+         * 检查资源并申请
+         */
         checkResourceRequirementsWithDelay();
     }
 
@@ -590,12 +623,24 @@ public class FineGrainedSlotManager implements SlotManager {
      * changes with each check, thus reduce the frequency of unnecessary re-allocations, the checks
      * are performed with a slight delay.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据 ResourceAllocationStrategy 的实现，检查资源需求和可能进行重新分配可能会很繁重。
+     * 为了在每次检查中覆盖更多的更改，从而减少不必要的重新分配的频率，检查的执行略有延迟。
+    */
     private void checkResourceRequirementsWithDelay() {
+        /**
+         * 如果延迟时间小于等于0，则直接进入checkResourceRequirements 资源检查
+         */
         if (requirementsCheckDelay.toMillis() <= 0) {
             checkResourceRequirements();
         } else {
             if (requirementsCheckFuture == null || requirementsCheckFuture.isDone()) {
                 requirementsCheckFuture = new CompletableFuture<>();
+                /**
+                 * 线程池、调度器延迟执行checkResourceRequirements，资源检查
+                 */
                 scheduledExecutor.schedule(
                         () ->
                                 mainThreadExecutor.execute(
@@ -613,12 +658,22 @@ public class FineGrainedSlotManager implements SlotManager {
     /**
      * DO NOT call this method directly. Use {@link #checkResourceRequirementsWithDelay()} instead.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 资源检查
+    */
     private void checkResourceRequirements() {
         if (!started) {
             return;
         }
+        /**
+         * 从JobScopedResourceTracker结合中获取JobId,ResourceRequirement
+         * 这里会去查看资源是否能够运行我们任务，如果资源能够则直接运行
+         */
         Map<JobID, Collection<ResourceRequirement>> missingResources =
                 resourceTracker.getMissingResources();
+        /** missingResources如果为空则协调资源 */
         if (missingResources.isEmpty()) {
             if (resourceAllocator.isSupported()
                     && !taskManagerTracker.getPendingTaskManagers().isEmpty()) {
@@ -628,29 +683,41 @@ public class FineGrainedSlotManager implements SlotManager {
             }
             return;
         }
-
+        /** 将资源信息以日志形式打印出来 */
         logMissingAndAvailableResource(missingResources);
-
+        /** 构建Map结构JobId,ResourceRequirements */
         missingResources =
                 missingResources.entrySet().stream()
                         .collect(
                                 Collectors.toMap(
                                         Map.Entry::getKey, e -> new ArrayList<>(e.getValue())));
-
+        /** 尝试做出分配决定以满足资源需求。该策略根据当前状态生成ResourceAllocationResult结果。 */
         final ResourceAllocationResult result =
                 resourceAllocationStrategy.tryFulfillRequirements(
                         missingResources, taskManagerTracker, this::isBlockedTaskManager);
 
         // Allocate slots according to the result
+        /** 根据结果分配插槽 */
         allocateSlotsAccordingTo(result.getAllocationsOnRegisteredResources());
 
         final Set<PendingTaskManagerId> failAllocations;
+        /**
+         *  ResourceAllocator是否支持释放回收资源，Standalone不支持
+         *  为什么有下面的是因为如果有些没分配完成，则继续分配
+         */
+
         if (resourceAllocator.isSupported()) {
             // Allocate task managers according to the result
+            /**
+             * 分配挂起的任务管理器，返回不能分配的挂起任务管理器的id。
+             */
             failAllocations =
                     allocateTaskManagersAccordingTo(result.getPendingTaskManagersToAllocate());
 
             // Record slot allocation of pending task managers
+            /**
+             * 记录挂起任务管理器的插槽分配,就是分配及结果
+             */
             final Map<PendingTaskManagerId, Map<JobID, ResourceCounter>>
                     pendingResourceAllocationResult =
                             new HashMap<>(result.getAllocationsOnPendingResources());
@@ -662,7 +729,9 @@ public class FineGrainedSlotManager implements SlotManager {
                             .map(PendingTaskManager::getPendingTaskManagerId)
                             .collect(Collectors.toSet());
         }
-
+        /**
+         * 将不能分配的挂起TaskManager的id。放入unfulfillableJobs
+         */
         unfulfillableJobs.clear();
         unfulfillableJobs.addAll(result.getUnfulfillableJobs());
         for (PendingTaskManagerId pendingTaskManagerId : failAllocations) {
@@ -708,17 +777,29 @@ public class FineGrainedSlotManager implements SlotManager {
         }
         LOG.info(lines.toString());
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 分配资源
+    */
     private void allocateSlotsAccordingTo(Map<JobID, Map<InstanceID, ResourceCounter>> result) {
+        /** 初始化Future列表 */
         final List<CompletableFuture<Void>> allocationFutures = new ArrayList<>();
+        /** 遍历作业和资源映射 ResourceCounter Map<ResourceProfile, Integer> resources */
         for (Map.Entry<JobID, Map<InstanceID, ResourceCounter>> jobEntry : result.entrySet()) {
             final JobID jobID = jobEntry.getKey();
+            /** 遍历实例和资源 */
             for (Map.Entry<InstanceID, ResourceCounter> tmEntry : jobEntry.getValue().entrySet()) {
                 final InstanceID instanceID = tmEntry.getKey();
                 for (Map.Entry<ResourceProfile, Integer> slotEntry :
                         tmEntry.getValue().getResourcesWithCount()) {
                     for (int i = 0; i < slotEntry.getValue(); ++i) {
                         allocationFutures.add(
+                                /**
+                                 * 分配槽位
+                                 * SlotStatusSyncer负责分配/释放插槽并协调任务管理器的插槽状态
+                                 * 调用SlotStatusSyncer.allocateSlot申请资源
+                                 */
                                 slotStatusSyncer.allocateSlot(
                                         instanceID,
                                         jobID,
@@ -728,7 +809,9 @@ public class FineGrainedSlotManager implements SlotManager {
                 }
             }
         }
+        /** 等待所有分配完成 */
         FutureUtils.combineAll(allocationFutures)
+                /** 处理完成结果 */
                 .whenCompleteAsync(
                         (s, t) -> {
                             if (t != null) {

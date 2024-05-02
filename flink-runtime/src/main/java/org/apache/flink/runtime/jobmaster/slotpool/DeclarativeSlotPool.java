@@ -47,6 +47,11 @@ public interface DeclarativeSlotPool {
      *
      * @param increment increment by which to increase the resource requirements
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 按增量增加所需资源。
+    */
     void increaseResourceRequirementsBy(ResourceCounter increment);
 
     /**

@@ -182,13 +182,19 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
                                         .stream())
                 .collect(Collectors.toSet());
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 实时的程序会通过PipelinedRegionSchedulingStrategy策略调用
+    */
     @Override
     public void startScheduling() {
+        /** 获取DefaultSchedulingPipelinedRegion ExecutionGraph执行拓扑图 */
         final Set<SchedulingPipelinedRegion> sourceRegions =
                 IterableUtils.toStream(schedulingTopology.getAllPipelinedRegions())
                         .filter(this::isSourceRegion)
                         .collect(Collectors.toSet());
+        /** 调度Regions */
         maybeScheduleRegions(sourceRegions);
     }
 
@@ -227,27 +233,38 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
     public void onPartitionConsumable(final IntermediateResultPartitionID resultPartitionId) {}
 
     private void maybeScheduleRegions(final Set<SchedulingPipelinedRegion> regions) {
+        /** 创建一个新的 HashSet 名为 regionsToSchedule，用于存储最终需要调度的区域。 */
         final Set<SchedulingPipelinedRegion> regionsToSchedule = new HashSet<>();
+        /** 定义一个变量 nextRegions，初始时将其设置为输入参数 regions。 */
         Set<SchedulingPipelinedRegion> nextRegions = regions;
+        /**  循环，条件是 nextRegions 不为空。 */
         while (!nextRegions.isEmpty()) {
             nextRegions = addSchedulableAndGetNextRegions(nextRegions, regionsToSchedule);
         }
         // schedule regions in topological order.
+        /** 按拓扑顺序排序。 */
         SchedulingStrategyUtils.sortPipelinedRegionsInTopologicalOrder(
                         schedulingTopology, regionsToSchedule)
+                /** 调度Region */
                 .forEach(this::scheduleRegion);
     }
 
     private Set<SchedulingPipelinedRegion> addSchedulableAndGetNextRegions(
             Set<SchedulingPipelinedRegion> currentRegions,
             Set<SchedulingPipelinedRegion> regionsToSchedule) {
+        /** 创建一个新的 HashSet 名为 nextRegions，用于存储依赖于当前区域的下一组需要处理的区域。 */
         Set<SchedulingPipelinedRegion> nextRegions = new HashSet<>();
         // cache consumedPartitionGroup's consumable status to avoid compute repeatedly.
+        /** 缓存consumerdPartitionGroup的consumer状态，以避免重复计算。 */
         final Map<ConsumedPartitionGroup, Boolean> consumableStatusCache = new HashMap<>();
         final Set<ConsumedPartitionGroup> visitedConsumedPartitionGroups = new HashSet<>();
 
+        /**
+         *  判断SchedulingPipelinedRegion是否是可运行状态
+         */
         for (SchedulingPipelinedRegion currentRegion : currentRegions) {
             if (isRegionSchedulable(currentRegion, consumableStatusCache, regionsToSchedule)) {
+                /** 将currentRegion 添加到 regionsToSchedule */
                 regionsToSchedule.add(currentRegion);
                 producedPartitionGroupsOfRegion
                         .getOrDefault(currentRegion, Collections.emptySet())
@@ -274,7 +291,11 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
         }
         return nextRegions;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 判断SchedulingPipelinedRegion是否是可运行状态
+    */
     private boolean isRegionSchedulable(
             final SchedulingPipelinedRegion region,
             final Map<ConsumedPartitionGroup, Boolean> consumableStatusCache,
@@ -283,12 +304,22 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
                 && !scheduledRegions.contains(region)
                 && areRegionInputsAllConsumable(region, consumableStatusCache, regionToSchedule);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 调度Region
+    */
     private void scheduleRegion(final SchedulingPipelinedRegion region) {
+        /** 前置检查 判断Vertex是否等于 ExecutionState.CREATED*/
         checkState(
                 areRegionVerticesAllInCreatedState(region),
                 "BUG: trying to schedule a region which is not in CREATED state");
+        /** 添加到  Set<SchedulingPipelinedRegion> scheduledRegions*/
         scheduledRegions.add(region);
+        /**
+         * SchedulerOperations allocateSlotsAndDeploy
+         * 申请资源并部署
+         */
         schedulerOperations.allocateSlotsAndDeploy(regionVerticesSorted.get(region));
     }
 

@@ -21,6 +21,11 @@ package org.apache.flink.api.common;
 import org.apache.flink.annotation.PublicEvolving;
 
 /** Possible states of a job once it has been accepted by the dispatcher. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 调度程序接受作业后作业的可能状态
+*/
 @PublicEvolving
 public enum JobStatus {
     /**

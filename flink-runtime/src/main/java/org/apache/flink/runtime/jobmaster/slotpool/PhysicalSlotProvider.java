@@ -25,6 +25,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /** The provider serves physical slot requests. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 提供物理Slot请求。
+*/
 public interface PhysicalSlotProvider {
 
     /**
@@ -36,6 +41,11 @@ public interface PhysicalSlotProvider {
      * @param physicalSlotRequests physicalSlotRequest slot requirements
      * @return futures of the allocated slots
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 提交分配物理Slot的请求。
+    */
     Map<SlotRequestId, CompletableFuture<PhysicalSlotRequest.Result>> allocatePhysicalSlots(
             Collection<PhysicalSlotRequest> physicalSlotRequests);
 

@@ -31,6 +31,7 @@ import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.concurrent.FutureUtils;
 
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -85,22 +86,27 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
         this.allocationReservationFunc = checkNotNull(allocationReservationFunc);
         this.mainThreadExecutor = checkNotNull(mainThreadExecutor);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @Override
     public void allocateSlotsAndDeploy(
             final List<Execution> executionsToDeploy,
             final Map<ExecutionVertexID, ExecutionVertexVersion> requiredVersionByVertex) {
+        /** 验证executionsToDeploy列表中的每个Execution对象的状态是否满足部署条件 */
         validateExecutionStates(executionsToDeploy);
-
+        /** 状态转换为 SCHEDULED*/
         transitionToScheduled(executionsToDeploy);
-
+        /** 申请资源 */
         final Map<ExecutionAttemptID, ExecutionSlotAssignment> executionSlotAssignmentMap =
                 allocateSlotsFor(executionsToDeploy);
-
+        /** 构建 ExecutionDeploymentHandle */
         final List<ExecutionDeploymentHandle> deploymentHandles =
                 createDeploymentHandles(
                         executionsToDeploy, requiredVersionByVertex, executionSlotAssignmentMap);
-
+        /** 部署执行 */
         waitForAllSlotsAndDeploy(deploymentHandles);
     }
 
@@ -113,17 +119,29 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
                                 e.getAttemptId(),
                                 e.getState()));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 状态转换 将状态转换为SCHEDULED
+    */
     private void transitionToScheduled(final List<Execution> executionsToDeploy) {
         executionsToDeploy.forEach(e -> e.transitionState(ExecutionState.SCHEDULED));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通过ExecutionSlotAllocator对象实例的allocateSlotsFor方法申请资源
+    */
     private Map<ExecutionAttemptID, ExecutionSlotAssignment> allocateSlotsFor(
             final List<Execution> executionsToDeploy) {
+        /** 循环获取Execution 中的 ExecutionAttemptID*/
         final List<ExecutionAttemptID> executionAttemptIds =
                 executionsToDeploy.stream()
                         .map(Execution::getAttemptId)
                         .collect(Collectors.toList());
+        /**
+         *通过ExecutionSlotAllocator对象实例的allocateSlotsFor方法申请资源
+         */
         return executionSlotAllocator.allocateSlotsFor(executionAttemptIds);
     }
 

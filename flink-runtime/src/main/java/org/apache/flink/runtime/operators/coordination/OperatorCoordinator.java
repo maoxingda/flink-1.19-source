@@ -102,6 +102,11 @@ public interface OperatorCoordinator extends CheckpointListener, AutoCloseable {
      *
      * @throws Exception Any exception thrown from this method causes a full job failure.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动 coordinator。此方法在开始时调用一次，然后再调用任何其他方法。
+    */
     void start() throws Exception;
 
     /**
