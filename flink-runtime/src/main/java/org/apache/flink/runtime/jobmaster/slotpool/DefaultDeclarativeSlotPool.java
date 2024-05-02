@@ -131,7 +131,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
             return;
         }
         totalResourceRequirements = totalResourceRequirements.add(increment);
-        /** 向ResourcesManager发送消息 */
+        /** 流转到内部方法请求资源 */
         declareResourceRequirements();
     }
 
@@ -162,6 +162,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
                 resourceRequirements,
                 System.lineSeparator(),
                 fulfilledResourceRequirements);
+        /** notifyNewResourceRequirements,DeclarativeSlotPoolService */
         notifyNewResourceRequirements.accept(resourceRequirements);
     }
 

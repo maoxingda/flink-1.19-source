@@ -104,6 +104,11 @@ public enum JobStatus {
      *
      * @return True, if this job status is globally terminal, false otherwise.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 检查此状态是否为<i>全局终端</i>。全局终端作业已完成，不能再失败，并且不会由另一个备用主节点重新启动或恢复。
+    */
     public boolean isGloballyTerminalState() {
         return terminalState == TerminalState.GLOBALLY;
     }

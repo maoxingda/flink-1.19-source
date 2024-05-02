@@ -141,6 +141,8 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                 .collect(
                         /**
                          * 构建Map<ExecutionAttemptID, ExecutionSlotAssignment> 结构
+                         * ExecutionAttemptID：ExecutionVertexID
+                         * ExecutionSlotAssignment：executionAttemptId，logicalSlotFuture
                          */
                         Collectors.toMap(
                                 vertexAssignment ->
@@ -185,7 +187,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
             List<ExecutionVertexID> executionVertexIds) {
         /**
          * 创建SharedSlotProfileRetriever
-         * 计算SlotProfile以分配用于执行的Slot，共享该Slot。
+         * SlotProfile
          */
         SharedSlotProfileRetriever sharedSlotProfileRetriever =
                 sharedSlotProfileRetrieverFactory.createFromBulk(new HashSet<>(executionVertexIds));
@@ -312,7 +314,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
      * email: 156184212@qq.com
      * 给定的 ExecutionSlotSharingGroup 集合分配共享槽位（SharedSlot）
      * 方法接受两个参数：一个 ExecutionSlotSharingGroup 的集合 executionSlotSharingGroups 和一个 SharedSlotProfileRetriever 类型的 sharedSlotProfileRetriever。
-     * 方法返回一个 Map<ExecutionSlotSharingGroup, SharedSlot>，但在提供的代码片段中，这个返回值的填充并没有显示。
+     * 方法返回一个 Map<ExecutionSlotSharingGroup, SharedSlot>，
     */
     private Map<ExecutionSlotSharingGroup, SharedSlot> allocateSharedSlots(
             Set<ExecutionSlotSharingGroup> executionSlotSharingGroups,

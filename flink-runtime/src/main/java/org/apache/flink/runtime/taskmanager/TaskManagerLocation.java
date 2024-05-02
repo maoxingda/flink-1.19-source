@@ -59,15 +59,21 @@ public class TaskManagerLocation implements Comparable<TaskManagerLocation>, jav
      * The ID of the resource in which the TaskManager is started. This can be for example the YARN
      * container ID or any other unique identifier.
      */
+    /**
+     * 启动TaskManager的资源的ID。这可以是例如YARN容器ID或任何其他唯一标识符。
+     */
     private final ResourceID resourceID;
 
     /** The network address that the TaskManager binds its sockets to. */
+    /** TaskManager将其套接字绑定到的网络地址 */
     private final InetAddress inetAddress;
 
     /** The supplier for fully qualified host name and pure hostname. */
+    /** 完全限定主机名和纯主机名。 */
     private final HostNameSupplier hostNameSupplier;
 
     /** The port that the TaskManager receive data transport connection requests at. */
+    /** TaskManager接收数据传输连接请求的端口 */
     private final int dataPort;
 
     /**
@@ -81,6 +87,10 @@ public class TaskManagerLocation implements Comparable<TaskManagerLocation>, jav
      * value will be set by resource manager when launch this TaskManager(via the config option
      * {@link TaskManagerOptionsInternal#TASK_MANAGER_NODE_ID}). In other modes, this value will be
      * the external address of the TaskManager.
+     */
+    /**
+     * TaskManager所在节点的ID。在Yarn和Native Kubernetes模式下，此值将由资源管理器在启动此TaskManager时设置
+     * （通过配置选项｛@link TaskManagerOptionsInternal#TASK_manager_node_ID｝）。在其他模式中，此值将是TaskManager的外部地址。
      */
     private final String nodeId;
 

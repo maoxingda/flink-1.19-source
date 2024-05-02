@@ -63,6 +63,7 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
             producedPartitionGroupsOfRegion = new IdentityHashMap<>();
 
     /** The ConsumedPartitionGroups which are produced by multiple regions. */
+    /** 由多个区域生成的ConsumerdPartitionGroups */
     private final Set<ConsumedPartitionGroup> crossRegionConsumedPartitionGroups =
             Collections.newSetFromMap(new IdentityHashMap<>());
 
@@ -192,13 +193,19 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
         /** 获取DefaultSchedulingPipelinedRegion ExecutionGraph执行拓扑图 */
         final Set<SchedulingPipelinedRegion> sourceRegions =
                 IterableUtils.toStream(schedulingTopology.getAllPipelinedRegions())
+                        /** 上下游消费类型不是 MUST_BE_PIPELINED(下游必须在上游运行时消耗)*/
                         .filter(this::isSourceRegion)
                         .collect(Collectors.toSet());
         /** 调度Regions */
         maybeScheduleRegions(sourceRegions);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 上下游消费类型不是 MUST_BE_PIPELINED(下游必须在上游运行时消耗)
+    */
     private boolean isSourceRegion(SchedulingPipelinedRegion region) {
+        /** 获取`region`对象所有不是Pipelined的被消耗分区组 */
         for (ConsumedPartitionGroup consumedPartitionGroup :
                 region.getAllNonPipelinedConsumedPartitionGroups()) {
             if (crossRegionConsumedPartitionGroups.contains(consumedPartitionGroup)
@@ -231,7 +238,12 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
 
     @Override
     public void onPartitionConsumable(final IntermediateResultPartitionID resultPartitionId) {}
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 判断SchedulingPipelinedRegion是否是可运行状态
+     * 对拓扑顺序排序。触发scheduleRegion调度region
+    */
     private void maybeScheduleRegions(final Set<SchedulingPipelinedRegion> regions) {
         /** 创建一个新的 HashSet 名为 regionsToSchedule，用于存储最终需要调度的区域。 */
         final Set<SchedulingPipelinedRegion> regionsToSchedule = new HashSet<>();
@@ -248,7 +260,11 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
                 /** 调度Region */
                 .forEach(this::scheduleRegion);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 判断SchedulingPipelinedRegion是否是可运行状态
+    */
     private Set<SchedulingPipelinedRegion> addSchedulableAndGetNextRegions(
             Set<SchedulingPipelinedRegion> currentRegions,
             Set<SchedulingPipelinedRegion> regionsToSchedule) {
@@ -310,7 +326,7 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
      * 调度Region
     */
     private void scheduleRegion(final SchedulingPipelinedRegion region) {
-        /** 前置检查 判断Vertex是否等于 ExecutionState.CREATED*/
+        /** 前置检查 判断SchedulingExecutionVertex是否等于 ExecutionState.CREATED*/
         checkState(
                 areRegionVerticesAllInCreatedState(region),
                 "BUG: trying to schedule a region which is not in CREATED state");

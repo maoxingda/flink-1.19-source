@@ -497,7 +497,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
                 verticesToDeploy.stream()
                         .map(this::getCurrentExecutionOfVertex)
                         .collect(Collectors.toList());
-        /** 分配Slot并部署执行。 */
+        /** 申请Slot并部署执行。 */
         executionDeployer.allocateSlotsAndDeploy(executionsToDeploy, requiredVersionByVertex);
     }
 

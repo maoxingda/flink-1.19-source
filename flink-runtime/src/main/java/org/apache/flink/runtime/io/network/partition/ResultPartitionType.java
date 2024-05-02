@@ -172,6 +172,11 @@ public enum ResultPartitionType {
      * logic. We can discuss the issue of unifying the partition release logic in FLINK-27948. Once
      * the ticket is resolved, we can remove the enumeration here.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 这可能只是处理分区发布的短期解决方案
+    */
     private enum ReleaseBy {
         UPSTREAM,
         SCHEDULER
@@ -192,6 +197,11 @@ public enum ResultPartitionType {
     }
 
     /** return if this partition's upstream and downstream must be scheduled in the same time. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 如果此分区的上游和下游必须同时调度，则返回
+    */
     public boolean mustBePipelinedConsumed() {
         return consumingConstraint == ConsumingConstraint.MUST_BE_PIPELINED;
     }

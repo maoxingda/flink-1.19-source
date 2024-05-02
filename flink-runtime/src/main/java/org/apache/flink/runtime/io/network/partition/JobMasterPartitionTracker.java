@@ -31,6 +31,11 @@ import java.util.stream.Collectors;
 /**
  * Utility for tracking partitions and issuing release calls to task executors and shuffle masters.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于跟踪分区并向任务执行器和shuffle master发出发布调用的实用程序。
+*/
 public interface JobMasterPartitionTracker
         extends PartitionTracker<ResourceID, ResultPartitionDeploymentDescriptor> {
 
@@ -45,6 +50,11 @@ public interface JobMasterPartitionTracker
             ResultPartitionDeploymentDescriptor resultPartitionDeploymentDescriptor);
 
     /** Releases the given partitions and stop the tracking of partitions that were released. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 停止跟踪并释放分区
+    */
     default void stopTrackingAndReleasePartitions(
             Collection<ResultPartitionID> resultPartitionIds) {
         stopTrackingAndReleasePartitions(resultPartitionIds, true);
@@ -72,6 +82,11 @@ public interface JobMasterPartitionTracker
     Collection<ResultPartitionDeploymentDescriptor> getAllTrackedPartitions();
 
     /** Gets all the non-cluster partitions under tracking. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取正在跟踪的所有非群集分区
+    */
     default Collection<ResultPartitionDeploymentDescriptor> getAllTrackedNonClusterPartitions() {
         return getAllTrackedPartitions().stream()
                 .filter(descriptor -> !descriptor.getPartitionType().isPersistent())

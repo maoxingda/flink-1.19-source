@@ -35,20 +35,31 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * task slot. A matcher can be generated to filter out candidate slots by matching their {@link
  * SlotContext} against the slot profile and, potentially, further requirements.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 插槽配置文件描述了要调度任务的插槽的配置文件。配置文件包含资源或位置约束等属性，其中一些可能是硬约束或软约束。它还包含用于承载此任务插槽的物理插槽的资源信息，当没有物理插槽可用于此任务插槽时，该信息可用于分配物理插槽。可以生成匹配器，通过匹配它们的{@link来筛选候选槽
+ * SlotContext｝与插槽配置文件以及潜在的进一步要求进行比较。
+*/
 public class SlotProfile {
     /** This specifies the desired resource profile for the task slot. */
+    /** 为task slot指定所需的资源配置文件 */
     private final ResourceProfile taskResourceProfile;
 
     /** This specifies the desired resource profile for the physical slot to host this task slot. */
+    /** task slot 的物理Slot指定所需的资源配置文件。 */
     private final ResourceProfile physicalSlotResourceProfile;
 
     /** This specifies the preferred locations for the slot. */
+    /** 指定了slot的首选位置 */
     private final Collection<TaskManagerLocation> preferredLocations;
 
     /** This contains desired allocation ids of the slot. */
+    /** 包含所需的Slot分配ID。 */
     private final Collection<AllocationID> preferredAllocations;
 
     /** This contains all reserved allocation ids from the whole execution graph. */
+    /** 包含整个执行图中的所有保留分配ID */
     private final Set<AllocationID> reservedAllocations;
 
     private SlotProfile(

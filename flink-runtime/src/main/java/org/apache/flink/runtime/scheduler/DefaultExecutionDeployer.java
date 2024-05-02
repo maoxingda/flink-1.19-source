@@ -95,9 +95,9 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
     public void allocateSlotsAndDeploy(
             final List<Execution> executionsToDeploy,
             final Map<ExecutionVertexID, ExecutionVertexVersion> requiredVersionByVertex) {
-        /** 验证executionsToDeploy列表中的每个Execution对象的状态是否满足部署条件 */
+        /** 验证executionsToDeploy列表中的每个Execution对象的状态是否ExecutionState.CREATED */
         validateExecutionStates(executionsToDeploy);
-        /** 状态转换为 SCHEDULED*/
+        /** 状态转换为 ExecutionState.SCHEDULED*/
         transitionToScheduled(executionsToDeploy);
         /** 申请资源 */
         final Map<ExecutionAttemptID, ExecutionSlotAssignment> executionSlotAssignmentMap =

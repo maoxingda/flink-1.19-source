@@ -39,7 +39,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class DefaultSchedulingPipelinedRegion implements SchedulingPipelinedRegion {
 
     private final Map<ExecutionVertexID, DefaultExecutionVertex> executionVertices;
-
+    /** 存放上下游消费类型不是 MUST_BE_PIPELINED(下游必须在上游运行时消耗) */
     private Set<ConsumedPartitionGroup> nonPipelinedConsumedPartitionGroups;
 
     private Set<ConsumedPartitionGroup> releaseBySchedulerConsumedPartitionGroups;
@@ -76,26 +76,38 @@ public class DefaultSchedulingPipelinedRegion implements SchedulingPipelinedRegi
         }
         return executionVertex;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化ConsumedPartitionGroups
+    */
     private void initializeConsumedPartitionGroups() {
+        /** 创建集合用于存储上下游不是同时消费的ConsumedPartitionGroup*/
         final Set<ConsumedPartitionGroup> nonPipelinedConsumedPartitionGroupSet = new HashSet<>();
+        /** 创建集合用于存储上下游是Scheduler释放的ConsumedPartitionGroup*/
         final Set<ConsumedPartitionGroup> releaseBySchedulerConsumedPartitionGroupSet =
                 new HashSet<>();
+        /** 循环 DefaultExecutionVertex */
         for (DefaultExecutionVertex executionVertex : executionVertices.values()) {
+            /** 获取消费上游的ConsumedPartitionGroup*/
             for (ConsumedPartitionGroup consumedPartitionGroup :
                     executionVertex.getConsumedPartitionGroups()) {
+                /** 获取 SchedulingResultPartition*/
                 SchedulingResultPartition consumedPartition =
                         resultPartitionRetriever.apply(consumedPartitionGroup.getFirst());
-
+                /** 如果此分区的上游和下游不是同时调度，则返回 */
                 if (!consumedPartition.getResultType().mustBePipelinedConsumed()) {
+                    /** 添加到 nonPipelinedConsumedPartitionGroupSet*/
                     nonPipelinedConsumedPartitionGroupSet.add(consumedPartitionGroup);
                 }
+                /** 如果结果类型ResultPartitionType 释放着 ReleaseBy.SCHEDULER*/
                 if (consumedPartition.getResultType().isReleaseByScheduler()) {
+                    /** 添加到 releaseBySchedulerConsumedPartitionGroupSet */
                     releaseBySchedulerConsumedPartitionGroupSet.add(consumedPartitionGroup);
                 }
             }
         }
-
+        /** 赋值给全局变量*/
         this.nonPipelinedConsumedPartitionGroups =
                 Collections.unmodifiableSet(nonPipelinedConsumedPartitionGroupSet);
         this.releaseBySchedulerConsumedPartitionGroups =

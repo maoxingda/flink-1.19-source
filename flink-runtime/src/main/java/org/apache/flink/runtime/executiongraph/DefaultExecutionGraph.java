@@ -1262,9 +1262,13 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
                     current,
                     newState,
                     error);
-
+            /**
+             * 设置RUNNING的时间为当前时间
+             */
             stateTimestamps[newState.ordinal()] = System.currentTimeMillis();
+            /** 触发状态修改 */
             notifyJobStatusChange(newState);
+            /** 触发状态对应的钩子*/
             notifyJobStatusHooks(newState, error);
             /** 转换成功返回 true */
             return true;
@@ -1698,13 +1702,20 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
             jobStatusListeners.add(listener);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *触发JobStatus状态的修改
+    */
     private void notifyJobStatusChange(JobStatus newState) {
+        /** 判断状态监听器的大小 */
         if (jobStatusListeners.size() > 0) {
+            /** 获取当前时间 */
             final long timestamp = System.currentTimeMillis();
-
+            /** 循环状态监听器 JobStatusListener*/
             for (JobStatusListener listener : jobStatusListeners) {
                 try {
+                    /** 只有JobStatus改变的时候才会触发 jobStatusChanges*/
                     listener.jobStatusChanges(getJobID(), newState, timestamp);
                 } catch (Throwable t) {
                     LOG.warn("Error while notifying JobStatusListener", t);

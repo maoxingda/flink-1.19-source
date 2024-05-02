@@ -1062,9 +1062,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
      * 启动服务触发调度
     */
     private void startJobExecution() throws Exception {
-        /**
-         * 调用一个方法来验证当前是否在主线程中运行。这通常是为了确保某些操作只能在主线程中执行，以避免并发问题或线程安全问题。
-         */
+        /** 检查是否在主线程中执行 */
         validateRunsInMainThread();
         /**
          * 作业级shuffle上下文可以提供一些作业信息，如作业ID，shuffle插件通过它通知作业停止跟踪丢失的结果分区。
@@ -1253,26 +1251,36 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
     }
 
     private void jobStatusChanged(final JobStatus newJobStatus) {
+        /** 判断是否主线程中执行  */
         validateRunsInMainThread();
+        /** 判断作业状态是否为全局状态 */
         if (newJobStatus.isGloballyTerminalState()) {
             CompletableFuture<Void> partitionPromoteFuture;
+            /** 如果是完成状态 */
             if (newJobStatus == JobStatus.FINISHED) {
+                /** 获取所有ResultPartitionID 集合 */
                 Collection<ResultPartitionID> jobPartitions =
                         partitionTracker.getAllTrackedNonClusterPartitions().stream()
                                 .map(d -> d.getShuffleDescriptor().getResultPartitionID())
                                 .collect(Collectors.toList());
+                /** 停止跟踪并释放分区 */
                 partitionTracker.stopTrackingAndReleasePartitions(jobPartitions);
+                /** 获取所有ResultPartitionID 集合 */
                 Collection<ResultPartitionID> clusterPartitions =
                         partitionTracker.getAllTrackedClusterPartitions().stream()
                                 .map(d -> d.getShuffleDescriptor().getResultPartitionID())
                                 .collect(Collectors.toList());
+                /** 停止跟踪并释放分区 */
                 partitionPromoteFuture =
                         partitionTracker.stopTrackingAndPromotePartitions(clusterPartitions);
+                /** 如果是未完成状态 */
             } else {
+                /** 获取所有ResultPartitionID 集合 */
                 Collection<ResultPartitionID> allTracked =
                         partitionTracker.getAllTrackedPartitions().stream()
                                 .map(d -> d.getShuffleDescriptor().getResultPartitionID())
                                 .collect(Collectors.toList());
+                /** 停止跟踪并释放分区 */
                 partitionTracker.stopTrackingAndReleasePartitions(allTracked);
                 partitionPromoteFuture = CompletableFuture.completedFuture(null);
             }
