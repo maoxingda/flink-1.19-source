@@ -111,6 +111,11 @@ public interface TaskSlotTable<T extends TaskSlotPayload>
      * @param slotTimeout until the slot times out
      * @return True if the task slot could be allocated; otherwise false
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为给定的作业和分配id分配具有给定索引的插槽。如果给定负索引，将生成一个新的自动递增索引。如果可以分配插槽，则返回true。否则返回false。
+    */
     boolean allocateSlot(
             int index,
             JobID jobId,

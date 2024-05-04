@@ -23,9 +23,15 @@ import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import java.util.Collection;
 
 /** Resource related actions which the {@link SlotManager} can perform. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 可以执行的与资源相关的操作
+*/
 public interface ResourceAllocator {
 
     /** Whether allocate/release resources are supported. */
+    /** 是否支持分配/释放资源 */
     boolean isSupported();
 
     /**
@@ -33,8 +39,18 @@ public interface ResourceAllocator {
      *
      * @param resourceID identifying which resource to clean up
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 使用给定的资源id清理断开连接的资源。
+    */
     void cleaningUpDisconnectedResource(ResourceID resourceID);
 
     /** declare resource need by slot manager. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通过SlotManager声明资源需求。
+    */
     void declareResourceNeeded(Collection<ResourceDeclaration> resourceDeclarations);
 }

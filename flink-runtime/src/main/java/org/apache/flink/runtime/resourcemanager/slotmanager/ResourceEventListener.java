@@ -30,5 +30,10 @@ public interface ResourceEventListener {
      * @param jobId job for which not enough resources are available
      * @param acquiredResources the resources that have been acquired for the job
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通知没有足够的可用资源来满足作业的资源要求。
+    */
     void notEnoughResourceAvailable(JobID jobId, Collection<ResourceRequirement> acquiredResources);
 }

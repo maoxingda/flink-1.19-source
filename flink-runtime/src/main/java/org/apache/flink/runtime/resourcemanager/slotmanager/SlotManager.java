@@ -103,7 +103,7 @@ public interface SlotManager extends AutoCloseable {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 通知插槽管理器作业的资源需求
+     * 通知SlotManager处理Job的资源请求
     */
     void processResourceRequirements(ResourceRequirements resourceRequirements);
 

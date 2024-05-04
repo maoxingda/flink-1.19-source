@@ -1159,13 +1159,15 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
         // TODO: Filter invalid requests from the resource manager by using the
         // instance/registration Id
 
+        // 打印日志，记录槽位请求信息
         log.info(
                 "Receive slot request {} for job {} from resource manager with leader id {}.",
                 allocationId,
                 jobId,
                 resourceManagerId);
-
+        // 检查是否与资源管理器连接
         if (!isConnectedToResourceManager(resourceManagerId)) {
+            // 如果未连接，则打印调试日志并返回异常完成的Future
             final String message =
                     String.format(
                             "TaskManager is not connected to the resource manager %s.",
@@ -1173,27 +1175,39 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             log.debug(message);
             return FutureUtils.completedExceptionally(new TaskManagerException(message));
         }
-
+        // 尝试持久化Slot分配
         tryPersistAllocationSnapshot(
                 new SlotAllocationSnapshot(
                         slotId, jobId, targetAddress, allocationId, resourceProfile));
 
         try {
-            /** 2.调用allocateSlotForJob申请资源 */
+            // 尝试为作业分配槽位
             final boolean isConnected =
                     allocateSlotForJob(jobId, slotId, allocationId, resourceProfile, targetAddress);
-            /** 3.申请成功后会向JobMaster发送offerSlots,告诉JobMaster这些资源分配给你可以启动任务了 */
+            // 如果成功分配，则向作业管理器提供槽位
             if (isConnected) {
                 offerSlotsToJobManager(jobId);
             }
-
+            // 返回成功完成的Future
             return CompletableFuture.completedFuture(Acknowledge.get());
         } catch (SlotAllocationException e) {
+            // 如果分配失败，则打印调试日志并返回异常完成的Future
             log.debug("Could not allocate slot for allocation id {}.", allocationId, e);
             return FutureUtils.completedExceptionally(e);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为Job分配一个槽位
+     * @param jobId 工作ID
+     * @param slotId 槽位ID
+     * @param allocationId 分配ID
+     * @param resourceProfile 资源配置文件
+     * @param targetAddress 目标地址
+     * @return 如果工作已成功连接到槽位，则返回true；否则返回false
+     * @throws SlotAllocationException 如果无法为新工作分配槽位，将抛出此异常
+    */
     private boolean allocateSlotForJob(
             JobID jobId,
             SlotID slotId,
@@ -1201,8 +1215,9 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             ResourceProfile resourceProfile,
             String targetAddress)
             throws SlotAllocationException {
+        // 分配槽位给Job
         allocateSlot(slotId, jobId, allocationId, resourceProfile);
-
+        // 尝试从JobTable中获取或创建工作
         final JobTable.Job job;
 
         try {
@@ -1210,26 +1225,30 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                     jobTable.getOrCreateJob(
                             jobId, () -> registerNewJobAndCreateServices(jobId, targetAddress));
         } catch (Exception e) {
-            // free the allocated slot
+            // 如果获取或创建工作失败，则释放已分配的槽位
             try {
                 taskSlotTable.freeSlot(allocationId);
             } catch (SlotNotFoundException slotNotFoundException) {
                 // slot no longer existent, this should actually never happen, because we've
                 // just allocated the slot. So let's fail hard in this case!
+                // 槽位不再存在，这实际上不应该发生，因为我们刚刚分配了槽位。
+                // 在这种情况下，让我们强制失败！
                 onFatalError(slotNotFoundException);
             }
 
             // release local state under the allocation id.
+            // 释放与分配ID相关的本地状态
             localStateStoresManager.releaseLocalStateForAllocationId(allocationId);
 
             // sanity check
+            // 进行健全性检查，确保槽位已被释放
             if (!taskSlotTable.isSlotFree(slotId.getSlotNumber())) {
                 onFatalError(new Exception("Could not free slot " + slotId));
             }
-
+            // 抛出异常，表示无法创建新工作
             throw new SlotAllocationException("Could not create new job.", e);
         }
-
+        // 返回工作是否已成功连接到槽位
         return job.isConnected();
     }
 
@@ -1244,28 +1263,42 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                 libraryCacheManager.registerClassLoaderLease(jobId),
                 () -> permanentBlobService.releaseJob(jobId));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+     * @param slotId          插槽的唯一标识符
+     * @param jobId            任务的唯一标识符
+     * @param allocationId     分配的唯一标识符
+     * @param resourceProfile  资源配置文件
+     * @throws SlotAllocationException 当无法分配插槽时，抛出此异常
+    */
     private void allocateSlot(
             SlotID slotId, JobID jobId, AllocationID allocationId, ResourceProfile resourceProfile)
             throws SlotAllocationException {
+        // 检查指定插槽是否为空闲状态
         if (taskSlotTable.isSlotFree(slotId.getSlotNumber())) {
+            // 尝试为指定任务分配插槽
             if (!taskSlotTable.allocateSlot(
                     slotId.getSlotNumber(),
                     jobId,
                     allocationId,
                     resourceProfile,
                     taskManagerConfiguration.getSlotTimeout())) {
+                // 如果分配失败，记录日志并抛出异常
                 log.info("Could not allocate slot for {}.", allocationId);
                 throw new SlotAllocationException("Could not allocate slot.");
             }
         } else if (!taskSlotTable.isAllocated(slotId.getSlotNumber(), jobId, allocationId)) {
+            // 如果插槽已被其他任务占用，但分配ID或作业ID不匹配
             final String message =
                     "The slot " + slotId + " has already been allocated for a different job.";
 
             log.info(message);
-
+            // 获取当前插槽的分配ID
             final AllocationID allocationID =
                     taskSlotTable.getCurrentAllocation(slotId.getSlotNumber());
+            // 抛出插槽被占用的异常，并提供当前拥有此插槽的作业ID
             throw new SlotOccupiedException(
                     message, allocationID, taskSlotTable.getOwningJob(allocationID));
         }
@@ -1635,43 +1668,53 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
     // ------------------------------------------------------------------------
     //  Internal job manager connection methods
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将可用的Slot（资源分配单位，例如任务槽、计算槽等）提供给具有特定 JobID 的作业管理器
+    */
     private void offerSlotsToJobManager(final JobID jobId) {
         jobTable.getConnection(jobId).ifPresent(this::internalOfferSlotsToJobManager);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将可用的Slot（可能是资源分配单位，例如任务槽、计算槽等）提供给具有特定 JobID 的作业管理器
+    */
     private void internalOfferSlotsToJobManager(JobTable.Connection jobManagerConnection) {
+        // 获取作业ID
         final JobID jobId = jobManagerConnection.getJobId();
-
+        // 检查该作业ID是否已有分配的插槽
         if (taskSlotTable.hasAllocatedSlots(jobId)) {
+            // 如果有已分配的插槽，则记录日志信息，表示将预留的插槽提供给作业的领导者
             log.info("Offer reserved slots to the leader of job {}.", jobId);
-
+            // 获取作业管理器的网关
             final JobMasterGateway jobMasterGateway = jobManagerConnection.getJobManagerGateway();
-
+            // 获取已分配给该作业ID的插槽迭代器
             final Iterator<TaskSlot<Task>> reservedSlotsIterator =
                     taskSlotTable.getAllocatedSlots(jobId);
+            // 获取作业管理器的ID
             final JobMasterId jobMasterId = jobManagerConnection.getJobMasterId();
-
+            // 创建一个用于存放预留插槽的集合，
             final Collection<SlotOffer> reservedSlots =
                     CollectionUtil.newHashSetWithExpectedSize(2);
-
+            // 遍历已分配的插槽，生成插槽供应并添加到集合中
             while (reservedSlotsIterator.hasNext()) {
                 SlotOffer offer = reservedSlotsIterator.next().generateSlotOffer();
                 reservedSlots.add(offer);
             }
-
+            // 为这次插槽供应生成一个唯一的ID
             final UUID slotOfferId = UUID.randomUUID();
+            // 将作业ID与这次插槽供应的ID关联起来，保存到currentSlotOfferPerJob中
             currentSlotOfferPerJob.put(jobId, slotOfferId);
-
+            // 调用JobMaster的offerSlots方法，提供预留的插槽
+            // 响应将包含一组可接受的插槽
             CompletableFuture<Collection<SlotOffer>> acceptedSlotsFuture =
-                    /**
-                     * 为作业经理提供给定的插槽。响应包含一组可接受的插槽。
-                     */
                     jobMasterGateway.offerSlots(
                             getResourceID(),
                             reservedSlots,
                             Time.fromDuration(taskManagerConfiguration.getRpcTimeout()));
-
+            // 当插槽供应的响应完成时，异步处理接受的插槽供应
             acceptedSlotsFuture.whenCompleteAsync(
                     handleAcceptedSlotOffers(
                             jobId, jobMasterGateway, jobMasterId, reservedSlots, slotOfferId),
@@ -2210,6 +2253,11 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 保留给定的插槽分配快照
+    */
     private void tryPersistAllocationSnapshot(SlotAllocationSnapshot slotAllocationSnapshot) {
         try {
             slotAllocationSnapshotPersistenceService.persistAllocationSnapshot(

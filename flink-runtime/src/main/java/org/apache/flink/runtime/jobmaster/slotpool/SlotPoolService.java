@@ -94,6 +94,11 @@ public interface SlotPoolService extends AutoCloseable {
      * @return A collection of accepted slot offers. The remaining slot offers are implicitly
      *     rejected.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为 SlotPoolService 提供多个插槽
+    */
     Collection<SlotOffer> offerSlots(
             TaskManagerLocation taskManagerLocation,
             TaskManagerGateway taskManagerGateway,

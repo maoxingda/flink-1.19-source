@@ -95,9 +95,9 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
 
     private final Map<AllocationID, ResourceProfile> slotToRequirementProfileMappings;
 
-    private ResourceCounter totalResourceRequirements;
+    private ResourceCounter totalResourceRequirements;//总资源需求
 
-    private ResourceCounter fulfilledResourceRequirements;
+    private ResourceCounter fulfilledResourceRequirements;//满足资源的需求
 
     private NewSlotsListener newSlotsListener = NoOpNewSlotsListener.INSTANCE;
 
@@ -180,15 +180,20 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
         return currentResourceRequirements;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理来自TaskExecutor的SlotOffer集合
+    */
     @Override
     public Collection<SlotOffer> offerSlots(
             Collection<? extends SlotOffer> offers,
             TaskManagerLocation taskManagerLocation,
             TaskManagerGateway taskManagerGateway,
             long currentTime) {
-
+        // 使用日志记录器记录接收到SlotOffer的数量和来源的TaskExecutor位置
         log.debug("Received {} slot offers from TaskExecutor {}.", offers, taskManagerLocation);
-
+        // 调用internalOfferSlots方法进行内部处理
         return internalOfferSlots(
                 offers,
                 taskManagerLocation,
@@ -196,44 +201,60 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
                 currentTime,
                 this::matchWithOutstandingRequirement);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 内部处理SlotOffer的集合
+    */
     private Collection<SlotOffer> internalOfferSlots(
             Collection<? extends SlotOffer> offers,
             TaskManagerLocation taskManagerLocation,
             TaskManagerGateway taskManagerGateway,
             long currentTime,
             Function<ResourceProfile, Optional<ResourceProfile>> matchingCondition) {
+        // 存储已接受的SlotOffer的集合
         final Collection<SlotOffer> acceptedSlotOffers = new ArrayList<>();
+        // 存储已接受并分配的Slot的集合
         final Collection<AllocatedSlot> acceptedSlots = new ArrayList<>();
-
+        // 遍历待处理的SlotOffer集合
         for (SlotOffer offer : offers) {
+            // 检查该SlotOffer是否已经在slotPool中存在（即是否已经被接受）
             if (slotPool.containsSlot(offer.getAllocationId())) {
                 // we have already accepted this offer
+                // 如果已经存在，则直接添加到已接受的SlotOffer集合中
                 acceptedSlotOffers.add(offer);
             } else {
+                // 尝试将SlotOffer与待处理的需求进行匹配
                 Optional<AllocatedSlot> acceptedSlot =
                         matchOfferWithOutstandingRequirements(
-                                offer, taskManagerLocation, taskManagerGateway, matchingCondition);
+                                offer, taskManagerLocation, taskManagerGateway, matchingCondition);            // 如果匹配成功
+
+                // 如果匹配成功
                 if (acceptedSlot.isPresent()) {
+                    // 将SlotOffer添加到已接受的SlotOffer集合中
                     acceptedSlotOffers.add(offer);
+                    // 将匹配的AllocatedSlot添加到已接受的Slot集合中
                     acceptedSlots.add(acceptedSlot.get());
                 } else {
+                    // 如果匹配失败，则记录日志
                     log.debug(
                             "Could not match offer {} to any outstanding requirement.",
                             offer.getAllocationId());
                 }
             }
         }
-
+        // 将已接受的AllocatedSlot添加到slotPool中
         slotPool.addSlots(acceptedSlots, currentTime);
-
+        // 如果有已接受的Slot
         if (!acceptedSlots.isEmpty()) {
+            // 记录日志，显示新获取的资源
             log.debug(
                     "Acquired new resources; new total acquired resources: {}",
                     fulfilledResourceRequirements);
+            // 通知监听器有新Slot可用
             newSlotsListener.notifyNewSlotsAreAvailable(acceptedSlots);
         }
-
+         // 返回已接受的SlotOffer集合
         return acceptedSlotOffers;
     }
 
@@ -272,35 +293,48 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
             return Optional.of(ResourceProfile.ANY);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据提供的SlotOffer和条件来匹配未满足的资源需求。
+     * @param slotOffer 提供的SlotOffer
+     * @param taskManagerLocation TaskManager的位置信息
+     * @param taskManagerGateway TaskManager的网关，用于与TaskManager进行通信
+     * @param matchingCondition 匹配条件，一个函数，接受ResourceProfile并返回与之匹配的Optional<ResourceProfile>
+     * @return 如果匹配成功，则返回包含AllocatedSlot的Optional；否则返回空的Optional
+    */
     private Optional<AllocatedSlot> matchOfferWithOutstandingRequirements(
             SlotOffer slotOffer,
             TaskManagerLocation taskManagerLocation,
             TaskManagerGateway taskManagerGateway,
             Function<ResourceProfile, Optional<ResourceProfile>> matchingCondition) {
-
+        // 应用匹配条件到slotOffer的资源配置
         final Optional<ResourceProfile> match =
                 matchingCondition.apply(slotOffer.getResourceProfile());
-
+        // 如果匹配成功
         if (match.isPresent()) {
+            // 获取匹配到的资源需求配置
             final ResourceProfile matchedRequirement = match.get();
+            // 记录日志，表示slotOffer与需求匹配成功
             log.debug(
                     "Matched slot offer {} to requirement {}.",
                     slotOffer.getAllocationId(),
                     matchedRequirement);
 
             increaseAvailableResources(ResourceCounter.withResource(matchedRequirement, 1));
-
+            // 根据slotOffer创建AllocatedSlot
             final AllocatedSlot allocatedSlot =
                     createAllocatedSlot(slotOffer, taskManagerLocation, taskManagerGateway);
 
             // store the ResourceProfile against which the given slot has matched for future
             // book-keeping
+            // 存储与给定slot匹配的ResourceProfile，存储给定插槽为将来匹配的ResourceProfile
             slotToRequirementProfileMappings.put(
                     allocatedSlot.getAllocationId(), matchedRequirement);
-
+            // 返回包含AllocatedSlot的Optional
             return Optional.of(allocatedSlot);
         }
+        // 如果没有匹配成功，则返回空的Optional
         return Optional.empty();
     }
 
@@ -329,6 +363,11 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
                 taskManagerGateway);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将ResourceCounter添加到 Map<ResourceProfile, Integer> resources
+    */
     private void increaseAvailableResources(ResourceCounter acceptedResources) {
         fulfilledResourceRequirements = fulfilledResourceRequirements.add(acceptedResources);
     }

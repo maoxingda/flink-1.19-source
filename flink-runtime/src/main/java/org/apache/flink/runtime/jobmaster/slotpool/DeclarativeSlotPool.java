@@ -85,6 +85,11 @@ public interface DeclarativeSlotPool {
      * @param currentTime currentTime is the time the slots are being offered
      * @return collection of accepted slots; the other slot offers are implicitly rejected
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为此插槽池提供插槽。插槽池可以自由地接受所需数量的插槽。
+    */
     Collection<SlotOffer> offerSlots(
             Collection<? extends SlotOffer> offers,
             TaskManagerLocation taskManagerLocation,

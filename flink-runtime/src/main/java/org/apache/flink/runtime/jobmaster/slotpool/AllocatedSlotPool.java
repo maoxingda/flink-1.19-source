@@ -35,6 +35,11 @@ public interface AllocatedSlotPool {
      * @param currentTime currentTime when the slots have been added to the slot pool
      * @throws IllegalStateException if the slot pool already contains a to be added slot
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的插槽集合添加到插槽池中。
+    */
     void addSlots(Collection<AllocatedSlot> slots, long currentTime);
 
     /**

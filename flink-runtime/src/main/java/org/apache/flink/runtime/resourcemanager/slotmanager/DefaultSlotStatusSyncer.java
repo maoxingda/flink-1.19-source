@@ -91,7 +91,7 @@ public class DefaultSlotStatusSyncer implements SlotStatusSyncer {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 从任务管理器分配一个插槽。
+     * 从TaskManager分配插槽。
     */
     @Override
     public CompletableFuture<Void> allocateSlot(
@@ -99,29 +99,32 @@ public class DefaultSlotStatusSyncer implements SlotStatusSyncer {
             JobID jobId,
             String targetAddress,
             ResourceProfile resourceProfile) {
-        /** 检查状态 */
+        // 检查输入参数是否非空
         Preconditions.checkNotNull(instanceId);
         Preconditions.checkNotNull(jobId);
         Preconditions.checkNotNull(targetAddress);
         Preconditions.checkNotNull(resourceProfile);
+        // 检查服务是否已经开始
         checkStarted();
-        /** 创建AllocationID */
+        // 创建一个新的AllocationID用于此次的slot分配
         final AllocationID allocationId = new AllocationID();
         /**
          * 获取TaskManagerInfo
          * TaskManagerTracker 跟踪TaskManager的资源和插槽状态
          */
+        // 从taskManagerTracker中获取对应instanceId的TaskManagerInfo
         final Optional<TaskManagerInfo> taskManager =
                 taskManagerTracker.getRegisteredTaskManager(instanceId);
+        // 检查是否找到了已注册的task manager
         Preconditions.checkState(
                 taskManager.isPresent(),
                 "Could not find a registered task manager for instance id " + instanceId + '.');
-        /** 获取TaskExecutorGateway网关的动态代理 */
+        // 获取TaskExecutorGateway进行后续的RPC调用
         final TaskExecutorGateway gateway =
                 taskManager.get().getTaskExecutorConnection().getTaskExecutorGateway();
-        /** 获取资源ID */
+        // 获取task manager的ResourceID
         final ResourceID resourceId = taskManager.get().getTaskExecutorConnection().getResourceID();
-
+        // 记录日志，表明开始为特定job从指定task manager分配slot
         LOG.info(
                 "Starting allocation of slot {} from {} for job {} with resource profile {}.",
                 allocationId,
@@ -135,16 +138,20 @@ public class DefaultSlotStatusSyncer implements SlotStatusSyncer {
          * ALLOCATED
          * FineGrainedTaskManagerRegistration.notifyAllocation
          */
+        // 通知slot的状态为PENDING
         taskManagerTracker.notifySlotStatus(
                 allocationId, jobId, instanceId, resourceProfile, SlotState.PENDING);
         /**
          *通知跟踪器获取给定作业的具有给定资源配置文件的资源
          * 就是更新Map<JobID, JobScopedResourceTracker> trackers
          */
+        // 通知resource tracker已获取资源
         resourceTracker.notifyAcquiredResource(jobId, resourceProfile);
+        // 将此次的allocationId添加到pending的slot分配列表中
         pendingSlotAllocations.add(allocationId);
         /** RPC开始调用请求资源 */
         // RPC call to the task manager
+        // 发起RPC调用到task manager请求slot
         CompletableFuture<Acknowledge> requestFuture =
                 gateway.requestSlot(
                         SlotID.getDynamicSlotID(resourceId),
@@ -154,27 +161,32 @@ public class DefaultSlotStatusSyncer implements SlotStatusSyncer {
                         targetAddress,
                         resourceManagerId,
                         taskManagerRequestTimeout);
-
+        // 创建一个新的CompletableFuture来包装结果
         CompletableFuture<Void> returnedFuture = new CompletableFuture<>();
-        /** 更新各个监控的状态 */
+        // 异步处理RPC调用的结果
         FutureUtils.assertNoException(
                 requestFuture.handleAsync(
                         (Acknowledge acknowledge, Throwable throwable) -> {
+                            // 如果从pending列表中移除allocationId失败，说明分配已经完成或取消
                             if (!pendingSlotAllocations.remove(allocationId)) {
                                 LOG.debug(
                                         "Ignoring slot allocation update from task manager {} for allocation {} and job {}, because the allocation was already completed or cancelled.",
                                         instanceId,
                                         allocationId,
                                         jobId);
+                                // 完成返回的Future，无论成功还是失败，都返回null
                                 returnedFuture.complete(null);
                                 return null;
                             }
+                            //获取具有给定allocationId的已分配插槽的 TaskManagerSlotInformation。
                             if (!taskManagerTracker
                                     .getAllocatedOrPendingSlot(allocationId)
                                     .isPresent()) {
                                 LOG.debug(
                                         "The slot {} has been removed before. Ignore the future.",
                                         allocationId);
+                                // 完成返回的 Future，无论成功还是失败，都返回 null
+                                // 这可能是因为我们不关心这个特定的分配更新，因为分配已经完成了
                                 returnedFuture.complete(null);
                                 return null;
                             }
@@ -183,6 +195,7 @@ public class DefaultSlotStatusSyncer implements SlotStatusSyncer {
                                         "Completed allocation of allocation {} for job {}.",
                                         allocationId,
                                         jobId);
+                                // 通知任务管理器跟踪器关于槽位的状态更新 已经申请
                                 taskManagerTracker.notifySlotStatus(
                                         allocationId,
                                         jobId,
@@ -201,7 +214,9 @@ public class DefaultSlotStatusSyncer implements SlotStatusSyncer {
                                             allocationId,
                                             jobId,
                                             throwable);
+                                    // 通知资源跟踪器该作业已失去资源
                                     resourceTracker.notifyLostResource(jobId, resourceProfile);
+                                    // 通知任务管理器跟踪器关于槽位的状态更新（例如，变为空闲）
                                     taskManagerTracker.notifySlotStatus(
                                             allocationId,
                                             jobId,
@@ -214,6 +229,7 @@ public class DefaultSlotStatusSyncer implements SlotStatusSyncer {
                             return null;
                         },
                         mainThreadExecutor));
+        // 返回处理后的Future
         return returnedFuture;
     }
 

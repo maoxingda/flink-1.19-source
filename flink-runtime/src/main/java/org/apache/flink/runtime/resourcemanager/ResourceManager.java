@@ -593,6 +593,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
+     * 为Job申请必须的资源需求
      * 1.Map<JobID, JobManagerRegistration> jobManagerRegistrations 从注册的JobMaster中获取JobManager注册的信息
      * 2.如果JobMaster注册过，则调用slotManager.processResourceRequirements申请资源
      * 如果没有注册过则封装错误返回
@@ -1471,6 +1472,11 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通知没有足够的可用资源来满足作业的资源要求。
+    */
     private class ResourceEventListenerImpl implements ResourceEventListener {
         @Override
         public void notEnoughResourceAvailable(

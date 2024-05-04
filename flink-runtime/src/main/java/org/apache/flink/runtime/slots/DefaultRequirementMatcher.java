@@ -28,6 +28,11 @@ import java.util.function.Function;
  * Default implementation of {@link RequirementMatcher}. This matcher finds the first requirement
  * that a) is not unfulfilled and B) matches the resource profile.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 资源配置文件与需求的匹配器。
+ */
 public class DefaultRequirementMatcher implements RequirementMatcher {
     @Override
     public Optional<ResourceProfile> match(

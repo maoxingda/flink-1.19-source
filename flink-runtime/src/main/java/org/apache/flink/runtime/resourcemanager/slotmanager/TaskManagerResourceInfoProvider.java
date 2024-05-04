@@ -47,6 +47,11 @@ interface TaskManagerResourceInfoProvider {
      *
      * @return a collection of {@link PendingTaskManager}s.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取所有挂起的任务管理器。
+    */
     Collection<PendingTaskManager> getPendingTaskManagers();
 
     /**
@@ -55,6 +60,11 @@ interface TaskManagerResourceInfoProvider {
      * @param allocationId of the slot
      * @return An Optional of {@link TaskManagerSlotInformation}, if find, of the slot
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取具有给定allocationId的已分配插槽的 TaskManagerSlotInformation。
+    */
     Optional<TaskManagerSlotInformation> getAllocatedOrPendingSlot(AllocationID allocationId);
 
     /**

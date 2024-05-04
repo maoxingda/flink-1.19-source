@@ -30,6 +30,11 @@ public interface SlotAllocationSnapshotPersistenceService {
      * @param slotAllocationSnapshot slot allocation snapshot to persist
      * @throws IOException if the slot allocation snapshot cannot be persisted
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 保留给定的插槽分配快照
+    */
     void persistAllocationSnapshot(SlotAllocationSnapshot slotAllocationSnapshot)
             throws IOException;
 

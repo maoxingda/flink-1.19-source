@@ -245,47 +245,49 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
      * 对拓扑顺序排序。触发scheduleRegion调度region
     */
     private void maybeScheduleRegions(final Set<SchedulingPipelinedRegion> regions) {
-        /** 创建一个新的 HashSet 名为 regionsToSchedule，用于存储最终需要调度的区域。 */
+        // 创建一个新的HashSet来存储需要被调度的Regions
         final Set<SchedulingPipelinedRegion> regionsToSchedule = new HashSet<>();
-        /** 定义一个变量 nextRegions，初始时将其设置为输入参数 regions。 */
+        // 初始化nextRegions为传入的regions，用于迭代处理
         Set<SchedulingPipelinedRegion> nextRegions = regions;
-        /**  循环，条件是 nextRegions 不为空。 */
+        // 当还有未处理的Region时，继续循环
         while (!nextRegions.isEmpty()) {
             nextRegions = addSchedulableAndGetNextRegions(nextRegions, regionsToSchedule);
         }
         // schedule regions in topological order.
-        /** 按拓扑顺序排序。 */
+        // 按照拓扑顺序对regionsToSchedule中的区域进行排序
         SchedulingStrategyUtils.sortPipelinedRegionsInTopologicalOrder(
                         schedulingTopology, regionsToSchedule)
-                /** 调度Region */
+                // 然后对排序后的每个区域调用scheduleRegion方法进行调度
                 .forEach(this::scheduleRegion);
     }
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 判断SchedulingPipelinedRegion是否是可运行状态
+     * 此方法用于添加可调度区域并获取下一个待调度的区域
     */
     private Set<SchedulingPipelinedRegion> addSchedulableAndGetNextRegions(
             Set<SchedulingPipelinedRegion> currentRegions,
             Set<SchedulingPipelinedRegion> regionsToSchedule) {
-        /** 创建一个新的 HashSet 名为 nextRegions，用于存储依赖于当前区域的下一组需要处理的区域。 */
+        // 创建一个新的集合，用于存放下一个待调度的区域
         Set<SchedulingPipelinedRegion> nextRegions = new HashSet<>();
-        // cache consumedPartitionGroup's consumable status to avoid compute repeatedly.
-        /** 缓存consumerdPartitionGroup的consumer状态，以避免重复计算。 */
+        // 创建一个缓存，用于存储已消费的分区组的可消费状态，避免重复计算
         final Map<ConsumedPartitionGroup, Boolean> consumableStatusCache = new HashMap<>();
+        // 创建一个集合，用于存储已经访问过的已消费的分区组，避免重复处理
         final Set<ConsumedPartitionGroup> visitedConsumedPartitionGroups = new HashSet<>();
 
-        /**
-         *  判断SchedulingPipelinedRegion是否是可运行状态
-         */
+        // 遍历当前待处理的区域集合
         for (SchedulingPipelinedRegion currentRegion : currentRegions) {
+            // 判断当前区域是否可调度
             if (isRegionSchedulable(currentRegion, consumableStatusCache, regionsToSchedule)) {
-                /** 将currentRegion 添加到 regionsToSchedule */
+                // 如果可调度，则将其加入待调度的区域集合
                 regionsToSchedule.add(currentRegion);
+                // 获取当前Region产生的分区组
                 producedPartitionGroupsOfRegion
                         .getOrDefault(currentRegion, Collections.emptySet())
+                        // 对每个产生的分区组进行处理
                         .forEach(
                                 (producedPartitionGroup) -> {
+                                    // 如果该分区组不支持如果该分区的上下游同时支持调度，则跳过
                                     if (!producedPartitionGroup
                                             .getResultPartitionType()
                                             .canBePipelinedConsumed()) {
@@ -293,11 +295,14 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
                                     }
                                     // If this group has been visited, there is no need
                                     // to repeat the determination.
+                                    // 如果该分区组已被访问过，则无需重复判断
                                     if (visitedConsumedPartitionGroups.contains(
                                             producedPartitionGroup)) {
                                         return;
                                     }
+                                    // 将该分区组标记为已访问
                                     visitedConsumedPartitionGroups.add(producedPartitionGroup);
+                                    // 获取能够消费该分区组的区域，并将它们添加到下一个待调度的区域集合中
                                     nextRegions.addAll(
                                             partitionGroupConsumerRegions.getOrDefault(
                                                     producedPartitionGroup,
@@ -305,6 +310,7 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
                                 });
             }
         }
+        // 返回下一个待调度的区域集合
         return nextRegions;
     }
     /**

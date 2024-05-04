@@ -45,9 +45,11 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
     private final Map<AllocationID, AllocatedSlot> registeredSlots;
 
     /** All free slots and since when they are free, index by TaskExecutor. */
+    //所有空闲插槽，当它们空闲时，通过TaskExecutor进行索引。
     private final FreeSlots freeSlots;
 
     /** Index containing a mapping between TaskExecutors and their slots. */
+    //包含TaskExecutor与其插槽之间映射的索引。
     private final Map<ResourceID, Set<AllocationID>> slotsPerTaskExecutor;
 
     public DefaultAllocatedSlotPool() {
@@ -222,6 +224,7 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
         private final Map<AllocationID, Long> freeSlotsSince = new HashMap<>();
 
         /** Index containing a mapping between TaskExecutors and their free slots number. */
+        //包含TaskExecutors与其空闲插槽编号之间映射的索引
         private final Map<ResourceID, Integer> freeSlotsNumberPerTaskExecutor = new HashMap<>();
 
         public void addFreeSlot(

@@ -88,7 +88,7 @@ public interface ResourceManagerGateway
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 生命资源请求
+     * 为Job申请必须的资源需求
     */
     CompletableFuture<Acknowledge> declareRequiredResources(
             JobMasterId jobMasterId,

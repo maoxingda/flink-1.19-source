@@ -32,6 +32,11 @@ import java.util.concurrent.Executor;
  * Syncer for slot status. Take the responsibility of allocating/freeing slot and reconciling the
  * slot status with task managers.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * Slot状态的同步器。负责分配/释放插槽，并 TaskManager 协调插槽状态。
+*/
 public interface SlotStatusSyncer {
 
     /**
@@ -64,7 +69,7 @@ public interface SlotStatusSyncer {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 从任务管理器分配一个插槽。
+     * 从TaskManager分配插槽。
     */
     CompletableFuture<Void> allocateSlot(
             InstanceID instanceId,

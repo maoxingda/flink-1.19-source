@@ -34,28 +34,53 @@ import java.util.Map;
 import java.util.Optional;
 
 /** Default {@link ResourceTracker} implementation. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 跟踪每个作业需要/获取的资源数量。
+ */
 public class DefaultResourceTracker implements ResourceTracker {
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultResourceTracker.class);
 
     private final Map<JobID, JobScopedResourceTracker> trackers = new HashMap<>();
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 用来处理作业（Job）的资源需求通知
+    */
     @Override
     public void notifyResourceRequirements(
             JobID jobId, Collection<ResourceRequirement> resourceRequirements) {
+        /** 检查是否为 null*/
         Preconditions.checkNotNull(jobId);
         Preconditions.checkNotNull(resourceRequirements);
+        /** 打印日志 */
         LOG.trace(
                 "Received notification for job {} having new resource requirements {}.",
                 jobId,
                 resourceRequirements);
+        /**
+         * 获取与给定 jobId 关联的资源跟踪器。如果该跟踪器不存在，则创建一个新的跟踪器
+         * 调用获取到的资源跟踪器的 notifyResourceRequirements 方法，将新的资源需求通知给该跟踪器。
+         */
         getOrCreateTracker(jobId).notifyResourceRequirements(resourceRequirements);
-
+        /**
+         * 如果传入的 resourceRequirements 集合为空（即作业没有新的资源需求），
+         * 则调用 checkWhetherTrackerCanBeRemoved 方法
+         * 来检查是否可以移除与给定 jobId 关联的资源跟踪器。
+         */
         if (resourceRequirements.isEmpty()) {
             checkWhetherTrackerCanBeRemoved(jobId, trackers.get(jobId));
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 检查与给定 JobID 关联的资源跟踪器（JobScopedResourceTracker）是否可以被移除。
+     * 如果资源跟踪器为空（即没有跟踪任何资源），则它会停止对该作业的资源跟踪并从跟踪器集合中移除该跟踪器。
+    */
     private void checkWhetherTrackerCanBeRemoved(JobID jobId, JobScopedResourceTracker tracker) {
         if (tracker.isEmpty()) {
             LOG.debug("Stopping tracking of resources for job {}.", jobId);
@@ -73,7 +98,11 @@ public class DefaultResourceTracker implements ResourceTracker {
                 resourceProfile);
         getOrCreateTracker(jobId).notifyAcquiredResource(resourceProfile);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取与给定 jobId 关联的资源跟踪器。如果该跟踪器不存在，则创建一个新的跟踪器
+    */
     private JobScopedResourceTracker getOrCreateTracker(JobID jobId) {
         return trackers.computeIfAbsent(
                 jobId,
@@ -132,6 +161,11 @@ public class DefaultResourceTracker implements ResourceTracker {
         return tracker == null ? Collections.emptyList() : tracker.getAcquiredResources();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回给定作业的  ResourceRequirement 是否为空。
+     */
     @Override
     public boolean isRequirementEmpty(JobID jobId) {
         return Optional.ofNullable(trackers.get(jobId))

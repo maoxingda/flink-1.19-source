@@ -24,6 +24,11 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /** A matcher for resource profiles to requirements. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 资源配置文件与需求的匹配器。
+*/
 public interface RequirementMatcher {
 
     /**
@@ -35,6 +40,15 @@ public interface RequirementMatcher {
      *     to a requirement
      * @return matching requirement profile, if one exists
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试将给定的资源配置文件与给定的需求之一相匹配。
+     * @param resourceProfile 要匹配的资源配置文件
+     * @param totalRequirements 总要求
+     * @param numAssignedResourcesLookup  查找已经分配了多少资源的需求
+     * @return matching requirement profile, if one exists
+    */
     Optional<ResourceProfile> match(
             ResourceProfile resourceProfile,
             ResourceCounter totalRequirements,

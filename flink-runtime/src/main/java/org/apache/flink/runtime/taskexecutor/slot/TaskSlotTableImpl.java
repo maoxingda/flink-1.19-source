@@ -88,6 +88,7 @@ public class TaskSlotTableImpl<T extends TaskSlotPayload> implements TaskSlotTab
     private final Map<ExecutionAttemptID, TaskSlotMapping<T>> taskSlotMappings;
 
     /** Mapping from job id to allocated slots for a job. */
+    //从作业id映射到作业的已分配Slot
     private final Map<JobID, Set<AllocationID>> slotsPerJob;
 
     /** Interface for slot actions, such as freeing them or timing them out. */
@@ -279,6 +280,11 @@ public class TaskSlotTableImpl<T extends TaskSlotPayload> implements TaskSlotTab
         return allocateSlot(index, jobId, allocationId, defaultSlotResourceProfile, slotTimeout);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 申请Slot 返回是否申请成功
+    */
     @Override
     public boolean allocateSlot(
             int requestedIndex,
@@ -286,29 +292,35 @@ public class TaskSlotTableImpl<T extends TaskSlotPayload> implements TaskSlotTab
             AllocationID allocationId,
             ResourceProfile resourceProfile,
             Duration slotTimeout) {
+        // 检查系统是否正在运行 State.RUNNING
         checkRunning();
-
+        // 检查请求的索引是否小于可用的槽位数量
         Preconditions.checkArgument(requestedIndex < numberSlots);
 
         // The negative requestIndex indicate that the SlotManager allocate a dynamic slot, we
         // transfer the index to an increasing number not less than the numberSlots.
+        // 如果请求的索引为负，表示需要动态分配槽位，则使用下一个可用的动态槽位索引
+        // 否则，直接使用请求的索引
         int index = requestedIndex < 0 ? nextDynamicSlotIndex() : requestedIndex;
+        // 获取有效的资源描述，如果传入的资源描述是UNKNOWN，则使用默认的资源描述
         ResourceProfile effectiveResourceProfile =
                 resourceProfile.equals(ResourceProfile.UNKNOWN)
                         ? defaultSlotResourceProfile
                         : resourceProfile;
-
+        // 尝试从已分配的槽位中获取指定分配ID的槽位
         TaskSlot<T> taskSlot = allocatedSlots.get(allocationId);
         if (taskSlot != null) {
+            // 如果已存在该分配ID的槽位，则检查是否重复分配
             return isDuplicatedSlot(taskSlot, jobId, effectiveResourceProfile, index);
         } else if (isIndexAlreadyTaken(index)) {
+            // 如果请求的索引已经被其他分配ID占用
             LOG.info(
                     "The slot with index {} is already assigned to another allocation with id {}.",
                     index,
                     taskSlots.get(index).getAllocationId());
             return false;
         }
-
+        // 尝试从资源管理器中预留资源
         if (!budgetManager.reserve(effectiveResourceProfile)) {
             LOG.info(
                     "Cannot allocate the requested resources. Trying to allocate {}, "
@@ -318,9 +330,10 @@ public class TaskSlotTableImpl<T extends TaskSlotPayload> implements TaskSlotTab
                     budgetManager.getTotalBudget());
             return false;
         }
+        // 分配槽位成功，记录日志
         LOG.info(
                 "Allocated slot for {} with resources {}.", allocationId, effectiveResourceProfile);
-
+        // 创建一个新的槽位对象，并添加到槽位列表中
         taskSlot =
                 new TaskSlot<>(
                         index,
@@ -332,21 +345,24 @@ public class TaskSlotTableImpl<T extends TaskSlotPayload> implements TaskSlotTab
         taskSlots.put(index, taskSlot);
 
         // update the allocation id to task slot map
+        // 更新分配ID到槽位的映射
         allocatedSlots.put(allocationId, taskSlot);
 
         // register a timeout for this slot since it's in state allocated
+        // 为该槽位注册超时时间
         timerService.registerTimeout(allocationId, slotTimeout.toMillis(), TimeUnit.MILLISECONDS);
 
         // add this slot to the set of job slots
+        //将此Slot添加到Job Slot
         Set<AllocationID> slots = slotsPerJob.get(jobId);
-
+        //作业id映射到作业的已分配Slot
         if (slots == null) {
             slots = CollectionUtil.newHashSetWithExpectedSize(4);
             slotsPerJob.put(jobId, slots);
         }
-
+        //添加allocationId到集合中
         slots.add(allocationId);
-
+        //返回成功标识
         return true;
     }
 

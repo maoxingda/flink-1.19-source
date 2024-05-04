@@ -147,7 +147,7 @@ public interface JobMasterGateway
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 为作业经理提供给定的插槽。响应包含一组可接受的插槽。
+     * 为JobMaster提供给定的插槽。响应包含一组可接受的插槽。
     */
     CompletableFuture<Collection<SlotOffer>> offerSlots(
             final ResourceID taskManagerId,

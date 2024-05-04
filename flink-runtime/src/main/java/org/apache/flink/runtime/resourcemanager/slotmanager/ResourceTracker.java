@@ -26,6 +26,11 @@ import java.util.Collection;
 import java.util.Map;
 
 /** Tracks for each job how many resource are required/acquired. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 跟踪每个作业需要/获取的资源数量。
+*/
 public interface ResourceTracker {
 
     /**
@@ -88,6 +93,11 @@ public interface ResourceTracker {
      * @param jobId job ID
      * @return true if the {@link ResourceRequirement} of the given job is empty
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回给定作业的  ResourceRequirement 是否为空。
+    */
     boolean isRequirementEmpty(JobID jobId);
 
     /** Removes all state from the tracker. */

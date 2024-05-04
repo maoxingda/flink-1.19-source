@@ -56,7 +56,11 @@ public class FileSlotAllocationSnapshotPersistenceService
                             slotAllocationSnapshotDirectory));
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 保留给定的插槽分配快照
+    */
     @Override
     public void persistAllocationSnapshot(SlotAllocationSnapshot slotAllocationSnapshot)
             throws IOException {

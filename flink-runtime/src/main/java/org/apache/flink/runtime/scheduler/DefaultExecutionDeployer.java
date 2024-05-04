@@ -89,7 +89,7 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     *
+     * 申请资源并部署
     */
     @Override
     public void allocateSlotsAndDeploy(

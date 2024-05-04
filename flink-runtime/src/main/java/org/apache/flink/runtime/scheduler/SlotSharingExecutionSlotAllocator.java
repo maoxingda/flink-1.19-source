@@ -185,10 +185,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
     */
     private List<SlotExecutionVertexAssignment> allocateSlotsForVertices(
             List<ExecutionVertexID> executionVertexIds) {
-        /**
-         * 创建SharedSlotProfileRetriever
-         * SlotProfile
-         */
+        // 创建一个共享槽位配置检索器，用于从批量ID中创建
         SharedSlotProfileRetriever sharedSlotProfileRetriever =
                 sharedSlotProfileRetrieverFactory.createFromBulk(new HashSet<>(executionVertexIds));
         /**
@@ -196,36 +193,33 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
          * （slotSharingStrategy）的getExecutionSlotSharingGroup方法返回的ExecutionSlotSharingGroup进行分组。
          * 总结：基于ExecutionSlotSharingGroup进行分组
          */
+        // 根据共享槽位组对执行顶点ID进行分组
         Map<ExecutionSlotSharingGroup, List<ExecutionVertexID>> executionsByGroup =
                 executionVertexIds.stream()
                         .collect(
                                 Collectors.groupingBy(
                                         slotSharingStrategy::getExecutionSlotSharingGroup));
-        /**
-         * 创建一个空的HashMap（slots），用于存储每个ExecutionSlotSharingGroup到其对应的SharedSlot的映射。
-         */
+        // 初始化一个空的槽位映射，用于存储已分配的共享槽位
         Map<ExecutionSlotSharingGroup, SharedSlot> slots = new HashMap<>(executionsByGroup.size());
-        /**
-         * 创建一个HashSet（groupsToAssign），用于存储待分配槽位的ExecutionSlotSharingGroup集合。
-         */
+        // 尝试为已存在的共享组分配Slot
         Set<ExecutionSlotSharingGroup> groupsToAssign = new HashSet<>(executionsByGroup.keySet());
         /** 尝试分配已存在的共享Slot */
         Map<ExecutionSlotSharingGroup, SharedSlot> assignedSlots =
                 tryAssignExistingSharedSlots(groupsToAssign);
-        /** 分配的结果（assignedSlots）被合并到slots映射中， */
+        // 将已分配的槽位加入总的槽位映射
         slots.putAll(assignedSlots);
         /** 并从groupsToAssign集合中移除已分配的组。 */
         groupsToAssign.removeAll(assignedSlots.keySet());
-        /** 如果groupsToAssign集合中还有未分配的组 */
+        // 如果还有未分配的组
         if (!groupsToAssign.isEmpty()) {
-            /** 调用allocateSharedSlots方法为它们分配新的共享Slot。 */
+            // 为剩余的组分配新的共享Slot
             Map<ExecutionSlotSharingGroup, SharedSlot> allocatedSlots =
                     allocateSharedSlots(groupsToAssign, sharedSlotProfileRetriever);
-            /** 分配的结果被合并到slots映射中 */
+            // 将新分配的槽位加入总的槽位映射
             slots.putAll(allocatedSlots);
-            /** 并从groupsToAssign集合中移除已分配的组。 */
+            // 移除已分配槽位的组
             groupsToAssign.removeAll(allocatedSlots.keySet());
-            /** 确保所有组都已分配槽位。 */
+            // 检查是否所有组都已分配槽位
             Preconditions.checkState(groupsToAssign.isEmpty());
         }
         /**
@@ -233,6 +227,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
          * 结果是Map<ExecutionVertexID, SlotExecutionVertexAssignment>映射，
          * 其中键是ExecutionVertexID，值是对应的SlotExecutionVertexAssignment。
          */
+        // 从共享Slot中为执行顶点分配逻辑Slot
         Map<ExecutionVertexID, SlotExecutionVertexAssignment> assignments =
                 allocateLogicalSlotsFromSharedSlots(slots, executionsByGroup);
 
@@ -243,12 +238,12 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
         /**
          * 创建一个SharingPhysicalSlotRequestBulk对象，它表示一个请求，用于请求物理资源以支持这些共享槽位。
          */
+        // 创建批量请求，这里需要使用slots映射而不是分配器的'sharedSlots'
+        // 因为如果任何物理槽位已经失败，它们的共享槽位已经从分配器的'sharedSlots'中被逻辑槽位失败的情况移除了
         SharingPhysicalSlotRequestBulk bulk = createBulk(slots, executionsByGroup);
-        /**
-         * 使用bulkChecker安排一个超时检查，以确保这些请求在指定的allocationTimeout内得到响应。
-         */
+        // 安排对批量请求的待处理请求超时检查
         bulkChecker.schedulePendingRequestBulkTimeoutCheck(bulk, allocationTimeout);
-        /** 返回分配结果 */
+        // 返回分配给每个执行顶点的槽位分配列表
         return executionVertexIds.stream().map(assignments::get).collect(Collectors.toList());
     }
 
@@ -315,73 +310,51 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
      * 给定的 ExecutionSlotSharingGroup 集合分配共享槽位（SharedSlot）
      * 方法接受两个参数：一个 ExecutionSlotSharingGroup 的集合 executionSlotSharingGroups 和一个 SharedSlotProfileRetriever 类型的 sharedSlotProfileRetriever。
      * 方法返回一个 Map<ExecutionSlotSharingGroup, SharedSlot>，
+     *  为给定的执行槽共享组分配共享槽。
+     * @param executionSlotSharingGroups 执行槽共享组的集合
+     * @param sharedSlotProfileRetriever 共享槽配置文件检索器
+     * @return 分配好的共享槽的映射关系，键为执行槽共享组，值为对应的共享槽
     */
     private Map<ExecutionSlotSharingGroup, SharedSlot> allocateSharedSlots(
             Set<ExecutionSlotSharingGroup> executionSlotSharingGroups,
             SharedSlotProfileRetriever sharedSlotProfileRetriever) {
-        /**
-         * 创建List<PhysicalSlotRequest> PhysicalSlotRequest 表示对物理Slot的请求
-         */
+        // 存储物理槽请求的列表
         List<PhysicalSlotRequest> slotRequests = new ArrayList<>();
-        /**
-         * Map<ExecutionSlotSharingGroup, SharedSlot>
-         * ExecutionSlotSharingGroup:运行同一共享Slot的执行顶点
-         * SharedSlot:共享Slot实现
-         */
+        // 存储已分配的共享槽的映射关系，键为执行槽共享组，值为对应的共享槽
         Map<ExecutionSlotSharingGroup, SharedSlot> allocatedSlots = new HashMap<>();
-        /**
-         * Map<SlotRequestId, ExecutionSlotSharingGroup>
-         * 将物理Slot请求的 ID（SlotRequestId）映射到对应的 ExecutionSlotSharingGroup。
-         */
+        // 存储物理槽请求ID到执行槽共享组的映射关系
         Map<SlotRequestId, ExecutionSlotSharingGroup> requestToGroup = new HashMap<>();
-        /**
-         * Map<SlotRequestId, ResourceProfile>
-         * 将物理Slot请求的 ID（SlotRequestId）映射到对应的 ResourceProfile。
-         * ResourceProfile:Slot的不可变资源配置文件
-         */
+        // 存储物理槽请求ID到物理资源配置文件的映射关系
         Map<SlotRequestId, ResourceProfile> requestToPhysicalResources = new HashMap<>();
-        /**
-         * 遍历执行槽位共享组
-         */
+        // 遍历每个执行槽共享组
         for (ExecutionSlotSharingGroup group : executionSlotSharingGroups) {
-            /** 创建一个新的 SlotRequestId 实例，作为物理槽位请求的 ID。 */
+            // 创建一个新的物理槽请求ID
             SlotRequestId physicalSlotRequestId = new SlotRequestId();
-            /**
-             * 调用 getPhysicalSlotResourceProfile(group) 方法来获取该组的物理Slot资源配置。
-             */
+            // 根据执行槽共享组获取物理槽的资源配置文件
             ResourceProfile physicalSlotResourceProfile = getPhysicalSlotResourceProfile(group);
-            /**
-             * 获取与该组和资源配置匹配的Slot配置（SlotProfile）。
-             */
+            // 获取该执行槽共享组对应的槽配置文件
             SlotProfile slotProfile =
                     sharedSlotProfileRetriever.getSlotProfile(group, physicalSlotResourceProfile);
-            /** 创建一个新的 PhysicalSlotRequest 实例， */
+            // 创建一个新的物理槽请求
             PhysicalSlotRequest request =
                     new PhysicalSlotRequest(
                             physicalSlotRequestId, slotProfile, slotWillBeOccupiedIndefinitely);
-            /** 将request添加到 slotRequests 列表中。 */
+            // 将物理槽请求添加到列表中
             slotRequests.add(request);
-            /** 将物理Slot请求的 ID 与对应的 ExecutionSlotSharingGroup 添加到 requestToGroup 映射中。 */
+            // 将物理槽请求ID映射到对应的执行槽共享组
             requestToGroup.put(physicalSlotRequestId, group);
-            /** 将物理槽位Slot ID 与对应的资源配置添加到 requestToPhysicalResources 映射中 */
+            // 将物理槽请求ID映射到对应的物理资源配置文件
             requestToPhysicalResources.put(physicalSlotRequestId, physicalSlotResourceProfile);
         }
-        /**
-         *
-         * slotProvider.allocatePhysicalSlots(slotRequests) 发起槽位分配请求，
-         * 并得到了一个 Map，其键是 SlotRequestId，值是一个 CompletableFuture<PhysicalSlotRequest.Result>。
-         * 这个 CompletableFuture 将在未来某个时刻完成，并包含Slot分配的结果。
-         */
+        // 调用slotProvider分配物理槽，并获取分配结果（异步操作）
         Map<SlotRequestId, CompletableFuture<PhysicalSlotRequest.Result>> allocateResult =
                 slotProvider.allocatePhysicalSlots(slotRequests);
-        /**
-         * 遍历 allocateResult 映射，对每个 slotRequestId 和其对应的 resultCompletableFuture 进行处理。
-         */
+        // 遍历分配结果，对每个分配结果进行处理
         allocateResult.forEach(
                 (slotRequestId, resultCompletableFuture) -> {
-                    /** 请求ID关联的 ExecutionSlotSharingGroup */
+                    // 获取对应的执行槽共享组
                     ExecutionSlotSharingGroup group = requestToGroup.get(slotRequestId);
-                    /** thenApply 方法来创建一个新的 CompletableFuture<PhysicalSlot> */
+                    // 将异步结果转换为PhysicalSlot的CompletableFuture
                     CompletableFuture<PhysicalSlot> physicalSlotFuture =
                             resultCompletableFuture.thenApply(
                                     /**
@@ -390,9 +363,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                                      * PhysicalSlot。
                                      */
                                     PhysicalSlotRequest.Result::getPhysicalSlot);
-                    /**
-                     * 创建一个新的 SharedSlot 实例，它封装了Slot请求 ID、资源配置、执行Slot共享组、物理Slot的 CompletableFuture
-                     */
+                    // 创建一个新的共享槽
                     SharedSlot slot =
                             new SharedSlot(
                                     slotRequestId,
@@ -400,14 +371,16 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                                     group,
                                     physicalSlotFuture,
                                     slotWillBeOccupiedIndefinitely,
+                                    // 释放共享槽的回调函数
                                     this::releaseSharedSlot);
-                    /** 将新创建的 SharedSlot 添加到 allocatedSlots 映射中 */
+                    // 将共享槽添加到已分配的共享槽映射关系中
                     allocatedSlots.put(group, slot);
-                    /** 检查 sharedSlots 映射中是否已包含当前 group 的键。 */
+                    // 检查是否已存在相同的执行槽共享组的共享槽（理论上不应该存在）
                     Preconditions.checkState(!sharedSlots.containsKey(group));
-                    /** 将 SharedSlot 添加到 sharedSlots 映射中 */
+                    // 假设sharedSlots是类的某个成员变量，用于存储所有共享槽
                     sharedSlots.put(group, slot);
                 });
+        // 返回已分配的共享槽的映射关系
         return allocatedSlots;
     }
 

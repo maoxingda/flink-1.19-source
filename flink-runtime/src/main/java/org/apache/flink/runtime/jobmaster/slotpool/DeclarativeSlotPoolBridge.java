@@ -148,9 +148,11 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
             TaskManagerLocation taskManagerLocation,
             TaskManagerGateway taskManagerGateway,
             Collection<SlotOffer> offers) {
+        // 确保任务已经启动
         assertHasBeenStarted();
-
+        // 检查任务管理器是否已注册
         if (!isTaskManagerRegistered(taskManagerLocation.getResourceID())) {
+            // 如果任务管理器未知或未注册，则记录日志并返回空集合
             log.debug(
                     "Ignoring offered slots from unknown task manager {}.",
                     taskManagerLocation.getResourceID());
@@ -158,6 +160,8 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
         }
 
         if (isJobRestarting) {
+            // 调用声明式插槽池（declarativeSlotPool）的registerSlots方法，将插槽提供给任务管理器
+            // 同时传入任务管理器的位置信息、网关和当前相对时间（毫秒）
             return getDeclarativeSlotPool()
                     .registerSlots(
                             offers,
@@ -166,6 +170,8 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
                             getRelativeTimeMillis());
 
         } else {
+            // 调用声明式插槽池（declarativeSlotPool）的offerSlots方法，将插槽提供给任务管理器
+            // 同时传入任务管理器的位置信息、网关和当前相对时间（毫秒）
             return getDeclarativeSlotPool()
                     .offerSlots(
                             offers,

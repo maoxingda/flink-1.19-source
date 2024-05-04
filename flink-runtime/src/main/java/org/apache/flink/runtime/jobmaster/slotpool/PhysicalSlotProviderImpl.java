@@ -62,34 +62,25 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
     @Override
     public Map<SlotRequestId, CompletableFuture<PhysicalSlotRequest.Result>> allocatePhysicalSlots(
             Collection<PhysicalSlotRequest> physicalSlotRequests) {
-        /** 使用for循环遍历传入的physicalSlotRequests集合 */
+        /** 使用for循环遍历传入的physicalSlotRequests集合 记录日志 */
         for (PhysicalSlotRequest physicalSlotRequest : physicalSlotRequests) {
-            /** 对于每个请求，它记录了一个调试级别的日志，其中包含了请求的ID和相关的资源需求。 */
             LOG.debug(
                     "Received slot request [{}] with resource requirements: {}",
                     physicalSlotRequest.getSlotRequestId(),
                     physicalSlotRequest.getSlotProfile().getPhysicalSlotResourceProfile());
         }
-        /**
-         * 将physicalSlotRequests集合转换为一个新的Map，
-         * 其中键是请求的ID，值是原始的PhysicalSlotRequest对象。
-         */
+        // 使用流操作将物理槽位请求集合转换为一个Map，其中键为SlotRequestId，值为PhysicalSlotRequest
         Map<SlotRequestId, PhysicalSlotRequest> physicalSlotRequestsById =
                 physicalSlotRequests.stream()
                         .collect(
                                 Collectors.toMap(
                                         PhysicalSlotRequest::getSlotRequestId,
                                         Function.identity()));
-        /**
-         * 尝试从可用的物理槽位中为请求分配Slot。我们这里没有暂时可用的槽
-          */
+        // 尝试从可用槽位中分配物理槽位，并返回一个Map，键为SlotRequestId，值为Optional<PhysicalSlot>
         Map<SlotRequestId, Optional<PhysicalSlot>> availablePhysicalSlots =
                 tryAllocateFromAvailable(physicalSlotRequestsById.values());
-        /**
-         * availablePhysicalSlots的条目进行流处理，
-         * 以创建一个新的映射，其键是SlotRequestId，值是CompletableFuture，
-         * 该CompletableFuture要么代表一个已经可用的物理Slot，要么代表一个需要新请求的物理Slot。
-         */
+
+        // 使用流操作将上一步的结果转换为CompletableFuture的Map，其中键为SlotRequestId，值为PhysicalSlotRequest.Result的CompletableFuture
         return availablePhysicalSlots.entrySet().stream()
                 .collect(
                         Collectors.toMap(
@@ -107,7 +98,7 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
                                     /** 通过slotProfile获取ResourceProfile*/
                                     ResourceProfile resourceProfile =
                                             slotProfile.getPhysicalSlotResourceProfile();
-                                    /** 如果槽位已可用，则直接返回包含该槽位的已完成的Future  */
+                                    // 创建一个CompletableFuture，根据是否有可用的物理槽位来决定是立即完成还是异步执行
                                     CompletableFuture<PhysicalSlot> slotFuture =
                                             availablePhysicalSlot
                                                     .map(CompletableFuture::completedFuture)
@@ -121,10 +112,7 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
                                                                                     .getPreferredAllocations(),
                                                                             physicalSlotRequest
                                                                                     .willSlotBeOccupiedIndefinitely()));
-                                    /**
-                                     *  然后应用一个函数来将PhysicalSlot转换为PhysicalSlotRequest.Result
-                                     *  注意：这里假设有一个函数可以将PhysicalSlot转换为PhysicalSlotRequest.Result
-                                     */
+                                    // 返回一个新的CompletableFuture，当slotFuture完成时，将结果包装为PhysicalSlotRequest.Result
                                     return slotFuture.thenApply(
                                             physicalSlot ->
                                                     /**
@@ -136,22 +124,33 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
                                                             slotRequestId, physicalSlot));
                                 }));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从可用的物理槽位中尝试分配请求的物理槽位
+    */
     private Map<SlotRequestId, Optional<PhysicalSlot>> tryAllocateFromAvailable(
             Collection<PhysicalSlotRequest> slotRequests) {
+        // 获取空闲槽位信息跟踪器
         FreeSlotInfoTracker freeSlotInfoTracker = slotPool.getFreeSlotInfoTracker();
-
+        // 用于存储分配结果的映射，键为槽位请求ID，值为分配结果的Optional对象
         Map<SlotRequestId, Optional<PhysicalSlot>> allocateResult = new HashMap<>();
+        // 遍历每个槽位请求
         for (PhysicalSlotRequest request : slotRequests) {
+            // 使用槽位选择策略选择最适合当前槽位请求的空闲槽位
             Optional<SlotSelectionStrategy.SlotInfoAndLocality> slot =
                     slotSelectionStrategy.selectBestSlotForProfile(
                             freeSlotInfoTracker, request.getSlotProfile());
+
+            // 将分配结果放入映射中，如果找到合适的槽位，则预留该槽位并尝试分配
             allocateResult.put(
                     request.getSlotRequestId(),
                     slot.flatMap(
                             slotInfoAndLocality -> {
+                                // 预留槽位
                                 freeSlotInfoTracker.reserveSlot(
                                         slotInfoAndLocality.getSlotInfo().getAllocationId());
+                                // 尝试从槽位池中分配该槽位
                                 return slotPool.allocateAvailableSlot(
                                         request.getSlotRequestId(),
                                         slotInfoAndLocality.getSlotInfo().getAllocationId(),
