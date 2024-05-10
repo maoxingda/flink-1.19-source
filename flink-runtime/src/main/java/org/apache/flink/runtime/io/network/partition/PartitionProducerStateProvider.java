@@ -25,6 +25,11 @@ import org.apache.flink.types.Either;
 import java.util.function.Consumer;
 
 /** Request execution state of partition producer, the response accepts state check callbacks. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 请求分区生产者的执行状态，响应接受状态检查回调。
+*/
 public interface PartitionProducerStateProvider {
     /**
      * Trigger the producer execution state request.
@@ -40,12 +45,22 @@ public interface PartitionProducerStateProvider {
             Consumer<? super ResponseHandle> responseConsumer);
 
     /** Result of state query, accepts state check callbacks. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 状态查询的结果，接受状态检查回调
+    */
     interface ResponseHandle {
         ExecutionState getConsumerExecutionState();
 
         Either<ExecutionState, Throwable> getProducerExecutionState();
 
         /** Cancel the partition consumptions as a result of state check. */
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 取消分区消耗作为状态检查的结果。
+        */
         void cancelConsumption();
 
         /**
@@ -53,6 +68,11 @@ public interface PartitionProducerStateProvider {
          *
          * @param cause failure cause
          */
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 由于状态检查，分区消耗失败。
+        */
         void failConsumption(Throwable cause);
     }
 }

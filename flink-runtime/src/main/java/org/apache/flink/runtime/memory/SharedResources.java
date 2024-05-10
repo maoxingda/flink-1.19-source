@@ -31,6 +31,11 @@ import java.util.function.LongConsumer;
 import static org.apache.flink.util.Preconditions.checkState;
 
 /** A map that keeps track of acquired shared resources and handles their allocation disposal. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 一个跟踪已获取共享资源并处理其分配处置的映射。
+*/
 public final class SharedResources {
 
     private final ReentrantLock lock = new ReentrantLock();

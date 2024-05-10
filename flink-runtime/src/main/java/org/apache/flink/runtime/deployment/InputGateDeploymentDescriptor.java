@@ -174,81 +174,121 @@ public class InputGateDeploymentDescriptor implements Serializable {
         }
         return inputChannels;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 加载并序列化ShuffleDescriptors
+    */
     public void tryLoadAndDeserializeShuffleDescriptors(
             @Nullable PermanentBlobService blobService,
             JobID jobId,
             GroupCache<JobID, PermanentBlobKey, ShuffleDescriptorGroup> shuffleDescriptorsCache)
             throws IOException {
+        /** 如果inputChannels已经不为空，则直接返回，不再进行加载和反序列化操作 */
         if (inputChannels != null) {
             return;
         }
 
         try {
+            /** 初始化inputChannels数组，大小为numberOfInputChannels  */
             inputChannels = new ShuffleDescriptor[numberOfInputChannels];
-
+            /** 遍历serializedInputChannels，它可能包含已序列化的ShuffleDescriptorGroup  */
             for (MaybeOffloaded<ShuffleDescriptorGroup> serializedShuffleDescriptors :
                     serializedInputChannels) {
+                /**
+                 *  尝试加载并反序列化ShuffleDescriptorGroup
+                 *  注意：此函数内部可能会处理序列化数据的加载和反序列化，并更新shuffleDescriptorsCache
+                 */
                 tryLoadAndDeserializeShuffleDescriptorGroup(
                         blobService, jobId, serializedShuffleDescriptors, shuffleDescriptorsCache);
             }
         } catch (ClassNotFoundException e) {
+            /** 抛出运行时异常，并附带原始异常信 */
             throw new RuntimeException("Could not deserialize shuffle descriptors.", e);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     private void tryLoadAndDeserializeShuffleDescriptorGroup(
             @Nullable PermanentBlobService blobService,
             JobID jobId,
             MaybeOffloaded<ShuffleDescriptorGroup> serializedShuffleDescriptors,
             GroupCache<JobID, PermanentBlobKey, ShuffleDescriptorGroup> shuffleDescriptorsCache)
             throws IOException, ClassNotFoundException {
+        /** 检查serializedShuffleDescriptors是否为Offloaded类型   */
         if (serializedShuffleDescriptors instanceof Offloaded) {
+            /** 获取序列化后的ShuffleDescriptorGroup的Blob键 */
             PermanentBlobKey blobKey =
                     ((Offloaded<ShuffleDescriptorGroup>) serializedShuffleDescriptors)
                             .serializedValueKey;
+            /** 尝试从缓存中获取ShuffleDescriptorGroup  */
             ShuffleDescriptorGroup shuffleDescriptorGroup =
                     shuffleDescriptorsCache.get(jobId, blobKey);
+            /** 如果缓存中不存在   */
             if (shuffleDescriptorGroup == null) {
+                /** 确保blobService不为空，因为需要从Blob服务中读取数据 */
                 Preconditions.checkNotNull(blobService);
                 // NOTE: Do not delete the ShuffleDescriptor BLOBs since it may be needed again
                 // during
                 // recovery. (it is deleted automatically on the BLOB server and cache when its
                 // partition is no longer available or the job enters a terminal state)
+                /** 从Blob服务中读取压缩的序列化值   */
                 CompressedSerializedValue<ShuffleDescriptorGroup> serializedValue =
                         CompressedSerializedValue.fromBytes(blobService.readFile(jobId, blobKey));
+                /** 反序列化值并获取ShuffleDescriptorGroup   */
                 shuffleDescriptorGroup =
                         serializedValue.deserializeValue(getClass().getClassLoader());
                 // update cache
+                /** 更新缓存 */
                 shuffleDescriptorsCache.put(jobId, blobKey, shuffleDescriptorGroup);
             }
+            /** 将反序列化后的ShuffleDescriptorGroup放入或替换到相应的位置   */
             putOrReplaceShuffleDescriptors(shuffleDescriptorGroup);
         } else {
+            /** 如果serializedShuffleDescriptors不是Offloaded类型，则假设它是NonOffloaded类型   */
             NonOffloaded<ShuffleDescriptorGroup> nonOffloadedSerializedValue =
                     (NonOffloaded<ShuffleDescriptorGroup>) serializedShuffleDescriptors;
             tryDeserializeShuffleDescriptorGroup(nonOffloadedSerializedValue);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试反序列化并处理一个ShuffleDescriptorGroup的实例。
+    */
     private void tryDeserializeShuffleDescriptorGroup(
             NonOffloaded<ShuffleDescriptorGroup> nonOffloadedShuffleDescriptorGroup)
             throws IOException, ClassNotFoundException {
+        /** 获取ShuffleDescriptorGroup的序列化值，并使用当前类的类加载器进行反序列化 */
         ShuffleDescriptorGroup shuffleDescriptorGroup =
                 nonOffloadedShuffleDescriptorGroup.serializedValue.deserializeValue(
                         getClass().getClassLoader());
+        /** 将反序列化后的ShuffleDescriptorGroup对象放入或替换到相应的数据结构中 */
         putOrReplaceShuffleDescriptors(shuffleDescriptorGroup);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的ShuffleDescriptorGroup中的ShuffleDescriptor放入或替换到inputChannels数组中。
+    */
     private void putOrReplaceShuffleDescriptors(ShuffleDescriptorGroup shuffleDescriptorGroup) {
+        /** 遍历ShuffleDescriptorGroup中的所有ShuffleDescriptor和对应的索引 */
         for (ShuffleDescriptorAndIndex shuffleDescriptorAndIndex :
                 shuffleDescriptorGroup.getShuffleDescriptors()) {
+            /** 根据索引从inputChannels数组中获取对应的ShuffleDescriptor   */
             ShuffleDescriptor inputChannelDescriptor =
                     inputChannels[shuffleDescriptorAndIndex.getIndex()];
+            /** 如果该索引对应的ShuffleDescriptor不为空   */
             if (inputChannelDescriptor != null) {
+                /** 如果不是未知的，则抛出IllegalStateException异常   */
                 checkState(
                         inputChannelDescriptor.isUnknown(),
                         "Only unknown shuffle descriptor can be replaced.");
             }
+            /** 将新的ShuffleDescriptor放入inputChannels数组的对应索引位置   */
             inputChannels[shuffleDescriptorAndIndex.getIndex()] =
                     shuffleDescriptorAndIndex.getShuffleDescriptor();
         }

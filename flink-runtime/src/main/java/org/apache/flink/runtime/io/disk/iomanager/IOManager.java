@@ -37,6 +37,12 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
 /** The facade for the provided I/O manager services. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 提供的I/O管理器服务的外观。
+ * 用于基于配置临时目录创建/删除文件通道的管理器。
+*/
 public abstract class IOManager implements AutoCloseable {
     protected static final Logger LOG = LoggerFactory.getLogger(IOManager.class);
 

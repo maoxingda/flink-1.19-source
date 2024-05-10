@@ -60,6 +60,10 @@ public final class TaskDeploymentDescriptor implements Serializable {
      *
      * @param <T> type of the serialized value
      */
+    /**
+     * 序列化值的包装器类，这些值可以卸载到BlobServer
+     * @param <T>
+     */
     @SuppressWarnings("unused")
     public static class MaybeOffloaded<T> implements Serializable {
         private static final long serialVersionUID = 5977104446396536907L;
@@ -70,6 +74,9 @@ public final class TaskDeploymentDescriptor implements Serializable {
      * org.apache.flink.runtime.blob.BlobServer}.
      *
      * @param <T> type of the serialized value
+     */
+    /**
+     * 未卸载到的序列化值BlobServer
      */
     public static class NonOffloaded<T> extends MaybeOffloaded<T> {
         private static final long serialVersionUID = 4246628617754862463L;
@@ -274,6 +281,12 @@ public final class TaskDeploymentDescriptor implements Serializable {
      * @throws IOException during errors retrieving or reading the BLOBs
      * @throws ClassNotFoundException Class of a serialized object cannot be found.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将外部化的数据从BLOB存储加载回对象。
+     *
+    */
     public void loadBigData(
             @Nullable PermanentBlobService blobService,
             GroupCache<JobID, PermanentBlobKey, JobInformation> jobInformationCache,
@@ -283,50 +296,68 @@ public final class TaskDeploymentDescriptor implements Serializable {
 
         // re-integrate offloaded job info from blob
         // here, if this fails, we need to throw the exception as there is no backup path anymore
+        /**
+         * 重新整合从Blob中卸载的作业信息
+         *
+         */
         if (serializedJobInformation instanceof Offloaded) {
+            /** 获取作业信息的Blob键  */
             PermanentBlobKey jobInfoKey =
                     ((Offloaded<JobInformation>) serializedJobInformation).serializedValueKey;
-
+            /** 确保blobService不为空，因为我们需要它来获取文件   */
             Preconditions.checkNotNull(blobService);
-
+            /** 尝试从缓存中获取JobInformation */
             JobInformation jobInformation = jobInformationCache.get(jobId, jobInfoKey);
+            /** 如果缓存中没有找到JobInformation  */
             if (jobInformation == null) {
+                /** 从blobService中获取JobInformation的文件   */
                 final File dataFile = blobService.getFile(jobId, jobInfoKey);
                 // NOTE: Do not delete the job info BLOB since it may be needed again during
                 // recovery. (it is deleted automatically on the BLOB server and cache when the job
                 // enters a terminal state)
+                /** 反序列化文件内容，得到JobInformation对象 */
                 jobInformation =
                         InstantiationUtil.deserializeObject(
                                 new BufferedInputStream(Files.newInputStream(dataFile.toPath())),
                                 getClass().getClassLoader());
+                /** 将反序列化的JobInformation对象存入缓存 */
                 jobInformationCache.put(jobId, jobInfoKey, jobInformation);
             }
+            /** 更新当前类的jobInformation字段为JobInformation的深拷贝  */
             this.jobInformation = jobInformation.deepCopy();
         }
 
         // re-integrate offloaded task info from blob
+        /** 检查serializedTaskInformation是否是Offloaded类型的实例 */
         if (serializedTaskInformation instanceof Offloaded) {
+            /** 将serializedTaskInformation强制转换为Offloaded<TaskInformation>类型，并获取其serializedValueKey   */
             PermanentBlobKey taskInfoKey =
                     ((Offloaded<TaskInformation>) serializedTaskInformation).serializedValueKey;
-
+            /** 检查blobService是否为null，防止后续使用中出现空指针异常 */
             Preconditions.checkNotNull(blobService);
-
+            /** 尝试从taskInformationCache中根据jobId和taskInfoKey获取TaskInformation */
             TaskInformation taskInformation = taskInformationCache.get(jobId, taskInfoKey);
+            /** 如果taskInformation为null，表示缓存中不存在该信息，需要从blobService中加载 */
             if (taskInformation == null) {
+                /** 使用blobService根据jobId和taskInfoKey获取对应的数据文件 */
                 final File dataFile = blobService.getFile(jobId, taskInfoKey);
                 // NOTE: Do not delete the task info BLOB since it may be needed again during
                 // recovery. (it is deleted automatically on the BLOB server and cache when the job
                 // enters a terminal state)
+                /** 从数据文件中反序列化TaskInformation对象 */
                 taskInformation =
                         InstantiationUtil.deserializeObject(
                                 new BufferedInputStream(Files.newInputStream(dataFile.toPath())),
                                 getClass().getClassLoader());
+                /** 将反序列化得到的TaskInformation对象放入缓存  */
                 taskInformationCache.put(jobId, taskInfoKey, taskInformation);
             }
+            /** 对taskInformation进行深拷贝，并赋值给this.taskInformation  */
             this.taskInformation = taskInformation.deepCopy();
         }
-
+        /** 遍历inputGates集合 */
         for (InputGateDeploymentDescriptor inputGate : inputGates) {
+            /** 尝试加载并反序列化ShuffleDescriptors */
             inputGate.tryLoadAndDeserializeShuffleDescriptors(
                     blobService, jobId, shuffleDescriptorsCache);
         }

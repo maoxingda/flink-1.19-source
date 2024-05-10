@@ -38,6 +38,11 @@ import static org.apache.flink.util.Preconditions.checkState;
  *
  * <p>Contains extra logic for adding Tasks ({@link TaskMetricGroup}).
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 在TaskManager上运行的Job监控。
+*/
 @Internal
 public class TaskManagerJobMetricGroup extends JobMetricGroup<TaskManagerMetricGroup> {
 

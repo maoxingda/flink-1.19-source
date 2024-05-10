@@ -31,6 +31,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * References to materialized broadcast variables are cached and shared between parallel subtasks. A
  * reference count is maintained to track whether the materialization may be cleaned up.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * BroadcastVariableManager用于管理广播变量的具体化。对物化广播变量的引用被缓存，
+ * 并在并行子任务之间共享。保持引用计数以跟踪是否可以清理物化。
+*/
 public class BroadcastVariableManager {
 
     private final ConcurrentHashMap<BroadcastVariableKey, BroadcastVariableMaterialization<?, ?>>

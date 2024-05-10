@@ -57,6 +57,13 @@ import static org.apache.flink.core.memory.MemorySegmentFactory.allocateOffHeapU
  * MemorySegment}). Releasing a memory segment will make it re-claimable by the garbage collector,
  * but does not necessarily immediately releases the underlying memory.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 内存管理器管理Flink用于排序、哈希、缓存或堆外状态后端（例如RocksDB）的内存。
+ * 内存要么以相等大小的 MemorySegment表示，要么以特定大小的保留块表示。
+ * Operator通过请求多个内存段或通过保留块来分配内存。任何分配的内存都必须释放，以便以后重新使用。
+*/
 public class MemoryManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(MemoryManager.class);

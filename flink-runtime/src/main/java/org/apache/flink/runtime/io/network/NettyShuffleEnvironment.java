@@ -213,54 +213,82 @@ public class NettyShuffleEnvironment
                 nettyGroup.addGroup(METRIC_GROUP_OUTPUT),
                 nettyGroup.addGroup(METRIC_GROUP_INPUT));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建ResultPartitionWriter 结果分区
+     * @param ownerContext 用于提供与Shuffle I/O相关的上下文信息
+     * @param resultPartitionDeploymentDescriptors 描述了结果分区的部署详情
+     */
     @Override
     public List<ResultPartition> createResultPartitionWriters(
             ShuffleIOOwnerContext ownerContext,
             List<ResultPartitionDeploymentDescriptor> resultPartitionDeploymentDescriptors) {
+        /** 使用synchronized关键字对lock对象进行同步，确保在并发环境下此方法的线程安全*/
         synchronized (lock) {
+            /** 使用Preconditions工具类检查NettyShuffleEnvironment是否已被关闭   */
             Preconditions.checkState(
                     !isClosed, "The NettyShuffleEnvironment has already been shut down.");
-
+            /** 根据resultPartitionDeploymentDescriptors列表的大小创建ResultPartition数组   */
             ResultPartition[] resultPartitions =
                     new ResultPartition[resultPartitionDeploymentDescriptors.size()];
+            /**
+             * 遍历resultPartitionDeploymentDescriptors列表，为每个ResultPartitionDeploymentDescriptor
+             * 创建一个ResultPartition
+             */
             for (int partitionIndex = 0;
                     partitionIndex < resultPartitions.length;
                     partitionIndex++) {
+                /** 构建ResultPartition */
                 resultPartitions[partitionIndex] =
                         resultPartitionFactory.create(
+                                /** 传入ownerContext的ownerName，用于标识结果分区的所有者 */
                                 ownerContext.getOwnerName(),
+                                /** 传入当前分区的索引  */
                                 partitionIndex,
+                                /** 传入当前索引对应的ResultPartitionDeploymentDescriptor   */
                                 resultPartitionDeploymentDescriptors.get(partitionIndex));
             }
-
+            /** 注册输出指标，根据config是否启用网络详细指标、ownerContext的输出组以及结果分区数组来执行   */
             registerOutputMetrics(
                     config.isNetworkDetailedMetrics(),
                     ownerContext.getOutputGroup(),
                     resultPartitions);
+            /** 将ResultPartition数组转换为List并返回 */
             return Arrays.asList(resultPartitions);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 用于创建生成InputGates，InputGates用于消费结果分区 ResultPartitions。
+     * @param ownerContext 传入的ShuffleIO拥有者上下文
+     * @param partitionProducerStateProvider 分区生产者状态提供者
+     * @param inputGateDeploymentDescriptors 输入门部署描述符列表
+     */
     @Override
     public List<SingleInputGate> createInputGates(
             ShuffleIOOwnerContext ownerContext,
             PartitionProducerStateProvider partitionProducerStateProvider,
             List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptors) {
+        /** 使用同步块确保线程安全  */
         synchronized (lock) {
+            /** 检查NettyShuffleEnvironment是否已关闭 */
             Preconditions.checkState(
                     !isClosed, "The NettyShuffleEnvironment has already been shut down.");
-
+            /** 获取网络输入组的MetricGroup */
             MetricGroup networkInputGroup = ownerContext.getInputGroup();
-
+            /** 创建一个InputChannelMetrics实例，用于监控输入通道的性能指标  */
             InputChannelMetrics inputChannelMetrics =
                     new InputChannelMetrics(networkInputGroup, ownerContext.getParentGroup());
-
+            /** 根据输入门部署描述符的数量初始化SingleInputGate数组  */
             SingleInputGate[] inputGates =
                     new SingleInputGate[inputGateDeploymentDescriptors.size()];
+            /** 遍历每个输入门部署描述符，创建对应的SingleInputGate  */
             for (int gateIndex = 0; gateIndex < inputGates.length; gateIndex++) {
                 final InputGateDeploymentDescriptor igdd =
                         inputGateDeploymentDescriptors.get(gateIndex);
+                /** 使用工厂方法创建SingleInputGate实例 */
                 SingleInputGate inputGate =
                         singleInputGateFactory.create(
                                 ownerContext,
@@ -268,14 +296,19 @@ public class NettyShuffleEnvironment
                                 igdd,
                                 partitionProducerStateProvider,
                                 inputChannelMetrics);
+                /** 创建一个InputGateID，用于唯一标识该输入门 */
                 InputGateID id =
                         new InputGateID(
                                 igdd.getConsumedResultId(), ownerContext.getExecutionAttemptID());
+                /** 如果当前id的inputGateSet不存在，则创建一个新的并添加到inputGatesById中 */
                 Set<SingleInputGate> inputGateSet =
                         inputGatesById.computeIfAbsent(
                                 id, ignored -> ConcurrentHashMap.newKeySet());
+                /** 将新创建的inputGate添加到对应的inputGateSet中   */
                 inputGateSet.add(inputGate);
+                /** 更新inputGatesById中的inputGateSet   */
                 inputGatesById.put(id, inputGateSet);
+                /** 当inputGate关闭时，从inputGateSet中移除它，如果inputGateSet为空，则从inputGatesById中移除 */
                 inputGate
                         .getCloseFuture()
                         .thenRun(
@@ -283,20 +316,25 @@ public class NettyShuffleEnvironment
                                         inputGatesById.computeIfPresent(
                                                 id,
                                                 (key, value) -> {
+                                                    /** 移除空的inputGateSet   */
                                                     value.remove(inputGate);
                                                     if (value.isEmpty()) {
                                                         return null;
                                                     }
+                                                    /** 返回更新后的inputGateSet */
                                                     return value;
                                                 }));
+                /** 将创建好的inputGate赋值给数组中的对应位置 */
                 inputGates[gateIndex] = inputGate;
             }
-
+            /** 如果开启了Debloat配置，则注册Debloating任务指标   */
             if (config.getDebloatConfiguration().isEnabled()) {
+                /** 注册监控指标 */
                 registerDebloatingTaskMetrics(inputGates, ownerContext.getParentGroup());
             }
-
+            /** 注册输入指标 */
             registerInputMetrics(config.isNetworkDetailedMetrics(), networkInputGroup, inputGates);
+            /** 将SingleInputGate数组转换为List并返回 */
             return Arrays.asList(inputGates);
         }
     }

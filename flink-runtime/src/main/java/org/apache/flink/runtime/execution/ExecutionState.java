@@ -64,6 +64,11 @@ package org.apache.flink.runtime.execution;
  *
  * }</pre>
 */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 任务在执行过程中可以处于的所有状态的枚举。任务通常以｛@code CREATED｝的状态开始，并根据此图切换状态：
+*/
 public enum ExecutionState {
     CREATED,
 

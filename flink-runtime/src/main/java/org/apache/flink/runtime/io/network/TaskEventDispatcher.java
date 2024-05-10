@@ -40,6 +40,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * <p>Backwards events only work for tasks, which produce pipelined results, where both the
  * producing and consuming task are running at the same time.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 任务事件调度器将事件从消耗任务向后调度到产生消耗结果的任务。
+*/
 public class TaskEventDispatcher implements TaskEventPublisher {
     private static final Logger LOG = LoggerFactory.getLogger(TaskEventDispatcher.class);
 

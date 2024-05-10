@@ -49,6 +49,11 @@ import java.util.Optional;
  * <p>This interface also offers the complementary method that provides access to previously saved
  * state of operator instances in the task for restore purposes.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 此接口提供了报告和检索任务状态的方法。
+*/
 public interface TaskStateManager extends CheckpointListener, AutoCloseable {
 
     void reportInitializationMetrics(SubTaskInitializationMetrics subTaskInitializationMetrics);

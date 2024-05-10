@@ -24,6 +24,11 @@ import java.util.Collections;
 import java.util.Set;
 
 /** Provide the information of external resources. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 提供外部资源的信息。
+*/
 public interface ExternalResourceInfoProvider {
 
     ExternalResourceInfoProvider NO_EXTERNAL_RESOURCES = resourceName -> Collections.emptySet();

@@ -22,6 +22,7 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.ClusterOptions;
+import org.apache.flink.core.io.InputSplit;
 import org.apache.flink.management.jmx.JMXService;
 import org.apache.flink.runtime.accumulators.AccumulatorSnapshot;
 import org.apache.flink.runtime.blob.JobPermanentBlobService;
@@ -639,7 +640,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     *
+     * 提交运行任务
     */
     @Override
     public CompletableFuture<Acknowledge> submitTask(
@@ -702,8 +703,10 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             }
 
             // deserialize the pre-serialized information
-            // 反序列化预序列化的信息
+
+            /** 获取Job作业信息 */
             final JobInformation jobInformation;
+            /** 获取Task作业信息 */
             final TaskInformation taskInformation;
             try {
                 jobInformation = tdd.getJobInformation();
@@ -713,7 +716,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                 throw new TaskSubmissionException(
                         "Could not deserialize the job or task information.", e);
             }
-
+            /** 校验JobId是否一致 */
             if (!jobId.equals(jobInformation.getJobId())) {
                 throw new TaskSubmissionException(
                         "Inconsistent job ID information inside TaskDeploymentDescriptor ("
@@ -722,39 +725,45 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                                 + jobInformation.getJobId()
                                 + ")");
             }
-
+            /** 在TaskManager上运行的Job信息监控。 */
             TaskManagerJobMetricGroup jobGroup =
                     taskManagerMetricGroup.addJob(
                             jobInformation.getJobId(), jobInformation.getJobName());
 
             // note that a pre-existing job group can NOT be closed concurrently - this is done by
             // the same TM thread in removeJobMetricsGroup
+            /** 在Task信息监控。 */
             TaskMetricGroup taskMetricGroup =
                     jobGroup.addTask(tdd.getExecutionAttemptId(), taskInformation.getTaskName());
-
+            /** 提供任务在执行过程中应该使用的一系列{@link InputSplit}对象。 */
             InputSplitProvider inputSplitProvider =
                     new RpcInputSplitProvider(
                             jobManagerConnection.getJobManagerGateway(),
                             taskInformation.getJobVertexId(),
                             tdd.getExecutionAttemptId(),
                             taskManagerConfiguration.getRpcTimeout());
-
+            /**
+             * 从任务向 OperatorCoordinator JobManager端发送 OperatorEvent、CoordinationRequest的网关。
+             */
             final TaskOperatorEventGateway taskOperatorEventGateway =
                     new RpcTaskOperatorEventGateway(
                             jobManagerConnection.getJobManagerGateway(),
                             executionAttemptID,
                             (t) -> runAsync(() -> failTask(executionAttemptID, t)));
-
+            /** 用于Task与TaskExecutor通信的接口。 */
             TaskManagerActions taskManagerActions = jobManagerConnection.getTaskManagerActions();
+            /** Task中检查点确认和拒绝消息的响应程序 */
             CheckpointResponder checkpointResponder = jobManagerConnection.getCheckpointResponder();
+            /** 于在作业中的并行任务之间共享状态。每次调用会触发JobMaster端的RPC通信 */
             GlobalAggregateManager aggregateManager =
                     jobManagerConnection.getGlobalAggregateManager();
-
+            /** LibraryCacheManager负责创建和管理用户代码类加载器。 */
             LibraryCacheManager.ClassLoaderHandle classLoaderHandle =
                     jobManagerConnection.getClassLoaderHandle();
+            /**  中间分区状态检查器，用于向JobManager查询结果分区的生产者的状态。 */
             PartitionProducerStateChecker partitionStateChecker =
                     jobManagerConnection.getPartitionStateChecker();
-
+            /** 作为任务管理器级别的本地存储，用于存储本地检查点状态。 */
             final TaskLocalStateStore localStateStore =
                     localStateStoresManager.localStateStoreForSubtask(
                             jobId,
@@ -763,11 +772,12 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                             tdd.getSubtaskIndex(),
                             taskManagerConfiguration.getConfiguration(),
                             jobInformation.getJobConfiguration());
-
+            /** 管理启用合并检查点文件的文件和元信息。 每个作业都有一个 FileMergingSnapshotManager */
             final FileMergingSnapshotManager fileMergingSnapshotManager =
                     fileMergingManager.fileMergingSnapshotManagerForJob(jobId);
 
             // TODO: Pass config value from user program and do overriding here.
+            /** 变更日志的存储 */
             final StateChangelogStorage<?> changelogStorage;
             try {
                 changelogStorage =
@@ -779,9 +789,9 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             } catch (IOException e) {
                 throw new TaskSubmissionException(e);
             }
-
+            /** 这个类封装了从作业管理器传来的数据，用于恢复一个任务。 */
             final JobManagerTaskRestore taskRestore = tdd.getTaskRestore();
-
+            /** 提供了报告和检索任务状态的方法。 */
             final TaskStateManager taskStateManager =
                     new TaskStateManagerImpl(
                             jobId,
@@ -792,14 +802,16 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                             changelogStoragesManager,
                             taskRestore,
                             checkpointResponder);
-
+            /** 内存管理器管理Flink用于排序、哈希、缓存或堆外状态后端（例如RocksDB）的内存。 */
             MemoryManager memoryManager;
             try {
+                /** 根据分配ID从任务槽表获取任务内存管理器   */
                 memoryManager = taskSlotTable.getTaskMemoryManager(tdd.getAllocationId());
             } catch (SlotNotFoundException e) {
+                /** 如果找不到对应的槽，则抛出任务提交异常*/
                 throw new TaskSubmissionException("Could not submit task.", e);
             }
-
+            /** 创建一个新的任务实例   */
             Task task =
                     new Task(
                             jobInformation,
@@ -829,9 +841,9 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                             partitionStateChecker,
                             getRpcService().getScheduledExecutor(),
                             channelStateExecutorFactoryManager.getOrCreateExecutorFactory(jobId));
-
+            /** 设置任务背压状态的度量指标  */
             taskMetricGroup.gauge(MetricNames.IS_BACK_PRESSURED, task::isBackPressured);
-
+            /** 打印日志，表示已经接收到任务，并计划部署到指定槽中   */
             log.info(
                     "Received task {} ({}), deploy into slot with allocation id {}.",
                     task.getTaskInfo().getTaskNameWithSubtasks(),
@@ -841,18 +853,23 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             boolean taskAdded;
 
             try {
+                /** 将任务添加到任务槽表中  TaskSlotTable<Task> taskSlotTable; */
                 taskAdded = taskSlotTable.addTask(task);
             } catch (SlotNotFoundException | SlotNotActiveException e) {
+                /** 如果槽不存在或未激活，则抛出任务提交异常 */
                 throw new TaskSubmissionException("Could not submit task.", e);
             }
 
             if (taskAdded) {
+                /** 如果任务添加成功，启动任务线程  */
                 task.startTaskThread();
-
+                /** 设置结果分区的记账管理 */
                 setupResultPartitionBookkeeping(
                         tdd.getJobId(), tdd.getProducedPartitions(), task.getTerminationFuture());
+                /** 返回表示任务已提交的CompletableFuture  */
                 return CompletableFuture.completedFuture(Acknowledge.get());
             } else {
+                /** 如果任务添加失败（可能是任务ID已存在），打印日志并抛出异常   */
                 final String message =
                         "TaskManager already contains a task for id " + task.getExecutionId() + '.';
 
@@ -860,6 +877,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                 throw new TaskSubmissionException(message);
             }
         } catch (TaskSubmissionException e) {
+            /** 异步变成设置失败异常状态*/
             return FutureUtils.completedExceptionally(e);
         }
     }

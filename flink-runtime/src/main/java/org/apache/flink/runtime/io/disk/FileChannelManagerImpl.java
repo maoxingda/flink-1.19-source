@@ -41,6 +41,12 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
 
 /** The manager used for creating/deleting file channels based on config temp dirs. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于基于配置临时目录创建/删除文件通道的管理器。
+ *
+*/
 public class FileChannelManagerImpl implements FileChannelManager {
     private static final Logger LOG = LoggerFactory.getLogger(FileChannelManagerImpl.class);
 

@@ -37,6 +37,13 @@ import java.io.Closeable;
  *
  * <p>TODO (FLINK-32075): leverage checkpoint notification to delete logical files.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * FileMergingSnapshotManager 提供了一个接口，用于管理启用合并检查点文件的文件和元信息。
+ * 它管理任务管理器（TM）中单个任务的文件，包括该任务管理器上正在运行的这个单一任务的所有子任务。
+ * 每个任务管理器上的每个作业都有一个 FileMergingSnapshotManager。
+*/
 public interface FileMergingSnapshotManager extends Closeable {
 
     /**

@@ -28,6 +28,12 @@ import java.io.IOException;
  * aggregates do NOT survive a job failure. Each call to the updateGlobalAggregate() method results
  * in serialized RPC communication with the JobMaster so use with care.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于在作业中的并行任务之间共享状态。它不是为高吞吐量更新而设计的，聚合无法在作业失败后幸存下来。
+ * 对updateGlobalAggregate（）方法的每次调用都会导致与JobMaster的序列化RPC通信，因此请小心使用。
+*/
 public interface GlobalAggregateManager {
     /**
      * Update the global aggregate and return the new value.

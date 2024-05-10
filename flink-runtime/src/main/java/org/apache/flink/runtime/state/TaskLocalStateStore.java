@@ -35,6 +35,14 @@ import java.util.function.LongPredicate;
  * case of machine failures. In such cases (and others), client code of this class must fall back to
  * using the slower but highly available store.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 实现这个接口的类作为任务管理器级别的本地存储，用于存储本地检查点状态。
+ * 其目的是为了提供一个相较于远程存储在稳定存储DFS（分布式文件系统）中的状态而言，
+ * 本地存储状态可更快恢复的访问方式。目前，这种存储只是稳定存储的补充，并且在机器故障等情况下（以及其他情况），
+ * 本地状态通常会丢失。在这种情况下（以及其他情况），这个类的客户端代码必须回退到使用较慢但高可用的存储
+*/
 @Internal
 public interface TaskLocalStateStore {
     /**

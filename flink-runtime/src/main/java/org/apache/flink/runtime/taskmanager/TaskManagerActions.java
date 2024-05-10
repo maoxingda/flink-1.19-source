@@ -25,7 +25,7 @@ import org.apache.flink.runtime.taskexecutor.TaskExecutor;
 /**
  * @授课老师(微信): yi_locus
  * email: 156184212@qq.com
- * 用于Task与TaskExecution通信的接口。
+ * 用于Task与TaskExecutor通信的接口。
 */
 public interface TaskManagerActions {
 

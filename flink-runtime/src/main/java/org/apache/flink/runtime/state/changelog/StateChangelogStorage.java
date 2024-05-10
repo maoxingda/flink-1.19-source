@@ -28,6 +28,12 @@ import org.apache.flink.runtime.state.KeyGroupRange;
  * StateChangelogWriter} for read and write. Please use {@link StateChangelogStorageLoader} to
  * obtain an instance.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 这是一个用于变更日志的存储。它可以产生用于读取和写入的StateChangelogHandleReader和StateChangelogWriter。
+ * 请使用StateChangelogStorageLoader来获取其实例。
+*/
 @Internal
 public interface StateChangelogStorage<Handle extends ChangelogStateHandle>
         extends StateChangelogStorageView<Handle> {

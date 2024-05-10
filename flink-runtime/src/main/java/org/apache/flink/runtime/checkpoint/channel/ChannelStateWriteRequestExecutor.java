@@ -25,6 +25,11 @@ import java.io.IOException;
  * Executes {@link ChannelStateWriteRequest}s potentially asynchronously. An exception thrown during
  * the execution should be re-thrown on any next call.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 可能异步执行  ChannelStateWriteRequest 。在执行过程中引发的异常应在下一次调用时重新引发。
+*/
 interface ChannelStateWriteRequestExecutor {
 
     /** @throws IllegalStateException if called more than once or after {@link #releaseSubtask} */

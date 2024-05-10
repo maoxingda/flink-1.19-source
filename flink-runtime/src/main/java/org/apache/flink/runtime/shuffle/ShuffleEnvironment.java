@@ -140,6 +140,11 @@ public interface ShuffleEnvironment<P extends ResultPartitionWriter, G extends I
      *     owner
      * @return list of the {@link ResultPartitionWriter ResultPartitionWriters}
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建ResultPartitionWriter 结果分区
+    */
     List<P> createResultPartitionWriters(
             ShuffleIOOwnerContext ownerContext,
             List<ResultPartitionDeploymentDescriptor> resultPartitionDeploymentDescriptors);
@@ -174,6 +179,11 @@ public interface ShuffleEnvironment<P extends ResultPartitionWriter, G extends I
      * @param inputGateDeploymentDescriptors descriptors of the input gates to consume
      * @return list of the {@link InputGate InputGates}
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 用于创建生成InputGates，InputGates用于消费结果分区 ResultPartitions。
+    */
     List<G> createInputGates(
             ShuffleIOOwnerContext ownerContext,
             PartitionProducerStateProvider partitionProducerStateProvider,

@@ -33,6 +33,11 @@ import java.util.concurrent.CompletableFuture;
  * event. This usually happens when the producer of that partition has not registered itself with
  * the network stack or terminated.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 中间分区状态检查器，用于向JobManager查询结果分区的生产者的状态。
+*/
 public interface PartitionProducerStateChecker {
 
     /**

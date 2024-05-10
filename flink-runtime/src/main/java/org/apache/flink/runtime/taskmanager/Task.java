@@ -31,6 +31,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.core.fs.FileSystemSafetyNet;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.core.io.InputSplit;
 import org.apache.flink.core.security.FlinkSecurityManager;
 import org.apache.flink.runtime.accumulators.AccumulatorRegistry;
 import org.apache.flink.runtime.blob.PermanentBlobKey;
@@ -148,13 +149,13 @@ import static org.apache.flink.util.Preconditions.checkState;
 public class Task
         implements Runnable, TaskSlotPayload, TaskActions, PartitionProducerStateProvider {
 
-    /** The class logger. */
+    /** The class logger. 户口也如照顾*/
     private static final Logger LOG = LoggerFactory.getLogger(Task.class);
 
-    /** The thread group that contains all task threads. */
+    /** The thread group that contains all task threads. 包含所有任务线程的线程组。 */
     private static final ThreadGroup TASK_THREADS_GROUP = new ThreadGroup("Flink Task Threads");
 
-    /** For atomic state updates. */
+    /** For atomic state updates. 用于原子状态更新。*/
     private static final AtomicReferenceFieldUpdater<Task, ExecutionState> STATE_UPDATER =
             AtomicReferenceFieldUpdater.newUpdater(
                     Task.class, ExecutionState.class, "executionState");
@@ -220,7 +221,7 @@ public class Task
     private final MemoryManager memoryManager;
 
     /** Shared memory manager provided by the task manager. */
-    /** 任务管理器提供的共享内存管理器。 */
+    /** 跟踪已获取共享资源并处理其分配处置的映射。 */
     private final SharedResources sharedResources;
 
     /** The I/O manager to be used by this task. */
@@ -228,17 +229,20 @@ public class Task
     private final IOManager ioManager;
 
     /** The BroadcastVariableManager to be used by this task. */
-    /** 此任务要使用的BroadcastVariableManager。 */
+    /**
+     * BroadcastVariableManager用于管理广播变量的具体化。对物化广播变量的引用被缓存，
+     * 并在并行子任务之间共享。保持引用计数以跟踪是否可以清理物化。
+     */
     private final BroadcastVariableManager broadcastVariableManager;
-
+    /** 任务事件调度器将事件从消耗任务向后调度到产生消耗结果的任务。 */
     private final TaskEventDispatcher taskEventDispatcher;
 
     /** Information provider for external resources. */
-    /** 外部资源的信息提供者。 */
+    /** 就是获取外部资源信息 */
     private final ExternalResourceInfoProvider externalResourceInfoProvider;
 
     /** The manager for state of operators running in this task/slot. */
-    /** Slot运行任务过程中操作状态的管理器。 */
+    /** Slot运行任务过程中操作状态的管理器。提供了报告和检索任务状态的方法。 */
     private final TaskStateManager taskStateManager;
 
     /**
@@ -252,21 +256,21 @@ public class Task
     private final IndexedInputGate[] inputGates;
 
     /** Connection to the task manager. */
-    /** 用于Task与TaskExecution通信的接口。 */
+    /** 用于Task与TaskExecutor通信的接口。 */
     private final TaskManagerActions taskManagerActions;
 
     /** Input split provider for the task. */
-    /** 输入任务的拆分提供程序。 */
+    /** 提供任务在执行过程中应该使用的一系列{@link InputSplit}对象。  */
     private final InputSplitProvider inputSplitProvider;
 
     /** Checkpoint notifier used to communicate with the CheckpointCoordinator. */
-    /** 用于与CheckpointCoordinator通信的检查点通知程序 */
+    /** 用于与CheckpointCoordinator通信的检查点通知程序  Task中检查点确认和拒绝消息的响应程序*/
     private final CheckpointResponder checkpointResponder;
 
     /**
      * The gateway for operators to send messages to the operator coordinators on the Job Manager.
      */
-    /** Operator向作业管理器上的operator coordinators发送消息的网关 */
+    /** 从任务向 OperatorCoordinator JobManager端发送 OperatorEvent、CoordinationRequest的网关。 */
     private final TaskOperatorEventGateway operatorCoordinatorEventGateway;
 
     /** GlobalAggregateManager used to update aggregates on the JobMaster. */
@@ -298,7 +302,7 @@ public class Task
     private final TaskMetricGroup metrics;
 
     /** Partition producer state checker to request partition states from. */
-    /** 要向请求分区状态的分区生产者状态检查器。 */
+    /** 中间分区状态检查器，用于向JobManager查询结果分区的生产者的状态。  */
     private final PartitionProducerStateChecker partitionProducerStateChecker;
 
     /** Executor to run future callbacks. */
@@ -326,7 +330,7 @@ public class Task
      * The invokable of this task, if initialized. All accesses must copy the reference and check
      * for null, as this field is cleared as part of the disposal logic.
      */
-    /** 此任务的可调用项（如果已初始化）。所有访问都必须复制引用并检查null，因为此字段作为处置逻辑的一部分被清除。 */
+    /** Task线程内部调用TaskInvokable.invoke执行StreamTask */
     @Nullable private volatile TaskInvokable invokable;
 
     /** The current execution state of the task. */
@@ -360,6 +364,11 @@ public class Task
      * <b>IMPORTANT:</b> This constructor may not start any work that would need to be undone in the
      * case of a failing task deployment.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建Task任务
+    */
     public Task(
             JobInformation jobInformation,
             TaskInformation taskInformation,
@@ -446,14 +455,21 @@ public class Task
         this.channelStateExecutorFactory = channelStateExecutorFactory;
 
         // create the reader and writer structures
-
+        /** 构造包含子任务和ID的任务名称   */
         final String taskNameWithSubtaskAndId = taskNameWithSubtask + " (" + executionId + ')';
-
+        /**
+         * 创建一个Shuffle IO的上下文，用于管理任务的Shuffle I/O操作
+         * 参数包括任务名称、执行ID以及I/O度量组
+         */
         final ShuffleIOOwnerContext taskShuffleContext =
                 shuffleEnvironment.createShuffleIOOwnerContext(
                         taskNameWithSubtaskAndId, executionId, metrics.getIOMetricGroup());
 
         // produced intermediate result partitions
+        /**
+         * 生成中间结果分区的写入器
+         * 这些写入器用于将任务的中间结果写入到Shuffle环境中
+         */
         final ResultPartitionWriter[] resultPartitionWriters =
                 shuffleEnvironment
                         .createResultPartitionWriters(
@@ -463,29 +479,38 @@ public class Task
         this.partitionWriters = resultPartitionWriters;
 
         // consumed intermediate result partitions
+        /**
+         * 消耗的中间结果分区
+         * 创建输入门，用于消费其他任务的中间结果
+         */
         final IndexedInputGate[] gates =
                 shuffleEnvironment
                         .createInputGates(taskShuffleContext, this, inputGateDeploymentDescriptors)
                         .toArray(new IndexedInputGate[0]);
-
+        /** 初始化输入门数组   */
         this.inputGates = new IndexedInputGate[gates.length];
         int counter = 0;
         for (IndexedInputGate gate : gates) {
+            /** 将输入门与I/O度量组中的字节计数器关联起来 */
             inputGates[counter++] =
                     new InputGateWithMetrics(
                             gate, metrics.getIOMetricGroup().getNumBytesInCounter());
         }
-
+        /** 如果Shuffle环境是NettyShuffleEnvironment的实例 */
         if (shuffleEnvironment instanceof NettyShuffleEnvironment) {
             //noinspection deprecation
+            /** 注册遗留的网络度量信息 */
             ((NettyShuffleEnvironment) shuffleEnvironment)
                     .registerLegacyNetworkMetrics(
                             metrics.getIOMetricGroup(), resultPartitionWriters, gates);
         }
-
+        /** 创建一个原子布尔变量，用于表示任务是否已被取消 */
         invokableHasBeenCanceled = new AtomicBoolean(false);
 
         // finally, create the executing thread, but do not start it
+        /**
+         * 最后，创建一个执行线程
+         */
         executingThread = new Thread(TASK_THREADS_GROUP, this, taskNameWithSubtask);
     }
 

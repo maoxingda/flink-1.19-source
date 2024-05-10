@@ -45,6 +45,11 @@ import java.util.concurrent.CompletableFuture;
  *     <li>{@link JobMasterOperatorEventGateway} which is RPC interface from the TaskManager to the JobManager.</li>
  * </pre>
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 从任务向 OperatorCoordinator JobManager端发送 OperatorEvent、CoordinationRequest的网关。
+*/
 public interface TaskOperatorEventGateway {
 
     /**

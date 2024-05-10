@@ -51,6 +51,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * {@link #abortCheckpointOnBarrier(long, CheckpointException)} and {@link
  * #notifyCheckpointCompleteAsync(long)}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 任务的可调用部分。
+ */
 public abstract class AbstractInvokable
         implements TaskInvokable, CheckpointableTask, CoordinatedTask {
 

@@ -30,6 +30,11 @@ import java.util.OptionalInt;
  * Class for automatic calculation of the buffer size based on the current throughput and
  * configuration.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 根据当前的吞吐量和配置自动计算缓冲区大小。
+*/
 public class BufferDebloater {
     private static final Logger LOG = LoggerFactory.getLogger(BufferDebloater.class);
     private static final long MILLIS_IN_SECOND = 1000;

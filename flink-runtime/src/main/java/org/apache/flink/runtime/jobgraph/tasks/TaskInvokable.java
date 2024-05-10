@@ -43,6 +43,11 @@ import javax.annotation.Nullable;
  * @see CoordinatedTask
  * @see AbstractInvokable
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 任务的可调用部分。
+*/
 @Internal
 public interface TaskInvokable {
 
