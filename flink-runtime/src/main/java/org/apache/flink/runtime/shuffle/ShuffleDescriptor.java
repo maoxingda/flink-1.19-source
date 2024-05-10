@@ -31,6 +31,11 @@ import java.util.Optional;
  * <p>The descriptor is used for the deployment of the partition producer/consumer and their data
  * exchange
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 结果分区资源的shuffle部署描述符的接口。
+*/
 public interface ShuffleDescriptor extends Serializable {
 
     ResultPartitionID getResultPartitionID();

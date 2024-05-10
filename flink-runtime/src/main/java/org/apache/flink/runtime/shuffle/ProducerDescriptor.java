@@ -36,12 +36,15 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  */
 public class ProducerDescriptor {
     /** The resource ID to identify the container where the producer execution is deployed. */
+    //用于标识部署生产者执行的容器的资源ID
     private final ResourceID producerLocation;
 
     /** The ID of the producer execution attempt. */
+    //生产者执行尝试的ID。
     private final ExecutionAttemptID producerExecutionId;
 
     /** The address to connect to the producer. */
+    //要连接到生产者的地址
     private final InetAddress address;
 
     /**
@@ -49,6 +52,7 @@ public class ProducerDescriptor {
      *
      * <p>Negative value means local execution.
      */
+    //连接到生产者进行Shuffle交换的端口。
     private final int dataPort;
 
     @VisibleForTesting

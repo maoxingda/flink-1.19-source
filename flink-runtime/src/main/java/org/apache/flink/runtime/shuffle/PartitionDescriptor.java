@@ -32,35 +32,47 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** Partition descriptor for {@link ShuffleMaster} to obtain {@link ShuffleDescriptor}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+*/
 public class PartitionDescriptor implements Serializable {
 
     private static final long serialVersionUID = 6343547936086963705L;
 
     /** The ID of the result this partition belongs to. */
+    //此分区所属结果的ID
     private final IntermediateDataSetID resultId;
 
     /** The total number of partitions for the result. */
+    //结果的分区总数。
     private final int totalNumberOfPartitions;
 
     /** The ID of the partition. */
+    //分区的ID。
     private final IntermediateResultPartitionID partitionId;
 
     /** The type of the partition. */
+    //分区的类型
     private final ResultPartitionType partitionType;
 
     /** The number of subpartitions. */
+    //子分区的数量。
     private final int numberOfSubpartitions;
 
     /** Connection index to identify this partition of intermediate result. */
+    //连接索引以标识此分区的中间结果。
     private final int connectionIndex;
 
     /** Whether the intermediate result is a broadcast result. */
+    //中间结果是否为广播结果。
     private final boolean isBroadcast;
 
     /**
      * Whether the distribution pattern of the intermediate result is {@link
      * DistributionPattern.ALL_TO_ALL}.
      */
+    //中间结果的分布模式是否为DistributionPattern.ALL_TO_ALL
     private final boolean isAllToAllDistribution;
 
     private final boolean isNumberOfPartitionConsumerUndefined;

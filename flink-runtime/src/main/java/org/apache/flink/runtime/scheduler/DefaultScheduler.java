@@ -501,13 +501,24 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
         executionDeployer.allocateSlotsAndDeploy(executionsToDeploy, requiredVersionByVertex);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 开始新的资源分配预留
+    */
     private void startReserveAllocation(
             ExecutionVertexID executionVertexId, AllocationID newAllocation) {
 
         // stop the previous allocation reservation if there is one
+        // 如果存在先前的分配预留，则停止它
+        // 注释：这是为了确保每次只有一个有效的资源分配预留存在
         stopReserveAllocation(executionVertexId);
-
+         // 将新的分配ID与执行顶点ID关联起来，表示该执行顶点已经预留了该资源分配
+        // 注释：通过Map结构存储这种关系，方便后续查找和管理
         reservedAllocationByExecutionVertex.put(executionVertexId, newAllocation);
+        // 更新预留资源分配的引用计数
+        // 如果新的分配ID之前没有被引用过，则将其计数设为1；否则，将其计数加1
+        // 注释：这是为了跟踪和管理资源的使用情况，确保资源在不再需要时被正确释放
         reservedAllocationRefCounters.compute(
                 newAllocation, (ignored, oldCount) -> oldCount == null ? 1 : oldCount + 1);
     }

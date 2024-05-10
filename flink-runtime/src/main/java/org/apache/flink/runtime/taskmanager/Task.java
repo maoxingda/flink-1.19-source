@@ -139,6 +139,12 @@ import static org.apache.flink.util.Preconditions.checkState;
  *
  * <p>Each Task is run by one dedicated thread.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * Task表示TaskManager上并行子任务的一次执行。Task包装Flink操作符（可能是用户函数）并运行它，
+ * 提供所有必要的服务，例如消费输入数据、生成结果（中间结果分区）以及与JobManager通信。
+*/
 public class Task
         implements Runnable, TaskSlotPayload, TaskActions, PartitionProducerStateProvider {
 
@@ -158,118 +164,153 @@ public class Task
     // ------------------------------------------------------------------------
 
     /** The job that the task belongs to. */
+    /** 任务所属的作业Id */
     private final JobID jobId;
 
     /** The vertex in the JobGraph whose code the task executes. */
+    /** 任务执行其代码的JobGraph中的顶点 */
     private final JobVertexID vertexId;
 
     /** The execution attempt of the parallel subtask. */
+    /** 并行子任务的执行尝试Id。 */
     private final ExecutionAttemptID executionId;
 
     /** ID which identifies the slot in which the task is supposed to run. */
+    /** 标识任务应该在其中运行的插槽的ID。 */
     private final AllocationID allocationId;
 
     /** The meta information of current job. */
+    /** 当前作业的元信息。 */
     private final JobInfo jobInfo;
 
     /** The meta information of current task. */
+    /** 当前任务的元信息。 */
     private final TaskInfo taskInfo;
 
     /** The name of the task, including subtask indexes. */
+    /** 任务的名称，包括子任务索引。 */
     private final String taskNameWithSubtask;
 
     /** The job-wide configuration object. */
+    /** 作业范围的配置对象。 */
     private final Configuration jobConfiguration;
 
     /** The task-specific configuration. */
+    /** 指定Task任务的配置 */
     private final Configuration taskConfiguration;
 
     /** The jar files used by this task. */
+    /** 此任务使用的jar文件。jar上传后会有一个唯一的key */
     private final Collection<PermanentBlobKey> requiredJarFiles;
 
     /** The classpaths used by this task. */
+    /** 此任务使用的类路径。 */
     private final Collection<URL> requiredClasspaths;
 
     /** The name of the class that holds the invokable code. */
+    /** 包含可调用代码的类的名称 */
     private final String nameOfInvokableClass;
 
     /** Access to task manager configuration and host names. */
+    /** 访问任务管理器配置和主机名。 */
     private final TaskManagerRuntimeInfo taskManagerConfig;
 
     /** The memory manager to be used by this task. */
+    /** 此任务要使用的内存管理器。 */
     private final MemoryManager memoryManager;
 
     /** Shared memory manager provided by the task manager. */
+    /** 任务管理器提供的共享内存管理器。 */
     private final SharedResources sharedResources;
 
     /** The I/O manager to be used by this task. */
+    /** 此任务要使用的I/O管理器 */
     private final IOManager ioManager;
 
     /** The BroadcastVariableManager to be used by this task. */
+    /** 此任务要使用的BroadcastVariableManager。 */
     private final BroadcastVariableManager broadcastVariableManager;
 
     private final TaskEventDispatcher taskEventDispatcher;
 
     /** Information provider for external resources. */
+    /** 外部资源的信息提供者。 */
     private final ExternalResourceInfoProvider externalResourceInfoProvider;
 
     /** The manager for state of operators running in this task/slot. */
+    /** Slot运行任务过程中操作状态的管理器。 */
     private final TaskStateManager taskStateManager;
 
     /**
      * Serialized version of the job specific execution configuration (see {@link ExecutionConfig}).
      */
+    /** 执行作业的序列化配置*/
     private final SerializedValue<ExecutionConfig> serializedExecutionConfig;
-
+    /**  Task运行时用来存储结果的接口 */
     private final ResultPartitionWriter[] partitionWriters;
-
+    /** 获取单个task产生的中间结果的一个或多个分区的输入。 */
     private final IndexedInputGate[] inputGates;
 
     /** Connection to the task manager. */
+    /** 用于Task与TaskExecution通信的接口。 */
     private final TaskManagerActions taskManagerActions;
 
     /** Input split provider for the task. */
+    /** 输入任务的拆分提供程序。 */
     private final InputSplitProvider inputSplitProvider;
 
     /** Checkpoint notifier used to communicate with the CheckpointCoordinator. */
+    /** 用于与CheckpointCoordinator通信的检查点通知程序 */
     private final CheckpointResponder checkpointResponder;
 
     /**
      * The gateway for operators to send messages to the operator coordinators on the Job Manager.
      */
+    /** Operator向作业管理器上的operator coordinators发送消息的网关 */
     private final TaskOperatorEventGateway operatorCoordinatorEventGateway;
 
     /** GlobalAggregateManager used to update aggregates on the JobMaster. */
+    /** GlobalAggregateManager用于更新JobMaster上的聚合。 */
     private final GlobalAggregateManager aggregateManager;
 
     /** The library cache, from which the task can request its class loader. */
+    /** 库缓存，任务可以从中请求其类加载器 */
     private final LibraryCacheManager.ClassLoaderHandle classLoaderHandle;
 
     /** The cache for user-defined files that the invokable requires. */
+    /** 可调用程序所需的用户定义文件的缓存 */
     private final FileCache fileCache;
 
     /** The service for kvState registration of this task. */
+    /** 此任务的kvState注册服务。 */
     private final KvStateService kvStateService;
 
     /** The registry of this task which enables live reporting of accumulators. */
+    /** 此任务的注册表，它启用累加器的实时报告。 */
     private final AccumulatorRegistry accumulatorRegistry;
 
     /** The thread that executes the task. */
+    /** 执行任务的线程 */
     private final Thread executingThread;
 
     /** Parent group for all metrics of this task. */
+    /** 此任务的所有度量的Group。 */
     private final TaskMetricGroup metrics;
 
     /** Partition producer state checker to request partition states from. */
+    /** 要向请求分区状态的分区生产者状态检查器。 */
     private final PartitionProducerStateChecker partitionProducerStateChecker;
 
     /** Executor to run future callbacks. */
+    /** 用于运行Future 回调的执行器 */
     private final Executor executor;
 
     /** Future that is completed once {@link #run()} exits. */
+    /** 异步变成对象用来保存任务完成的状态*/
     private final CompletableFuture<ExecutionState> terminationFuture = new CompletableFuture<>();
 
     /** The factory of channel state write request executor. */
+    /** 通道状态写入请求执行器的工厂 */
     private final ChannelStateWriteRequestExecutorFactory channelStateExecutorFactory;
 
     // ------------------------------------------------------------------------
@@ -279,29 +320,40 @@ public class Task
     // ------------------------------------------------------------------------
 
     /** atomic flag that makes sure the invokable is canceled exactly once upon error. */
+    /** 原子标志，确保可调用在出错时被取消一次。 */
     private final AtomicBoolean invokableHasBeenCanceled;
     /**
      * The invokable of this task, if initialized. All accesses must copy the reference and check
      * for null, as this field is cleared as part of the disposal logic.
      */
+    /** 此任务的可调用项（如果已初始化）。所有访问都必须复制引用并检查null，因为此字段作为处置逻辑的一部分被清除。 */
     @Nullable private volatile TaskInvokable invokable;
 
     /** The current execution state of the task. */
+    /** 任务的当前执行状态。 */
     private volatile ExecutionState executionState = ExecutionState.CREATED;
 
     /** The observed exception, in case the task execution failed. */
+    /** 观察到的异常，以防任务执行失败。 */
     private volatile Throwable failureCause;
 
     /** Initialized from the Flink configuration. May also be set at the ExecutionConfig */
+    /** 已从Flink配置初始化。也可以在ExecutionConfig中设置 */
     private long taskCancellationInterval;
 
     /** Initialized from the Flink configuration. May also be set at the ExecutionConfig */
+    /** 已从Flink配置初始化。也可以在ExecutionConfig中设置 */
     private long taskCancellationTimeout;
 
     /**
      * This class loader should be set as the context class loader for threads that may dynamically
      * load user code.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 这个类加载器应该设置为可以动态加载用户代码的线程的上下文类加载器。
+    */
     private UserCodeClassLoader userCodeClassLoader;
 
     /**

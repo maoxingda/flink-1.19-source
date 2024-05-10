@@ -45,6 +45,11 @@ import java.util.List;
  * A task deployment descriptor contains all the information necessary to deploy a task on a task
  * manager.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 任务部署描述符包含在任务管理器上部署任务所需的所有信息。
+*/
 public final class TaskDeploymentDescriptor implements Serializable {
 
     private static final long serialVersionUID = -3233562176034358530L;
@@ -101,21 +106,25 @@ public final class TaskDeploymentDescriptor implements Serializable {
     }
 
     /** Serialized job information if non-offloaded or <tt>PermanentBlobKey</tt> if offloaded. */
+    //序列化后的作业信息，包括作业id、作业名称、作业配置
     private final MaybeOffloaded<JobInformation> serializedJobInformation;
 
     /** Serialized task information if non-offloaded or <tt>PermanentBlobKey</tt> if offloaded. */
+    //序列化后的任务信息，包括任务id、任务名字、任务配置
     private final MaybeOffloaded<TaskInformation> serializedTaskInformation;
 
     /**
      * The job information, it isn't null when serializedJobInformation is offloaded and after
      * {@link #loadBigData}.
      */
+    //作业信息
     private transient JobInformation jobInformation;
 
     /**
      * The task information, it isn't null when serializedTaskInformation is offloaded and after
      * {@link #loadBigData}.
      */
+    //任务信息
     private transient TaskInformation taskInformation;
 
     /**
@@ -124,21 +133,27 @@ public final class TaskDeploymentDescriptor implements Serializable {
      * <p>NOTE: this is redundant to the information stored in {@link #serializedJobInformation} but
      * needed in order to restore offloaded data.
      */
+    //作业所属id
     private final JobID jobId;
 
     /** The ID referencing the attempt to execute the task. */
+    //尝试执行任务的ID
     private final ExecutionAttemptID executionId;
 
     /** The allocation ID of the slot in which the task shall be run. */
+    //运行任务的插槽的分配ID。
     private final AllocationID allocationId;
 
     /** The list of produced intermediate result partition deployment descriptors. */
+    //生成的中间结果分区部署描述符的列表。用于在任务端构造ResultPartitionWriter。
     private final List<ResultPartitionDeploymentDescriptor> producedPartitions;
 
     /** The list of consumed intermediate result partitions. */
+    //已使用的中间结果分区的列表。负责数据的输入
     private final List<InputGateDeploymentDescriptor> inputGates;
 
     /** Information to restore the task. This can be null if there is no state to restore. */
+    //用于恢复任务的信息。如果没有要恢复的状态，则此值可能为null。
     @Nullable private final JobManagerTaskRestore taskRestore;
 
     public TaskDeploymentDescriptor(

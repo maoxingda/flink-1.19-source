@@ -287,43 +287,62 @@ public class Execution
      * @param logicalSlot to assign to this execution
      * @return true if the slot could be assigned to the execution, otherwise false
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试将给定的插槽分配给执行。只有当Execution处于SCHEDULED状态时，分配才有效。如果可以分配资源，则返回true。
+    */
     public boolean tryAssignResource(final LogicalSlot logicalSlot) {
-
+        // 断言当前线程为JobMaster的主线程
         assertRunningInJobMasterMainThread();
-
+        // 检查逻辑槽位是否为空
         checkNotNull(logicalSlot);
 
         // only allow to set the assigned resource in state SCHEDULED or CREATED
         // note: we also accept resource assignment when being in state CREATED for testing purposes
+        // 仅允许在SCHEDULED或CREATED状态下设置已分配的资源
         if (state == SCHEDULED || state == CREATED) {
+            // 如果当前没有分配资源
             if (assignedResource == null) {
+                // 分配资源给当前逻辑槽位
                 assignedResource = logicalSlot;
+                // 尝试在逻辑槽位上分配负载
                 if (logicalSlot.tryAssignPayload(this)) {
                     // check for concurrent modification (e.g. cancelling call)
+                    // 检查并发修改（例如，取消调用）
                     if ((state == SCHEDULED || state == CREATED)
                             && !taskManagerLocationFuture.isDone()) {
+                        // 如果分配成功且TaskManager位置还未确定，则完成Future
                         taskManagerLocationFuture.complete(logicalSlot.getTaskManagerLocation());
+                        // 分配ID用于标识此分配
                         assignedAllocationID = logicalSlot.getAllocationId();
+                        // 更新最新的先前槽位分配信息
                         getVertex()
                                 .setLatestPriorSlotAllocation(
                                         assignedResource.getTaskManagerLocation(),
                                         logicalSlot.getAllocationId());
+                        // 返回成功
                         return true;
                     } else {
-                        // free assigned resource and return false
+                        // free assigned resource and return false、
+                        // 释放已分配的资源并返回失败
                         assignedResource = null;
                         return false;
                     }
                 } else {
+                    // 负载分配失败，释放已分配的资源并返回失败
                     assignedResource = null;
                     return false;
                 }
             } else {
                 // the slot already has another slot assigned
+                // 槽位已经分配给了另一个资源，返回失败
                 return false;
             }
         } else {
             // do not allow resource assignment if we are not in state SCHEDULED
+            // 如果不在SCHEDULED状态下，不允许资源分配
+            // 返回失败
             return false;
         }
     }
@@ -430,79 +449,108 @@ public class Execution
     // --------------------------------------------------------------------------------------------
     //  Actions
     // --------------------------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册分区
+    */
     public CompletableFuture<Void> registerProducedPartitions(TaskManagerLocation location) {
-
+        // 确保当前代码运行在JobMaster的主线程中
         assertRunningInJobMasterMainThread();
-
+        // 使用FutureUtils的thenApplyAsyncIfNotDone方法异步处理registerProducedPartitions的结果
         return FutureUtils.thenApplyAsyncIfNotDone(
                 registerProducedPartitions(vertex, location, attemptId),
+                // 使用JobMaster的主线程执行器来异步处理结果
                 vertex.getExecutionGraphAccessor().getJobMasterMainThreadExecutor(),
                 producedPartitionsCache -> {
+                    // 更新本地的producedPartitions变量
                     producedPartitions = producedPartitionsCache;
-
+                    // 检查当前Job的状态
                     if (getState() == SCHEDULED) {
+                        // 如果状态是SCHEDULED，则开始追踪这些分区
                         startTrackingPartitions(
                                 location.getResourceID(), producedPartitionsCache.values());
                     } else {
+                        // 如果不是SCHEDULED状态，则记录一条信息并释放这些分区
                         LOG.info(
                                 "Discarding late registered partitions for {} task {}.",
                                 getState(),
                                 attemptId);
                         for (ResultPartitionDeploymentDescriptor desc :
                                 producedPartitionsCache.values()) {
+                            // 遍历每个分区描述，并通过ShuffleMaster释放它们
                             getVertex()
                                     .getExecutionGraphAccessor()
                                     .getShuffleMaster()
                                     .releasePartitionExternally(desc.getShuffleDescriptor());
                         }
                     }
+                    // 由于只是在更新状态和释放分区，不需要返回任何结果，所以返回null
                     return null;
                 });
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 由给定的ExecutionVertex产生的分区，并返回一个CompletableFuture，该Future在完成后将包含一个Map，
+     * 其中键是IntermediateResultPartitionID，值是ResultPartitionDeploymentDescriptor。
+    */
     private static CompletableFuture<
                     Map<IntermediateResultPartitionID, ResultPartitionDeploymentDescriptor>>
             registerProducedPartitions(
                     ExecutionVertex vertex,
                     TaskManagerLocation location,
                     ExecutionAttemptID attemptId) {
-
+        // 创建一个ProducerDescriptor，表示生产者，其中包含了TaskManager的位置和尝试的ID
         ProducerDescriptor producerDescriptor = ProducerDescriptor.create(location, attemptId);
-
+        // 获取ExecutionVertex产生的所有分区的集合
         Collection<IntermediateResultPartition> partitions =
                 vertex.getProducedPartitions().values();
+        // 创建一个新的ArrayList，用于存储每个分区注册操作的CompletableFuture
         Collection<CompletableFuture<ResultPartitionDeploymentDescriptor>> partitionRegistrations =
                 new ArrayList<>(partitions.size());
-
+        // 遍历每个分区
         for (IntermediateResultPartition partition : partitions) {
+            // 从分区创建一个PartitionDescriptor
             PartitionDescriptor partitionDescriptor = PartitionDescriptor.from(partition);
+            // 获取该分区的最大并行度
             int maxParallelism = getPartitionMaxParallelism(partition);
+            // 调用ShuffleMaster的registerPartitionWithProducer方法，开始注册分区和生产者
+            // 此方法返回一个CompletableFuture，它将在分区成功注册后完成，并包含一个ShuffleDescriptor
             CompletableFuture<? extends ShuffleDescriptor> shuffleDescriptorFuture =
                     vertex.getExecutionGraphAccessor()
                             .getShuffleMaster()
                             .registerPartitionWithProducer(
                                     vertex.getJobId(), partitionDescriptor, producerDescriptor);
-
+             // 当shuffleDescriptorFuture完成时，使用它的结果创建一个ResultPartitionDeploymentDescriptor，
+            // 并将其封装在一个新的CompletableFuture中
             CompletableFuture<ResultPartitionDeploymentDescriptor> partitionRegistration =
                     shuffleDescriptorFuture.thenApply(
                             shuffleDescriptor ->
                                     new ResultPartitionDeploymentDescriptor(
-                                            partitionDescriptor,
-                                            shuffleDescriptor,
-                                            maxParallelism));
+                                            partitionDescriptor, // 分区的描述
+                                            shuffleDescriptor, // shuffle描述
+                                            maxParallelism)); // 最大并行度
+            // 将新创建的CompletableFuture添加到集合中
             partitionRegistrations.add(partitionRegistration);
         }
 
+        // 使用FutureUtils.combineAll将所有的partitionRegistrations合并成一个CompletableFuture，
+        // 这个新的Future将在所有分区都注册完成后才完成
+        // 然后，它应用一个函数，该函数将所有ResultPartitionDeploymentDescriptor收集到一个Map中
         return FutureUtils.combineAll(partitionRegistrations)
                 .thenApply(
                         rpdds -> {
+                            // 创建一个具有预期大小的LinkedHashMap来存储结果
                             Map<IntermediateResultPartitionID, ResultPartitionDeploymentDescriptor>
                                     producedPartitions =
                                             CollectionUtil.newLinkedHashMapWithExpectedSize(
                                                     partitions.size());
+                            // 遍历结果，并将它们添加到Map中
                             rpdds.forEach(
                                     rpdd -> producedPartitions.put(rpdd.getPartitionId(), rpdd));
+                            // 返回包含所有已注册分区的Map
                             return producedPartitions;
                         });
     }
@@ -516,11 +564,19 @@ public class Execution
      *
      * @throws JobException if the execution cannot be deployed to the assigned resource
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 部署任务到之前申请的资源上
+    */
     public void deploy() throws JobException {
+        // 检查在JobMaster的主线程中运行
         assertRunningInJobMasterMainThread();
 
+        // 获取已分配的资源，即逻辑槽位
         final LogicalSlot slot = assignedResource;
 
+        // 检查资源是否已分配，如果没有分配则抛出异常
         checkNotNull(
                 slot,
                 "In order to deploy the execution we first have to assign a resource via tryAssignResource.");
@@ -528,26 +584,34 @@ public class Execution
         // Check if the TaskManager died in the meantime
         // This only speeds up the response to TaskManagers failing concurrently to deployments.
         // The more general check is the rpcTimeout of the deployment call
+        // 检查在部署过程中TaskManager是否仍然存活
+        // 这可以加速对并发部署时TaskManager失败的响应
+        // 更全面的检查是部署调用的rpcTimeout
         if (!slot.isAlive()) {
             throw new JobException("Target slot (TaskManager) for deployment is no longer alive.");
         }
 
         // make sure exactly one deployment call happens from the correct state
+        // 确保从正确的状态只发生一个部署调用
         ExecutionState previous = this.state;
         if (previous == SCHEDULED) {
+            // 如果状态转换成功，表示当前实例开始部署
             if (!transitionState(previous, DEPLOYING)) {
                 // race condition, someone else beat us to the deploying call.
                 // this should actually not happen and indicates a race somewhere else
+               //修改失败抛出异常
                 throw new IllegalStateException(
                         "Cannot deploy task: Concurrent deployment call race.");
             }
         } else {
             // vertex may have been cancelled, or it was already scheduled
+            // 顶点可能已被取消，或者已经处于调度状态
+            //之前状态不等于SCHEDULED抛出异常
             throw new IllegalStateException(
                     "The vertex must be in SCHEDULED state to be deployed. Found state "
                             + previous);
         }
-
+        // 检查当前实例是否已分配给该Slot
         if (this != slot.getPayload()) {
             throw new IllegalStateException(
                     String.format(
@@ -557,7 +621,9 @@ public class Execution
         try {
 
             // race double check, did we fail/cancel and do we need to release the slot?
+            //判断状态是否等于DEPLOYING
             if (this.state != DEPLOYING) {
+                //释放Slot
                 slot.releaseSlot(
                         new FlinkException(
                                 "Actual state of execution "
@@ -567,7 +633,7 @@ public class Execution
                                         + ") does not match expected state DEPLOYING."));
                 return;
             }
-
+            // 记录日志信息，开始部署任务
             LOG.info(
                     "Deploying {} (attempt #{}) with attempt id {} and vertex id {} to {} with allocation id {}",
                     vertex.getTaskNameWithSubtaskIndex(),
@@ -576,40 +642,47 @@ public class Execution
                     vertex.getID(),
                     getAssignedResourceLocation(),
                     slot.getAllocationId());
-
+           // 获取任务部署描述符的工厂，用于创建一个新的部署描述符
+           // deployment 变量将保存创建的部署描述符实例
             final TaskDeploymentDescriptor deployment =
                     vertex.getExecutionGraphAccessor()
                             .getTaskDeploymentDescriptorFactory()
                             .createDeploymentDescriptor(
-                                    this,
-                                    slot.getAllocationId(),
-                                    taskRestore,
-                                    producedPartitions.values());
+                                    this, // 当前对象（可能是任务的某个实例）
+                                    slot.getAllocationId(), // 分配给任务的槽的ID
+                                    taskRestore,  // 任务恢复相关的对象（此处设置为null以便进行垃圾回收）
+                                    producedPartitions.values());// 产生的分区值
 
             // null taskRestore to let it be GC'ed
             taskRestore = null;
-
+            // 获取任务管理器网关，用于与TaskManager进行通信
             final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
-
+           // 获取作业主线程执行器，用于在主线程上执行某些操作
             final ComponentMainThreadExecutor jobMasterMainThreadExecutor =
                     vertex.getExecutionGraphAccessor().getJobMasterMainThreadExecutor();
-
+            // 通知当前顶点（vertex）一个待处理的部署
             getVertex().notifyPendingDeployment(this);
             // We run the submission in the future executor so that the serialization of large TDDs
             // does not block
             // the main thread and sync back to the main thread once submission is completed.
+            // 使用异步执行器提交任务，以避免序列化大型TDDs（TaskDeploymentDescriptor）时阻塞主线程
+            // 一旦提交完成，同步回主线程
             CompletableFuture.supplyAsync(
                             () -> taskManagerGateway.submitTask(deployment, rpcTimeout), executor)
                     .thenCompose(Function.identity())
                     .whenCompleteAsync(
                             (ack, failure) -> {
                                 if (failure == null) {
+                                    // 如果提交成功，通知顶点已完成部署,之前pending 现在部署成功移除
                                     vertex.notifyCompletedDeployment(this);
                                 } else {
+                                    // 提取实际的异常信息
                                     final Throwable actualFailure =
                                             ExceptionUtils.stripCompletionException(failure);
 
                                     if (actualFailure instanceof TimeoutException) {
+                                        // 如果异常是超时异常，则创建一个新的异常并标记任务失败
+                                        // 获取带有子任务索引的任务名
                                         String taskname =
                                                 vertex.getTaskNameWithSubtaskIndex()
                                                         + " ("
@@ -626,12 +699,14 @@ public class Execution
                                                                 + rpcTimeout,
                                                         actualFailure));
                                     } else {
+                                        // 对于其他类型的异常，直接标记任务失败
                                         markFailed(actualFailure);
                                     }
                                 }
                             },
+                            // 使用作业主线程执行器来处理完成回调
                             jobMasterMainThreadExecutor);
-
+        // 捕获任何在以上代码中抛出的异常，并标记任务失败
         } catch (Throwable t) {
             markFailed(t);
         }

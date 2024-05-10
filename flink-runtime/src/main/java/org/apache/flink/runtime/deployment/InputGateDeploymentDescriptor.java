@@ -56,6 +56,11 @@ import static org.apache.flink.util.Preconditions.checkState;
  *
  * @see SingleInputGate
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 单个输入门实例的部署描述符。
+*/
 public class InputGateDeploymentDescriptor implements Serializable {
 
     private static final long serialVersionUID = -7143441863165366704L;
@@ -64,9 +69,11 @@ public class InputGateDeploymentDescriptor implements Serializable {
      * intermediate result specified by this ID. This ID also identifies the input gate at the
      * consuming task.
      */
+    //已消耗的中间结果的ID。每个输入消耗由该ID指定的中间结果的分区。该ID还标识消耗任务中的输入。
     private final IntermediateDataSetID consumedResultId;
 
     /** The type of the partition the input gate is going to consume. */
+    //输入要使用的分区的类型。
     private final ResultPartitionType consumedPartitionType;
 
     /**
@@ -74,15 +81,19 @@ public class InputGateDeploymentDescriptor implements Serializable {
      * depends on the {@link DistributionPattern} and the subtask indices of the producing and
      * consuming task. The range is inclusive.
      */
+    //每个已消耗分区的已消耗子分区的索引范围。此索引取决于 DistributionPattern 以及生产任务和消耗任务的子任务索引。范围包括在内。
     private final IndexRange consumedSubpartitionIndexRange;
 
     /** An input channel for each consumed subpartition. */
+    //每个消耗的子分区的输入通道。
     private transient ShuffleDescriptor[] inputChannels;
 
     /** Serialized value of shuffle descriptors. */
+    //Shuffle描述符的序列化值。
     private final List<MaybeOffloaded<ShuffleDescriptorGroup>> serializedInputChannels;
 
     /** Number of input channels. */
+    //输入通道数
     private final int numberOfInputChannels;
 
     @VisibleForTesting

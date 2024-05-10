@@ -38,6 +38,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * a result partition. It needs to be associated with the producing task as well to ensure correct
  * tracking of failed/restarted tasks.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 生成的 IntermediateResultPartition 的运行时标识符。
+*/
 public final class ResultPartitionID implements Serializable {
 
     private static final long serialVersionUID = -902516386203787826L;

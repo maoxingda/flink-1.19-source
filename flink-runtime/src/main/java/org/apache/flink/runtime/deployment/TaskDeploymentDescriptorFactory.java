@@ -136,32 +136,42 @@ public class TaskDeploymentDescriptorFactory {
                 createInputGateDeploymentDescriptors(executionVertex));
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构建InputGateDeploymentDescriptor
+    */
     private List<InputGateDeploymentDescriptor> createInputGateDeploymentDescriptors(
             ExecutionVertex executionVertex) throws IOException, ClusterDatasetCorruptedException {
-
+        // 获取执行顶点所消费的所有分区组
         List<ConsumedPartitionGroup> consumedPartitionGroups =
                 executionVertex.getAllConsumedPartitionGroups();
+        // 初始化一个与消费分区组数量相同的InputGateDeploymentDescriptor列表
         List<InputGateDeploymentDescriptor> inputGates =
                 new ArrayList<>(consumedPartitionGroups.size());
-
+        // 遍历每一个消费分区组
         for (ConsumedPartitionGroup consumedPartitionGroup : consumedPartitionGroups) {
             // If the produced partition has multiple consumers registered, we
             // need to request the one matching our sub task index.
             // TODO Refactor after removing the consumers from the intermediate result partitions
-
+            // 如果产生的分区有多个消费者注册，我们需要请求与我们子任务索引匹配的那一个
+            // TODO: 在移除中间结果分区的消费者之后进行重构
+            // 获取被消费的中间结果
             IntermediateResult consumedIntermediateResult =
                     executionVertex
                             .getExecutionGraphAccessor()
                             .getResultPartitionOrThrow(consumedPartitionGroup.getFirst())
                             .getIntermediateResult();
-
+            // 获取结果的ID
             IntermediateDataSetID resultId = consumedIntermediateResult.getId();
+            // 获取分区类型
             ResultPartitionType partitionType = consumedIntermediateResult.getResultType();
+            // 获取子分区的索引范围
             IndexRange subpartitionRange =
                     executionVertex
                             .getExecutionVertexInputInfo(resultId)
                             .getSubpartitionIndexRange();
-
+            // 创建一个新的InputGateDeploymentDescriptor并添加到列表中
             inputGates.add(
                     new InputGateDeploymentDescriptor(
                             resultId,
@@ -173,13 +183,14 @@ public class TaskDeploymentDescriptorFactory {
                                     consumedPartitionGroup,
                                     executionVertex.getExecutionGraphAccessor())));
         }
-
+        // 尝试获取集群分区shuffle描述符的映射
         final Map<IntermediateDataSetID, ShuffleDescriptorAndIndex[]>
                 consumedClusterPartitionShuffleDescriptors;
         try {
             consumedClusterPartitionShuffleDescriptors =
                     getClusterPartitionShuffleDescriptors(executionVertex);
         } catch (Throwable e) {
+            // 如果在获取过程中发生异常，则抛出ClusterDatasetCorruptedException，并附带相关信息
             throw new ClusterDatasetCorruptedException(
                     e,
                     executionVertex
@@ -187,12 +198,13 @@ public class TaskDeploymentDescriptorFactory {
                             .getJobVertex()
                             .getIntermediateDataSetIdsToConsume());
         }
-
+        //循环消费分区描述符
         for (Map.Entry<IntermediateDataSetID, ShuffleDescriptorAndIndex[]> entry :
                 consumedClusterPartitionShuffleDescriptors.entrySet()) {
             // For FLIP-205, the JobGraph generating side ensure that the cluster partition is
             // produced with only one subpartition. Therefore, we always consume the partition with
             // subpartition index of 0.
+            //构建InputGateDeploymentDescriptor并添加到集合中
             inputGates.add(
                     new InputGateDeploymentDescriptor(
                             entry.getKey(),
@@ -200,7 +212,7 @@ public class TaskDeploymentDescriptorFactory {
                             0,
                             entry.getValue()));
         }
-
+        // 返回InputGateDeploymentDescriptor的列表
         return inputGates;
     }
 

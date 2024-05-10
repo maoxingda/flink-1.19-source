@@ -112,6 +112,11 @@ public class SingleLogicalSlot implements LogicalSlot, PhysicalSlot.Payload {
         return state == State.ALIVE;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试将有效负载分配给此插槽。只能分配一次单个有效载荷。
+     */
     @Override
     public boolean tryAssignPayload(Payload payload) {
         return PAYLOAD_UPDATER.compareAndSet(this, null, payload);

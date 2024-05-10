@@ -43,6 +43,11 @@ import java.util.concurrent.CompletableFuture;
  * ResultPartitionWriter#fail(Throwable)} still needs to be called afterwards to fully release all
  * resources associated the partition and propagate failure cause to the consumer if possible.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * Task运行时用来存储结果的接口
+*/
 public interface ResultPartitionWriter extends AutoCloseable, AvailabilityProvider {
 
     /** Setup partition, potentially heavy-weight, blocking operation comparing to just creation. */

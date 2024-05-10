@@ -28,14 +28,20 @@ import java.net.InetSocketAddress;
 import java.util.Optional;
 
 /** Default implementation of {@link ShuffleDescriptor} for {@link NettyShuffleMaster}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 结果分区资源的shuffle部署描述符的接口。
+*/
 public class NettyShuffleDescriptor implements ShuffleDescriptor {
 
     private static final long serialVersionUID = 852181945034989215L;
-
+    //资源id
     private final ResourceID producerLocation;
 
+    //连接到用于Shuffle交换的分区生产者的信息。与上游分区的链接信息
     private final PartitionConnectionInfo partitionConnectionInfo;
-
+    //IntermediateResultPartition 的运行时标识符。
     private final ResultPartitionID resultPartitionID;
 
     public NettyShuffleDescriptor(
@@ -69,6 +75,7 @@ public class NettyShuffleDescriptor implements ShuffleDescriptor {
     }
 
     /** Information for connection to partition producer for shuffle exchange. */
+    //连接到用于Shuffle交换的分区生产者的信息。
     public interface PartitionConnectionInfo extends Serializable {
         InetSocketAddress getAddress();
 

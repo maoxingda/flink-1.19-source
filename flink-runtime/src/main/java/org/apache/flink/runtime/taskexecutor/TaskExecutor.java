@@ -636,14 +636,21 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
     // Task lifecycle RPCs
     // ----------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @Override
     public CompletableFuture<Acknowledge> submitTask(
             TaskDeploymentDescriptor tdd, JobMasterId jobMasterId, Time timeout) {
 
         try {
+            // 获取任务的JobID和执行尝试ID
             final JobID jobId = tdd.getJobId();
+            //获取executionAttemptID
             final ExecutionAttemptID executionAttemptID = tdd.getExecutionAttemptId();
-
+            // 从JobTable中获取与jobId关联的JobManager连接
             final JobTable.Connection jobManagerConnection =
                     jobTable.getConnection(jobId)
                             .orElseThrow(
@@ -657,7 +664,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                                         log.debug(message);
                                         return new TaskSubmissionException(message);
                                     });
-
+            // 检查JobManager的leader ID是否与期望的leader ID匹配
             if (!Objects.equals(jobManagerConnection.getJobMasterId(), jobMasterId)) {
                 final String message =
                         "Rejecting the task submission because the job manager leader id "
@@ -669,7 +676,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                 log.debug(message);
                 throw new TaskSubmissionException(message);
             }
-
+            // 尝试标记任务槽为活跃状态，以分配任务
             if (!taskSlotTable.tryMarkSlotActive(jobId, tdd.getAllocationId())) {
                 final String message =
                         "No task slot allocated for job ID "
@@ -682,6 +689,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             }
 
             // re-integrate offloaded data and deserialize shuffle descriptors
+            // 重新整合卸载的数据并反序列化shuffle描述符
             try {
                 tdd.loadBigData(
                         taskExecutorBlobService.getPermanentBlobService(),
@@ -694,12 +702,14 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             }
 
             // deserialize the pre-serialized information
+            // 反序列化预序列化的信息
             final JobInformation jobInformation;
             final TaskInformation taskInformation;
             try {
                 jobInformation = tdd.getJobInformation();
                 taskInformation = tdd.getTaskInformation();
             } catch (IOException | ClassNotFoundException e) {
+                // 处理TaskSubmissionException异常，并可能返回错误响应
                 throw new TaskSubmissionException(
                         "Could not deserialize the job or task information.", e);
             }

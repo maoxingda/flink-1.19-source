@@ -75,6 +75,11 @@ public interface LogicalSlot {
      *
      * @return True if the slot is alive, otherwise false if the slot is released
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 如果插槽处于活动状态且尚未释放，则为True。
+    */
     boolean isAlive();
 
     /**
@@ -83,6 +88,11 @@ public interface LogicalSlot {
      * @param payload to be assigned to this slot.
      * @return true if the payload could be assigned, otherwise false
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试将有效负载分配给此插槽。只能分配一次单个有效载荷。
+    */
     boolean tryAssignPayload(Payload payload);
 
     /**

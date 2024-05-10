@@ -46,6 +46,11 @@ import java.util.Optional;
  * In order to completely remove the {@link Job} from the {@link JobTable}, one needs to call {@link
  * Job#close} which also closes the associated {@link JobTable.JobServices} instance.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * JobTable 任务是管理TaskExecutor上作业的生命周期。
+*/
 public interface JobTable extends AutoCloseable {
 
     /**

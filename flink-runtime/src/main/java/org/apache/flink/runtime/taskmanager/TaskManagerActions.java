@@ -22,6 +22,11 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.taskexecutor.TaskExecutor;
 
 /** Interface for the communication of the {@link Task} with the {@link TaskExecutor}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于Task与TaskExecution通信的接口。
+*/
 public interface TaskManagerActions {
 
     /**

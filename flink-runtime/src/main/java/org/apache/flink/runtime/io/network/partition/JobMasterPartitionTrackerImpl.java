@@ -76,18 +76,26 @@ public class JobMasterPartitionTrackerImpl
         this.clusterPartitionShuffleDescriptors = new HashMap<>();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 用于开始跟踪一个分区。它接收两个参数：产生分区的任务执行器ID和分区部署描述符。
+    */
     @Override
     public void startTrackingPartition(
             ResourceID producingTaskExecutorId,
             ResultPartitionDeploymentDescriptor resultPartitionDeploymentDescriptor) {
+        // 使用Preconditions库来确保传入的参数不为空
         Preconditions.checkNotNull(producingTaskExecutorId);
+        // 如果resultPartitionDeploymentDescriptor为空，则抛出NullPointerException
         Preconditions.checkNotNull(resultPartitionDeploymentDescriptor);
 
         // non-releaseByScheduler partitions don't require explicit partition release calls.
+        // 如果分区类型不是由调度器释放的类型，则不需要显式调用分区释放方法，直接返回
         if (!resultPartitionDeploymentDescriptor.getPartitionType().isReleaseByScheduler()) {
             return;
         }
-
+        // 获取分区ID，该ID是从结果分区部署描述符中的Shuffle描述符中获取的
         final ResultPartitionID resultPartitionId =
                 resultPartitionDeploymentDescriptor.getShuffleDescriptor().getResultPartitionID();
 
@@ -95,6 +103,13 @@ public class JobMasterPartitionTrackerImpl
                 producingTaskExecutorId, resultPartitionId, resultPartitionDeploymentDescriptor);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * PartitionTable<K> partitionTable;
+     * Map<ResultPartitionID, PartitionInfo<K, M>> partitionInfos;
+     * 该方法用于开始跟踪一个分区，当分区在对应的任务管理器（TM）上占用资源时，它将被注册到'partitionTable'中
+    */
     @Override
     void startTrackingPartition(
             ResourceID key,
@@ -102,10 +117,16 @@ public class JobMasterPartitionTrackerImpl
             ResultPartitionDeploymentDescriptor metaInfo) {
         // A partition is registered into 'partitionTable' only when it occupies
         // resource on the corresponding TM;
+        // 检查元信息中是否包含本地资源存储的描述符ResourceID
         if (metaInfo.getShuffleDescriptor().storesLocalResourcesOn().isPresent()) {
+            // 使用提供的资源ID和结果分区ID来开始跟踪分区
+            // 这里假设'partitionTable'是一个能够处理分区跟踪的表或类似的数据结构
             partitionTable.startTrackingPartitions(
                     key, Collections.singletonList(resultPartitionId));
         }
+        // 将分区的信息存储到'partitionInfos'中，以便后续使用
+        // 创建一个新的PartitionInfo对象，并关联资源ID和元信息
+        // partitionInfos很可能是一个Map，用于存储分区ID与分区信息的映射关系
         partitionInfos.put(resultPartitionId, new PartitionInfo<>(key, metaInfo));
     }
 

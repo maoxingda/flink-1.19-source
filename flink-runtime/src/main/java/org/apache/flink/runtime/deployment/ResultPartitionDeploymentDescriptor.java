@@ -35,14 +35,19 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *
  * @see ResultPartition
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 结果分区的部署描述符。
+*/
 public class ResultPartitionDeploymentDescriptor implements Serializable {
 
     private static final long serialVersionUID = 6343547936086963705L;
 
     private final PartitionDescriptor partitionDescriptor;
-
+    //结果分区资源的shuffle部署描述符的接口。
     private final ShuffleDescriptor shuffleDescriptor;
-
+    //最大并行度
     private final int maxParallelism;
 
     public ResultPartitionDeploymentDescriptor(

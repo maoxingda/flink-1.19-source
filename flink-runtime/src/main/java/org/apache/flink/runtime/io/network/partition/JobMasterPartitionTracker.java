@@ -45,6 +45,11 @@ public interface JobMasterPartitionTracker
      * @param producingTaskExecutorId ID of task executor on which the partition is produced
      * @param resultPartitionDeploymentDescriptor deployment descriptor of the partition
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 开始跟踪给定任务执行器ID的给定分区。
+    */
     void startTrackingPartition(
             ResourceID producingTaskExecutorId,
             ResultPartitionDeploymentDescriptor resultPartitionDeploymentDescriptor);
