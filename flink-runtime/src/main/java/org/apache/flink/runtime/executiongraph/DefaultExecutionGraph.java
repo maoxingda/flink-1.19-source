@@ -1472,24 +1472,39 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     //  Callbacks and Callback Utilities
     // --------------------------------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 更新与给定状态转换相关的任务执行状态。
+     * @param state 包含任务执行状态转换信息的对象
+     * @return 如果成功更新任务执行状态，则返回true；否则返回false
+    */
     @Override
     public boolean updateState(TaskExecutionStateTransition state) {
+        // 这是为了确保状态更新操作在正确的线程环境中执行
         assertRunningInJobMasterMainThread();
+        // 从currentExecutions映射中获取与给定状态转换的ID关联的Execution对象
         final Execution attempt = currentExecutions.get(state.getID());
 
         if (attempt != null) {
             try {
+                // 尝试更新Execution对象的状态
                 final boolean stateUpdated = updateStateInternal(state, attempt);
+                //可能需要释放与Execution对象关联的分区组
                 maybeReleasePartitionGroupsFor(attempt);
+                // 如果状态成功更新，则返回true
                 return stateUpdated;
             } catch (Throwable t) {
+                //处理异常
                 ExceptionUtils.rethrowIfFatalErrorOrOOM(t);
 
                 // failures during updates leave the ExecutionGraph inconsistent
                 failGlobal(t);
+                // 返回false表示状态更新失败
                 return false;
             }
         } else {
+            // 返回false表示状态更新失败
             return false;
         }
     }
@@ -1539,42 +1554,66 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
                 return false;
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据Execution的状态，释放与其相关的分区组。
+     * @param attempt 已完成的Execution对象
+    */
     private void maybeReleasePartitionGroupsFor(final Execution attempt) {
+        // 获取Execution对应的ExecutionVertex的ID
         final ExecutionVertexID finishedExecutionVertex = attempt.getVertex().getID();
-
+        // 检查Execution的状态
         if (attempt.getState() == ExecutionState.FINISHED) {
+            // 如果Execution状态为已完成（FINISHED）
+            // 调用partitionGroupReleaseStrategy的vertexFinished方法来获取可以释放的分区组列表
             final List<ConsumedPartitionGroup> releasablePartitionGroups =
                     partitionGroupReleaseStrategy.vertexFinished(finishedExecutionVertex);
+            // 释放这些分区组
             releasePartitionGroups(releasablePartitionGroups);
         } else {
+            // 调用partitionGroupReleaseStrategy的vertexUnfinished方法，更新分区组的状态或进行其他相关处理
             partitionGroupReleaseStrategy.vertexUnfinished(finishedExecutionVertex);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 释放指定的分区组。
+     * @param releasablePartitionGroups 准备释放的分区组列表
+    */
     private void releasePartitionGroups(
             final List<ConsumedPartitionGroup> releasablePartitionGroups) {
-
+        // 如果存在可以释放的分区组
         if (releasablePartitionGroups.size() > 0) {
+            // 创建一个用于存储可释放分区ID的列表
             final List<ResultPartitionID> releasablePartitionIds = new ArrayList<>();
 
             // Remove the cache of ShuffleDescriptors when ConsumedPartitionGroups are released
+            // 遍历所有准备释放的分区组
             for (ConsumedPartitionGroup releasablePartitionGroup : releasablePartitionGroups) {
+                // 获取与分区组关联的IntermediateResult
                 IntermediateResult totalResult =
                         checkNotNull(
                                 intermediateResults.get(
                                         releasablePartitionGroup.getIntermediateDataSetID()));
+                // 遍历分区组中的每个分区ID
                 for (IntermediateResultPartitionID partitionId : releasablePartitionGroup) {
+                    // 获取对应的IntermediateResultPartition
                     IntermediateResultPartition partition =
                             totalResult.getPartitionById(partitionId);
+                    // 标记该分区组为可释放状态
                     partition.markPartitionGroupReleasable(releasablePartitionGroup);
+                    // 检查该分区是否可以被释放
                     if (partition.canBeReleased()) {
+                        // 如果可以，创建ResultPartitionID并添加到可释放的分区ID列表中
                         releasablePartitionIds.add(createResultPartitionId(partitionId));
                     }
                 }
+                // 清除与分区组相关的缓存信息
                 totalResult.clearCachedInformationForPartitionGroup(releasablePartitionGroup);
             }
-
+            // 停止跟踪并释放所有可释放的分区
             partitionTracker.stopTrackingAndReleasePartitions(releasablePartitionIds);
         }
     }

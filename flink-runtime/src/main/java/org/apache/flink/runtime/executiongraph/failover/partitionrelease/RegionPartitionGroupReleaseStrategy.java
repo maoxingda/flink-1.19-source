@@ -100,20 +100,34 @@ public class RegionPartitionGroupReleaseStrategy
         return newConsumerRegionGroups;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理ExecutionVertex完成时的逻辑，并返回可以释放的分区组列表。
+     * @param finishedVertex 已完成的ExecutionVertex的ID
+     * @return 可以释放的分区组列表，如果无分区组可释放则返回空列表
+    */
     @Override
     public List<ConsumedPartitionGroup> vertexFinished(final ExecutionVertexID finishedVertex) {
+        // 获取与已完成的ExecutionVertex相关联的PipelinedRegionExecutionView
         final PipelinedRegionExecutionView regionExecutionView =
                 getPipelinedRegionExecutionViewForVertex(finishedVertex);
+        // 通知该视图ExecutionVertex已完成，从集合中移除掉ExecutionVertexID
         regionExecutionView.vertexFinished(finishedVertex);
 
+        // 检查该视图是否已完成（可能是基于它所包含的ExecutionVertex的状态）
         if (regionExecutionView.isFinished()) {
+            // 如果视图已完成，获取与ExecutionVertex相关联的SchedulingPipelinedRegion
             final SchedulingPipelinedRegion pipelinedRegion =
                     schedulingTopology.getPipelinedRegionOfVertex(finishedVertex);
+            //最终从Set<SchedulingPipelinedRegion> unfinishedConsumerRegions remove掉 SchedulingPipelinedRegion
             consumerRegionGroupExecutionViewMaintainer.regionFinished(pipelinedRegion);
-
+             // 从SchedulingPipelinedRegion中获取所有由调度器消费并准备释放的分区组
+            // 然后通过filterReleasablePartitionGroups方法过滤出真正可以释放的分区组
             return filterReleasablePartitionGroups(
                     pipelinedRegion.getAllReleaseBySchedulerConsumedPartitionGroups());
         }
+        // 如果PipelinedRegionExecutionView未完成，则返回空列表
         return Collections.emptyList();
     }
 

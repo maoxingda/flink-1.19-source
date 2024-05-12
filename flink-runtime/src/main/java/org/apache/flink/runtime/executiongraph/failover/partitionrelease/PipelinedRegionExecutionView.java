@@ -53,6 +53,12 @@ class PipelinedRegionExecutionView {
         return unfinishedVertices.isEmpty();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从结合中移除掉ExecutionVertexID
+     * Set<ExecutionVertexID> unfinishedVertices
+    */
     public void vertexFinished(final ExecutionVertexID executionVertexId) {
         assertVertexInRegion(executionVertexId);
         unfinishedVertices.remove(executionVertexId);

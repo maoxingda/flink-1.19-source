@@ -682,6 +682,7 @@ public class TaskManagerOptions {
     // ------------------------------------------------------------------------
 
     /** Time interval in milliseconds between two successive task cancellation attempts. */
+    /** 两次连续任务取消尝试之间的时间间隔（以毫秒为单位） */
     @Documentation.Section(Documentation.Sections.ALL_TASK_MANAGER)
     public static final ConfigOption<Long> TASK_CANCELLATION_INTERVAL =
             key("task.cancellation.interval")

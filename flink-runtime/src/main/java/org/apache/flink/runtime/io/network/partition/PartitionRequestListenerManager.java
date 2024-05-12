@@ -26,6 +26,11 @@ import java.util.Iterator;
 import java.util.Map;
 
 /** Manages partition request listener with input channel id. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 使用输入通道id管理分区请求侦听器
+*/
 public class PartitionRequestListenerManager {
     private final Map<InputChannelID, PartitionRequestListener> listeners;
 

@@ -559,16 +559,28 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
      * @param taskExecutionState New task execution state for a given task
      * @return Acknowledge the task execution state update
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 更新任务的执行状态。
+     * @param taskExecutionState 要更新的任务执行状态
+     * @return 一个CompletableFuture，包含更新结果（成功时为Acknowledge，失败时为异常）
+    */
     @Override
     public CompletableFuture<Acknowledge> updateTaskExecutionState(
             final TaskExecutionState taskExecutionState) {
+        // 用于存储更新过程中可能发生的异常
         FlinkException taskExecutionException;
         try {
+            // 检查taskExecutionState是否为null
             checkNotNull(taskExecutionState, "taskExecutionState");
 
+            // 调用schedulerNG的updateTaskExecutionState方法来更新任务执行状态
             if (schedulerNG.updateTaskExecutionState(taskExecutionState)) {
+                // 如果更新成功，则返回一个已完成的CompletableFuture，其中包含Acknowledge对象
                 return CompletableFuture.completedFuture(Acknowledge.get());
             } else {
+                // 如果更新失败（没有找到对应的执行尝试），则创建一个ExecutionGraphException异常
                 taskExecutionException =
                         new ExecutionGraphException(
                                 "The execution attempt "
@@ -576,11 +588,14 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                                         + " was not found.");
             }
         } catch (Exception e) {
+            // 如果在更新过程中捕获到异常，则创建一个JobMasterException异常，并传入原始异常作为原因
             taskExecutionException =
                     new JobMasterException(
                             "Could not update the state of task execution for JobMaster.", e);
+            // 处理JobMaster错误（可能是记录日志、发送告警等）
             handleJobMasterError(taskExecutionException);
         }
+        // 如果发生异常或更新失败，则返回一个已完成的CompletableFuture，其中包含异常
         return FutureUtils.completedExceptionally(taskExecutionException);
     }
 

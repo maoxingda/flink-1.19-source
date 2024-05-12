@@ -42,7 +42,11 @@ public interface PartitionGroupReleaseStrategy {
      * @param finishedVertex Id of the vertex that finished the execution
      * @return A list of {@link ConsumedPartitionGroup ConsumedPartitionGroups} that can be released
      */
-    /** 调用此方法会通知策略顶点已完成。 */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 调用此方法会通知策略顶点已完成。
+    */
     List<ConsumedPartitionGroup> vertexFinished(ExecutionVertexID finishedVertex);
 
     /**

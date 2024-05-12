@@ -302,13 +302,17 @@ public class SingleInputGate extends IndexedInputGate {
 
     @Override
     public void setup() throws IOException {
+
+        // 检查状态，确保当前对象的bufferPool属性为null
+        // 如果不为null，则抛出异常，表示在输入门设置逻辑中存在bug，因为已经注册了buffer pool
         checkState(
                 this.bufferPool == null,
                 "Bug in input gate setup logic: Already registered buffer pool.");
-
+        // 通过bufferPoolFactory获取一个BufferPool对象
         BufferPool bufferPool = bufferPoolFactory.get();
+        // 设置当前对象的bufferPool属性为刚才获取的BufferPool对象
         setBufferPool(bufferPool);
-
+        // 调用setupChannels()方法，用于设置初始化InputChannel
         setupChannels();
     }
 
@@ -564,12 +568,18 @@ public class SingleInputGate extends IndexedInputGate {
 
         // First allocate a single floating buffer to avoid potential deadlock when the exclusive
         // buffer is 0. See FLINK-24035 for more information.
+        // 为保证作业能够进行，分配足够的独占和浮动缓冲区
+        // 注意：如果在给定的超时时间内没有可用的缓冲区，将会抛出异常
+        // 首先分配一个单独的浮动缓冲区，以避免当独占缓冲区数量为0时可能出现的死锁。
         bufferPool.reserveSegments(1);
 
         // Next allocate the exclusive buffers per channel when the number of exclusive buffer is
         // larger than 0.
+        // 当独占缓冲区的数量大于0时，为每个通道分配独占缓冲区
         synchronized (requestLock) {
+            // 为每个输入通道设置独占缓冲区
             for (InputChannel inputChannel : inputChannels()) {
+                /** 为此输入通道分配独占缓冲区，并且此方法应在创建此输入通道后仅调用一次。 */
                 inputChannel.setup();
             }
         }

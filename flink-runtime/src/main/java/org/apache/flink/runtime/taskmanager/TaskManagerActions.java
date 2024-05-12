@@ -50,6 +50,11 @@ public interface TaskManagerActions {
      *
      * @param taskExecutionState Task execution state update
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 向任务管理器通知任务执行状态更新。
+    */
     void updateTaskExecutionState(TaskExecutionState taskExecutionState);
 
     /**

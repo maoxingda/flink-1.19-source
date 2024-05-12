@@ -76,6 +76,7 @@ public class MemoryManager {
     // ------------------------------------------------------------------------
 
     /** Memory segments allocated per memory owner. */
+    /** 每个内存所有者分配的内存段 */
     private final Map<Object, Set<MemorySegment>> allocatedSegments;
 
     /** Reserved memory per memory owner. */
@@ -385,26 +386,41 @@ public class MemoryManager {
      *
      * @param owner The owner memory segments are to be released.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 释放与给定owner关联的所有MemorySegment对象。
+     * @param owner 拥有MemorySegment对象的对象
+    */
     public void releaseAll(Object owner) {
+        // 如果owner为null，则直接返回，不执行任何操作
         if (owner == null) {
             return;
         }
-
+        // 检查内存管理器是否已被关闭
+        // 如果已关闭，则抛出异常，因为不能在此状态下释放内存
         Preconditions.checkState(!isShutDown, "Memory manager has been shut down.");
 
         // get all segments
+        // 从allocatedSegments映射中获取与owner关联的所有MemorySegment的集合
+        // allocatedSegments应该是一个Map<Object, Set<MemorySegment>>类型的成员变量
         Set<MemorySegment> segments = allocatedSegments.remove(owner);
 
         // all segments may have been freed previously individually
+        // 如果segments为null或者segments集合为空，
+        // 则说明与owner关联的所有MemorySegment可能已经被单独释放了
+        // 因此，直接返回，不执行任何操作
         if (segments == null || segments.isEmpty()) {
             return;
         }
 
         // free each segment
+        // 遍历segments集合，释放每个MemorySegment对象
+        // MemorySegment对象应该有一个free()方法来释放其占用的资源
         for (MemorySegment segment : segments) {
             segment.free();
         }
-
+        //Set<MemorySegment> segments 清空
         segments.clear();
     }
 

@@ -2091,54 +2091,77 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                     cause);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 更新JobManager中指定任务的执行状态。
+     * @param jobMasterGateway JobMaster的网关，用于与JobManager通信
+     * @param taskExecutionState 要更新的任务执行状态
+    */
     private void updateTaskExecutionState(
             final JobMasterGateway jobMasterGateway, final TaskExecutionState taskExecutionState) {
+        // 获取任务执行状态的执行尝试ID
         final ExecutionAttemptID executionAttemptID = taskExecutionState.getID();
-
+        // 调用JobMaster的网关方法，更新任务执行状态，并返回一个CompletableFuture，表示异步结果
         CompletableFuture<Acknowledge> futureAcknowledge =
                 jobMasterGateway.updateTaskExecutionState(taskExecutionState);
 
+        // 当异步任务完成时（无论是正常完成还是发生异常），都会执行下面的lambda表达式
         futureAcknowledge.whenCompleteAsync(
                 (ack, throwable) -> {
+                    // 如果在更新过程中发生异常
                     if (throwable != null) {
+                        // 调用failTask方法，以异常原因失败指定的任务,取消所有的运行
                         failTask(executionAttemptID, throwable);
                     }
                 },
+                // 使用主线程执行器来执行lambda表达式，确保回调在正确的线程上执行
                 getMainThreadExecutor());
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从任务管理器中注销任务，并通知JobManager该任务的最终状态。
+     * @param jobMasterGateway JobMaster的网关，用于与JobManager通信
+     * @param executionAttemptID 要注销的任务的执行尝试ID
+    */
     private void unregisterTaskAndNotifyFinalState(
             final JobMasterGateway jobMasterGateway, final ExecutionAttemptID executionAttemptID) {
-
+        /** 从任务槽表中根据执行尝试ID移除任务  */
         Task task = taskSlotTable.removeTask(executionAttemptID);
+        //如果任务存在
         if (task != null) {
+            // 如果任务的状态不是最终状态（
             if (!task.getExecutionState().isTerminal()) {
                 try {
+                    // 外部失败该任务，并传入异常信息
                     task.failExternally(
                             new IllegalStateException("Task is being remove from TaskManager."));
                 } catch (Exception e) {
+                    // 如果在失败任务时发生异常，记录错误信息
                     log.error("Could not properly fail task.", e);
                 }
             }
-
+            // 记录日志，通知正在注销任务，并向JobManager发送任务的最终执行状态
             log.info(
                     "Un-registering task and sending final execution state {} to JobManager for task {} {}.",
                     task.getExecutionState(),
                     task.getTaskInfo().getTaskNameWithSubtasks(),
                     task.getExecutionId());
-
+            // 获取任务的累加器快照
             AccumulatorSnapshot accumulatorSnapshot = task.getAccumulatorRegistry().getSnapshot();
 
+            // 更新JobMasterGateway中的任务执行状态，包括执行ID、执行状态、失败原因、累加器快照和I/O度量组快照
             updateTaskExecutionState(
                     jobMasterGateway,
                     new TaskExecutionState(
-                            task.getExecutionId(),
-                            task.getExecutionState(),
-                            task.getFailureCause(),
-                            accumulatorSnapshot,
+                            task.getExecutionId(),// 任务的执行ID
+                            task.getExecutionState(),// 任务的执行状态
+                            task.getFailureCause(),// 任务的失败原因（如果有）
+                            accumulatorSnapshot,//累加器快照
                             task.getMetricGroup().getIOMetricGroup().createSnapshot()));
         } else {
+            // 如果根据执行尝试ID找不到任务，记录错误信息
             log.error("Cannot find task with ID {} to unregister.", executionAttemptID);
         }
     }
@@ -2629,14 +2652,23 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
             runAsync(() -> TaskExecutor.this.failTask(executionAttemptID, cause));
         }
 
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 向任务管理器通知任务执行状态更新。
+         * 1.一种移除Task
+         * 2.更新状态
+        */
         @Override
         public void updateTaskExecutionState(final TaskExecutionState taskExecutionState) {
+            /** 如果状态是 FINISHED、CANCELED、FAILED ，则卸载Task并设置为最终状态*/
             if (taskExecutionState.getExecutionState().isTerminal()) {
                 runAsync(
                         () ->
                                 unregisterTaskAndNotifyFinalState(
                                         jobMasterGateway, taskExecutionState.getID()));
             } else {
+                /** 更新状态 */
                 TaskExecutor.this.updateTaskExecutionState(jobMasterGateway, taskExecutionState);
             }
         }

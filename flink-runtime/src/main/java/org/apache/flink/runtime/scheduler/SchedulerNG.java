@@ -106,6 +106,11 @@ public interface SchedulerNG extends GlobalFailureHandler, AutoCloseableAsync {
         return updateTaskExecutionState(new TaskExecutionStateTransition(taskExecutionState));
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 更新任务执行状态
+    */
     boolean updateTaskExecutionState(TaskExecutionStateTransition taskExecutionState);
 
     SerializedInputSplit requestNextInputSplit(

@@ -855,17 +855,26 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 更新任务执行状态
+     */
     @Override
     public final boolean updateTaskExecutionState(
             final TaskExecutionStateTransition taskExecutionState) {
-
+        // 从传入的状态转换对象中获取ExecutionAttemptID
         final ExecutionAttemptID attemptId = taskExecutionState.getID();
+        // 从executionGraph的已注册执行列表中根据ExecutionAttemptID获取对应的Execution对象
         final Execution execution = executionGraph.getRegisteredExecutions().get(attemptId);
+        // 检查Execution对象是否存在，并且是否能成功更新其状态
         if (execution != null && executionGraph.updateState(taskExecutionState)) {
+            // 如果Execution对象存在并且状态更新成功，则调用onTaskExecutionStateUpdate方法来处理状态更新后的逻辑
             onTaskExecutionStateUpdate(execution, taskExecutionState);
+            // 返回true表示成功更新了任务执行状态
             return true;
         }
-
+        // 如果Execution对象不存在或状态更新失败，则返回false
         return false;
     }
 

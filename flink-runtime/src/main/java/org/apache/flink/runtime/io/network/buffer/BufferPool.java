@@ -21,12 +21,22 @@ package org.apache.flink.runtime.io.network.buffer;
 import java.io.IOException;
 
 /** A dynamically sized buffer pool. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 一个动态大小的缓冲池
+*/
 public interface BufferPool extends BufferProvider, BufferRecycler {
 
     /**
      * Reserves the target number of segments to this pool. Will throw an exception if it can not
      * allocate enough segments.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将目标数量的分段保留到此池中。如果无法分配足够的段，将引发异常。
+    */
     void reserveSegments(int numberOfSegmentsToReserve) throws IOException;
 
     /**

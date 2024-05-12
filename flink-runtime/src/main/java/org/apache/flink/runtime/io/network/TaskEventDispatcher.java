@@ -56,11 +56,21 @@ public class TaskEventDispatcher implements TaskEventPublisher {
      *
      * @param partitionId the partition ID
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册给定的分区以接收传入的任务事件，允许调用 {@link #subscribeToEvent(ResultPartitionID, EventListener, Class)} 方法。
+    */
     public void registerPartition(ResultPartitionID partitionId) {
+        // 检查传入的partitionId是否为空，如果为空则抛出NullPointerException
         checkNotNull(partitionId);
-
+        // 使用synchronized关键字确保在多线程环境下，registeredHandlers的注册操作是线程安全的
         synchronized (registeredHandlers) {
+            // 在日志中记录正在注册的partitionId
             LOG.debug("registering {}", partitionId);
+            // 尝试在registeredHandlers Map中将partitionId映射到一个新的TaskEventHandler对象
+            // 如果put方法返回null，说明该partitionId之前没有注册过，此时注册成功
+            // 如果返回的不是null，说明该partitionId之前已经被注册过，此时抛出IllegalStateException
             if (registeredHandlers.put(partitionId, new TaskEventHandler()) != null) {
                 throw new IllegalStateException(
                         "Partition "
@@ -76,14 +86,21 @@ public class TaskEventDispatcher implements TaskEventPublisher {
      *
      * @param partitionId the partition ID
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 卸载registerPartition
+    */
     public void unregisterPartition(ResultPartitionID partitionId) {
+        // 检查传入的partitionId是否为空，如果为空则抛出NullPointerException异常
         checkNotNull(partitionId);
-
+        // 使用synchronized关键字对registeredHandlers对象进行同步，以确保在多线程环境下对registeredHandlers的访问是线程安全的
         synchronized (registeredHandlers) {
             LOG.debug("unregistering {}", partitionId);
             // NOTE: tolerate un-registration of non-registered task (unregister is always called
             //       in the cleanup phase of a task even if it never came to the registration - see
             //       Task.java)
+            // 从registeredHandlers中移除与partitionId相关联的handler（如果存在的话）
             registeredHandlers.remove(partitionId);
         }
     }

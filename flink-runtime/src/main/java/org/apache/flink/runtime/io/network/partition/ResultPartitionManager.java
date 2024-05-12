@@ -81,26 +81,37 @@ public class ResultPartitionManager implements ResultPartitionProvider {
     }
 
     public void registerResultPartition(ResultPartition partition) throws IOException {
+        // 获取PartitionRequestListenerManager对象，这里一个用于管理监听器的类
         PartitionRequestListenerManager listenerManager;
+        // 使用synchronized关键字对registeredPartitions对象进行同步，确保在多线程环境下对注册的分区进行安全操作
         synchronized (registeredPartitions) {
+            // 检查ResultPartitionManager是否已经被关闭
+            // 如果已经关闭，则抛出异常
             checkState(!isShutdown, "Result partition manager already shut down.");
 
+            // 尝试在registeredPartitions映射中放入新的ResultPartition，key为partitionId
+            // 如果已经存在相同的partitionId，则返回旧的ResultPartition
             ResultPartition previous =
                     registeredPartitions.put(partition.getPartitionId(), partition);
 
+            // 如果返回的previous不为null，则说明存在重复的partitionId，抛出异常
             if (previous != null) {
                 throw new IllegalStateException("Result partition already registered.");
             }
-
+            // 尝试从listenerManagers映射中移除与partitionId对应的listenerManager
+            // 如果该partitionId之前注册过监听器，这里将会移除它
             listenerManager = listenerManagers.remove(partition.getPartitionId());
         }
+        // 如果成功从listenerManagers中移除了对应的listenerManager
         if (listenerManager != null) {
+            // 遍历listenerManager中注册的监听器
             for (PartitionRequestListener listener :
                     listenerManager.getPartitionRequestListeners()) {
+                // 通知每个监听器，该partition已经被创建
                 listener.notifyPartitionCreated(partition);
             }
         }
-
+        // 记录日志，表示已经成功注册了partition
         LOG.debug("Registered {}.", partition);
     }
 

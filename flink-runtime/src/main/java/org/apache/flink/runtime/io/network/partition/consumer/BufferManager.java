@@ -133,22 +133,39 @@ public class BufferManager implements BufferListener, BufferRecycler {
     }
 
     /** Requests exclusive buffers from the provider. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从提供者请求独占缓冲区。
+     *
+     * @param numExclusiveBuffers 所需独占缓冲区的数量
+     * @throws IOException 如果在请求缓冲区时发生I/O错误
+    */
     void requestExclusiveBuffers(int numExclusiveBuffers) throws IOException {
+        // 验证独占缓冲区的数量是否非负
         checkArgument(numExclusiveBuffers >= 0, "Num exclusive buffers must be non-negative.");
+        // 如果请求数量为0，则直接返回，无需进行后续操作
         if (numExclusiveBuffers == 0) {
             return;
         }
-
+        // 从全局池中请求未池化的内存段，数量与独占缓冲区数量一致
         Collection<MemorySegment> segments =
                 globalPool.requestUnpooledMemorySegments(numExclusiveBuffers);
+
+        // 对bufferQueue进行同步，确保线程安全
         synchronized (bufferQueue) {
             // AvailableBufferQueue::addExclusiveBuffer may release the previously allocated
             // floating buffer, which requires the caller to recycle these released floating
             // buffers. There should be no floating buffers that have been allocated before the
             // exclusive buffers are initialized, so here only a simple assertion is required
+            // 添加独占缓冲区前，应确保没有已经分配的浮动缓冲区。
+            // 这是因为AvailableBufferQueue::addExclusiveBuffer可能会释放之前分配的浮动缓冲区，
+            // 这要求调用者回收这些释放的浮动缓冲区。
+            // 在独占缓冲区初始化之前，应该没有已经分配的浮动缓冲区，因此这里只需要一个简单的断言检查
             checkState(
                     unsynchronizedGetFloatingBuffersAvailable() == 0,
                     "Bug in buffer allocation logic: floating buffer is allocated before exclusive buffers are initialized.");
+            // 遍历请求到的内存段，为每个内存段创建一个新的NetworkBuffer，并将其添加到独占缓冲区队列中
             for (MemorySegment segment : segments) {
                 bufferQueue.addExclusiveBuffer(
                         new NetworkBuffer(segment, this), numRequiredBuffers);

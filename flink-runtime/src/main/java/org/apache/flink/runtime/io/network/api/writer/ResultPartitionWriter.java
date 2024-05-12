@@ -121,6 +121,11 @@ public interface ResultPartitionWriter extends AutoCloseable, AvailabilityProvid
      *
      * @param throwable failure cause
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 使分区的生产失败。
+    */
     void fail(@Nullable Throwable throwable);
 
     /**

@@ -206,6 +206,11 @@ public interface ExecutionGraph extends AccessExecutionGraph {
      * @return True, if the task update was properly applied, false, if the execution attempt was
      *     not found.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 更新ExecutionVertex的执行尝试之一的状态。如果新状态为“FINISHED”，这也会更新累加器。
+    */
     boolean updateState(TaskExecutionStateTransition state);
 
     Map<ExecutionAttemptID, Execution> getRegisteredExecutions();

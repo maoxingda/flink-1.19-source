@@ -105,6 +105,7 @@ public class RemoteInputChannel extends InputChannel {
     private int expectedSequenceNumber = 0;
 
     /** The initial number of exclusive buffers assigned to this channel. */
+    /** 分配给该通道的独占缓冲区的初始数量 */
     private final int initialCredit;
 
     /** The milliseconds timeout for partition request listener in result partition manager. */
@@ -168,6 +169,11 @@ public class RemoteInputChannel extends InputChannel {
      * Setup includes assigning exclusive buffers to this input channel, and this method should be
      * called only once after this input channel is created.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为此输入通道分配独占缓冲区，并且此方法应在创建此输入通道后仅调用一次。
+    */
     @Override
     void setup() throws IOException {
         checkState(

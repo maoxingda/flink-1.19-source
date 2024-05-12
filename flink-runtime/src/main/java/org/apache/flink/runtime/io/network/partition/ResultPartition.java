@@ -97,7 +97,7 @@ public abstract class ResultPartition implements ResultPartitionWriter {
     // - Runtime state --------------------------------------------------------
 
     private final AtomicBoolean isReleased = new AtomicBoolean();
-
+    /** 一个动态大小的缓冲池 */
     protected BufferPool bufferPool;
 
     private boolean isFinished;
@@ -149,12 +149,21 @@ public abstract class ResultPartition implements ResultPartitionWriter {
      * <p>The pool is registered with the partition *after* it as been constructed in order to
      * conform to the life-cycle of task registrations in the {@link TaskExecutor}.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 设置结果分区。
+     * @throws IOException 如果在设置过程中发生I/O异常
+    */
     @Override
     public void setup() throws IOException {
+        // 检查状态，确保bufferPool是null，如果已经注册了buffer pool则抛出异常
         checkState(
                 this.bufferPool == null,
                 "Bug in result partition setup logic: Already registered buffer pool.");
 
+        // 调用bufferPoolFactory的get()方法获取bufferPool，并检查其不为null
+        // 如果bufferPoolFactory返回null，则抛出NullPointerException
         this.bufferPool = checkNotNull(bufferPoolFactory.get());
         setupInternal();
         partitionManager.registerResultPartition(this);
