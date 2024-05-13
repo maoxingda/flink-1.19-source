@@ -309,6 +309,7 @@ public class SingleInputGate extends IndexedInputGate {
                 this.bufferPool == null,
                 "Bug in input gate setup logic: Already registered buffer pool.");
         // 通过bufferPoolFactory获取一个BufferPool对象
+        //一个动态大小的缓冲池
         BufferPool bufferPool = bufferPoolFactory.get();
         // 设置当前对象的bufferPool属性为刚才获取的BufferPool对象
         setBufferPool(bufferPool);

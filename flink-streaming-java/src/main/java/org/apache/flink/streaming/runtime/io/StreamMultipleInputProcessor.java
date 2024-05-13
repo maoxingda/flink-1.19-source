@@ -29,6 +29,11 @@ import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 /** Input processor for {@link MultipleInputStreamOperator}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 输入读取器，用于 MultipleInputStreamOperator 比如TwoInputStreamTask。
+*/
 @Internal
 public final class StreamMultipleInputProcessor implements StreamInputProcessor {
 

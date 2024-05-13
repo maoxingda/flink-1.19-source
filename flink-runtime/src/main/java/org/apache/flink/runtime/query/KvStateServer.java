@@ -25,6 +25,11 @@ import java.net.InetSocketAddress;
  * server is responsible for serving requests coming from the {@link KvStateClientProxy Queryable
  * State Proxy} and requesting <b>locally</b> stored state.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 在集群中的每个任务管理器上运行的可查询状态服务器的接口
+*/
 public interface KvStateServer {
 
     /**

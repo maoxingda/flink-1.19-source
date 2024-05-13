@@ -163,9 +163,11 @@ public abstract class ResultPartition implements ResultPartitionWriter {
                 "Bug in result partition setup logic: Already registered buffer pool.");
 
         // 调用bufferPoolFactory的get()方法获取bufferPool，并检查其不为null
-        // 如果bufferPoolFactory返回null，则抛出NullPointerException
+        //一个动态大小的缓冲池
         this.bufferPool = checkNotNull(bufferPoolFactory.get());
+        //执行子类自己的设置操作。
         setupInternal();
+        //注册ResultPartition, Map<ResultPartitionID, ResultPartition> registeredPartitions
         partitionManager.registerResultPartition(this);
     }
 
@@ -252,6 +254,11 @@ public abstract class ResultPartition implements ResultPartitionWriter {
      *
      * <p>For BLOCKING results, this will trigger the deployment of consuming tasks.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 完成结果分区。
+    */
     @Override
     public void finish() throws IOException {
         checkInProduceState();

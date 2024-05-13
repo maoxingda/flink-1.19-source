@@ -29,6 +29,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** A helper for KvState registrations of a single task. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于单个任务的KvState注册的帮助程序
+*/
 public class TaskKvStateRegistry {
 
     /** KvStateRegistry for KvState instance registrations. */

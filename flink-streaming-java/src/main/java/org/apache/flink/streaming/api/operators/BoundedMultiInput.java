@@ -28,6 +28,11 @@ import org.apache.flink.annotation.PublicEvolving;
  *
  * @see BoundedOneInput
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 针对需要被通知输入的逻辑/语义结束的多输入操作符的接口。
+*/
 @PublicEvolving
 public interface BoundedMultiInput {
 

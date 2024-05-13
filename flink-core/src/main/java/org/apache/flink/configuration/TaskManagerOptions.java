@@ -555,6 +555,7 @@ public class TaskManagerOptions {
                                     + " explicitly specified by setting the min/max size to the same value.");
 
     /** The period between recalculation the relevant size of the buffer. */
+    /** 重新计算缓冲区的相关大小之间的时间段 */
     @Documentation.Section(Documentation.Sections.ALL_TASK_MANAGER_NETWORK)
     public static final ConfigOption<Duration> BUFFER_DEBLOAT_PERIOD =
             ConfigOptions.key("taskmanager.network.memory.buffer-debloat.period")

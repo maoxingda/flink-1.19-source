@@ -25,6 +25,11 @@ import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
 
 /** Basic interface for inputs of stream operators. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 流Operator输入的基本接口。
+*/
 @Internal
 public interface StreamTaskInput<T> extends PushingAsyncDataInput<T>, Closeable {
     int UNSPECIFIED = -1;

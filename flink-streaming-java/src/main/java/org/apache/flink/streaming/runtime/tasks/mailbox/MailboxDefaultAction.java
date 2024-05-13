@@ -20,6 +20,11 @@ package org.apache.flink.streaming.runtime.tasks.mailbox;
 import org.apache.flink.annotation.Internal;
 
 /** Interface for the default action that is repeatedly invoked in the mailbox-loop. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 在邮箱循环中重复调用的默认操作的接口。
+*/
 @Internal
 public interface MailboxDefaultAction {
 

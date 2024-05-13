@@ -35,6 +35,11 @@ import org.apache.flink.annotation.PublicEvolving;
  * <p>When the input returns {@link InputStatus#END_OF_INPUT}, then no data will be available again
  * from this input. It has reached the end of its bounded data.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 一个InputStatus（输入状态）表示来自异步输入的数据可用性。当请求异步输入生成数据时，它会返回这个状态来指示如何继续。
+*/
 @PublicEvolving
 public enum InputStatus {
 
@@ -42,14 +47,17 @@ public enum InputStatus {
      * Indicator that more data is available and the input can be called immediately again to
      * produce more data.
      */
+    /** 指示有更多数据可用，并且可以立即再次调用输入以生成更多数据。 */
     MORE_AVAILABLE,
 
     /**
      * Indicator that no data is currently available, but more data will be available in the future
      * again.
      */
+    /** 指示当前没有数据可用，但未来会有更多数据可用。 */
     NOTHING_AVAILABLE,
 
     /** Indicator that the input has reached the end of data. */
+    /** 指示输入已达到数据的末尾。 */
     END_OF_INPUT
 }

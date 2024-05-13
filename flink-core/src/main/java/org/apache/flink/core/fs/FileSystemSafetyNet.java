@@ -60,6 +60,13 @@ import static org.apache.flink.util.Preconditions.checkState;
  * }
  * }</pre>
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * FileSystemSafetyNet 可以用于保护线程免受由 FileSystem 流资源泄露的影响。当为某个线程激活时，
+ * 它会跟踪该线程通过 FileSystems 打开的所有流。
+ * 安全网具有一个全局清理钩子（hook），该钩子会关闭所有未正确关闭的流。
+*/
 @Internal
 public class FileSystemSafetyNet {
 
@@ -79,6 +86,13 @@ public class FileSystemSafetyNet {
      *
      * @throws IllegalStateException Thrown, if a safety net was already registered for the thread.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 在 Flink 的上下文中，当某个线程调用这个方法时，该线程随后获取的所有 FileSystem
+     * 实例都将受到某种形式的“安全网”或保护机制的保护。
+     * 这种保护可能涉及跟踪这些 FileSystem 实例创建的流，以确保它们得到正确的处理或释放，从而避免资源泄露或其他潜在问题。
+    */
     @Internal
     public static void initializeSafetyNetForThread() {
         SafetyNetCloseableRegistry oldRegistry = REGISTRIES.get();

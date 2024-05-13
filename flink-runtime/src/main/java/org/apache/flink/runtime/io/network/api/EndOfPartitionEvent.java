@@ -23,6 +23,11 @@ import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.runtime.event.RuntimeEvent;
 
 /** This event marks a subpartition as fully consumed. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 此事件将子分区标记为已完全消耗
+*/
 public class EndOfPartitionEvent extends RuntimeEvent {
 
     /** The singleton instance of this event. */

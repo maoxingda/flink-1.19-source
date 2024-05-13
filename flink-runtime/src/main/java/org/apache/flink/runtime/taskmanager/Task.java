@@ -637,6 +637,11 @@ public class Task
     }
 
     /** The core work method that bootstraps the task and executes its code. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 触发多线程执行
+    */
     @Override
     public void run() {
         try {
@@ -645,7 +650,11 @@ public class Task
             terminationFuture.complete(executionState);
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 执行Task任务
+    */
     private void doRun() {
         // ----------------------------
         //  Initial State transition
@@ -709,7 +718,7 @@ public class Task
             // ----------------------------
               // 任务启动引导 - 定期检查任务是否被取消，以作为快速响应的捷径
             // activate safety net for task thread
-            // 为任务线程激活安全网，用于防止FileSystem流泄露
+            // 用于防止FileSystem打开的流泄露
             LOG.debug("Creating FileSystem stream leak safety net for task {}", this);
             FileSystemSafetyNet.initializeSafetyNetForThread();
 
@@ -764,7 +773,7 @@ public class Task
 
             // next, kick off the background copying of files for the distributed cache
             try {
-                // 从作业配置中读取分布式缓存文件的信息
+                // 从作业配置中读取分布式缓存文件的信息,文件可以很大吗？
                 for (Map.Entry<String, DistributedCache.DistributedCacheEntry> entry :
                         DistributedCache.readFileInfoFromConfig(jobConfiguration)) {
                     LOG.info("Obtaining local cache file for '{}'.", entry.getKey());
@@ -838,7 +847,8 @@ public class Task
             // monitored for system exit (in addition to invoking thread itself monitored below).
             /**
              * ThreadLocal<Boolean> monitorUserSystemExit
-             * 监控系统退出,当构造可调用时，可以构造单独的线程，因此应该监视系统退出
+             * 监控用户推出当前线程，比如退出虚拟机System.exit
+             * 内部就是设置ThreadLocal设置为true，进行检查
              */
             FlinkSecurityManager.monitorUserSystemExitForCurrentThread();
             try {
@@ -848,7 +858,7 @@ public class Task
                         loadAndInstantiateInvokable(
                                 userCodeClassLoader.asClassLoader(), nameOfInvokableClass, env);
             } finally {
-                //卸载监控系统 设置为false
+                //卸载监控系统 ThreadLocal设置为false
                 FlinkSecurityManager.unmonitorUserSystemExitForCurrentThread();
             }
 
@@ -1266,6 +1276,11 @@ public class Task
      * @param newState of the execution
      * @return true if the transition was successful, otherwise false
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试将执行状态从当前状态转换为新状态。
+    */
     private boolean transitionState(ExecutionState currentState, ExecutionState newState) {
         return transitionState(currentState, newState, null);
     }
@@ -1278,6 +1293,11 @@ public class Task
      * @param cause of the transition change or null
      * @return true if the transition was successful, otherwise false
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试将执行状态从当前状态转换为新状态。
+    */
     private boolean transitionState(
             ExecutionState currentState, ExecutionState newState, Throwable cause) {
         if (STATE_UPDATER.compareAndSet(this, currentState, newState)) {

@@ -26,6 +26,11 @@ import org.apache.flink.runtime.util.event.EventListener;
  * The task event publisher is used for publishing the event to the registered {@link EventListener}
  * instances.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 任务事件publish用于将事件发布到已注册的 EventListener 实例。
+*/
 public interface TaskEventPublisher {
 
     /**

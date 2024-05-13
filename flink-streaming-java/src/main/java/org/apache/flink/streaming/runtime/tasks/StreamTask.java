@@ -192,6 +192,16 @@ import static org.apache.flink.util.concurrent.FutureUtils.assertNoException;
  * @param <OUT>
  * @param <OP>
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 所有流处理任务的基类。任务（Task）是局部处理的单元，由TaskManagers部署并执行。
+ * 每个任务运行一个或多个StreamOperator，这些StreamOperator形成了任务的算子链（Operator Chain）。
+ * 被链式连接起来的算子在相同的线程（因此也在相同的流分区）中同步执行。这些链的一个常见例子是连续的map/flatmap/filter任务。
+ * 总结：基类定义了流处理中任务的基本结构和行为，而任务则负责运行一个或多个算子，这些算子通常会被链式连接在一起以同步处理数据。
+ * 1.StreamOperator形成任务算子链。
+ * 2.在一起的算子链会在同一个线程中执行。
+*/
 @Internal
 public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
         implements TaskInvokable,
@@ -201,6 +211,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                 ContainingTaskDetails {
 
     /** The thread group that holds all trigger timer threads. */
+    /** 保存所有触发器计时器线程的线程组 */
     public static final ThreadGroup TRIGGER_THREAD_GROUP = new ThreadGroup("Triggers");
 
     /** The logger used by the StreamTask and its subclasses. */
@@ -221,23 +232,33 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     private final StreamTaskActionExecutor actionExecutor;
 
     /** The input processor. Initialized in {@link #init()} method. */
+    /** 输入处理器 在init方法初始化 */
     @Nullable protected StreamInputProcessor inputProcessor;
 
     /** the main operator that consumes the input streams of this task. */
+    /** 消耗该任务的输入流的主运算符。  */
     protected OP mainOperator;
 
     /** The chain of operators executed by this task. */
+    /** 此任务执行的Operator Chain */
+    /**
+     * StreamTask构建过程中会合并Operator,形成OperatorChain。
+     * OperatorChain中所有的Operator都在同一个Task
+     */
     protected OperatorChain<OUT, OP> operatorChain;
 
     /** The configuration of this streaming task. */
+    /** 流任务的配置 */
     protected final StreamConfig configuration;
 
     /** Our state backend. We use this to create a keyed state backend. */
+    /** 声明一个状态后端变量 */
     protected final StateBackend stateBackend;
 
     /** Our checkpoint storage. We use this to create checkpoint streams. */
+    /** 检查点存储。用来创建检查点流 */
     protected final CheckpointStorage checkpointStorage;
-
+    /** 协调子任务（即 Task 和 StreamTask）中与检查点（checkpointing）相关的工作 */
     private final SubtaskCheckpointCoordinator subtaskCheckpointCoordinator;
 
     /**
@@ -245,6 +266,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
      * {@code System.currentTimeMillis()}) and register timers for tasks to be executed in the
      * future.
      */
+    /** Task执行过程中用到的定时器服务 */
     protected final TimerService timerService;
 
     /**
@@ -257,7 +279,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     private final CloseableRegistry cancelables = new CloseableRegistry();
 
     private final AutoCloseableRegistry resourceCloser;
-
+    /** 封装异步异常处理 */
     private final StreamTaskAsyncExceptionHandler asyncExceptionHandler;
 
     /**
@@ -284,12 +306,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     private boolean closedOperators;
 
     /** Thread pool for async snapshot workers. */
+    /** 异步快照工作线程的线程池 */
     private final ExecutorService asyncOperationsThreadPool;
-
+    /** 写出数据的Writer */
     protected final RecordWriterDelegate<SerializationDelegate<StreamRecord<OUT>>> recordWriter;
-
+    /** 封装了逻辑上基于mailbox的执行模型,让Task执行过程中变为单线程。*/
     protected final MailboxProcessor mailboxProcessor;
-
+    /** mailbox执行器 */
     final MailboxExecutor mainMailboxExecutor;
 
     /** TODO it might be replaced by the global IO executor on TaskManager level future. */
@@ -392,67 +415,94 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
         // The registration of all closeable resources. The order of registration is important.
         resourceCloser = new AutoCloseableRegistry();
         try {
+            // 保存传入的环境配置对象。
             this.environment = environment;
+            // 根据环境配置创建流配置对象。
             this.configuration = new StreamConfig(environment.getTaskConfiguration());
 
             // Initialize mailbox metrics
+            /** 初始化mailbox 指标  */
+            // 初始化 mailbox 相关的指标控制器
             MailboxMetricsController mailboxMetricsControl =
                     new MailboxMetricsController(
                             environment.getMetricGroup().getIOMetricGroup().getMailboxLatency(),
                             environment
                                     .getMetricGroup()
                                     .getIOMetricGroup()
+
                                     .getNumMailsProcessedCounter());
+            // 注册 mailbox 的大小提供者到指标组
             environment
                     .getMetricGroup()
                     .getIOMetricGroup()
                     .registerMailboxSizeSupplier(() -> mailbox.size());
-
+            //
+            /**
+             * 创建一个 MailboxProcessor 对象来处理邮箱中的消息
+             * 1.使用当前对象的 processInput 方法来处理输入
+             * 2.传入的任务邮箱
+             * 3.传入的动作执行器
+             * 4.传入的 mailbox 指标控制器
+             */
             this.mailboxProcessor =
                     new MailboxProcessor(
                             this::processInput, mailbox, actionExecutor, mailboxMetricsControl);
 
             // Should be closed last.
+            //将 mailboxProcessor 注册为可关闭资源，并确保它在最后关闭。
             resourceCloser.registerCloseable(mailboxProcessor);
-
+            // 创建一个单线程的 Executor 来处理通道 I/O
             this.channelIOExecutor =
                     Executors.newSingleThreadExecutor(
                             new ExecutorThreadFactory("channel-state-unspilling"));
+            // 将 channelIOExecutor 的关闭方法注册为可关闭资源
             resourceCloser.registerCloseable(channelIOExecutor::shutdown);
-
+           // 根据配置和环境创建 recordWriter 代理
             this.recordWriter = createRecordWriterDelegate(configuration, environment);
             // Release the output resources. this method should never fail.
+            // 注册一个方法用于释放输出资源，这个方法应该永远不会失败
             resourceCloser.registerCloseable(this::releaseOutputResources);
             // If the operators won't be closed explicitly, register it to a hard close.
+            // 如果操作器没有明确关闭，则将其注册为强制关闭。
             resourceCloser.registerCloseable(this::closeAllOperators);
+            // 注册内部清理方法为可关闭资源
             resourceCloser.registerCloseable(this::cleanUpInternal);
-
+            // 检查 actionExecutor 是否为空，如果不为空则赋值。
             this.actionExecutor = Preconditions.checkNotNull(actionExecutor);
+            // 获取 mailboxProcessor 的主执行器
             this.mainMailboxExecutor = mailboxProcessor.getMainMailboxExecutor();
+            // 创建一个 StreamTask 的异步异常处理器
             this.asyncExceptionHandler = new StreamTaskAsyncExceptionHandler(environment);
 
             // With maxConcurrentCheckpoints + 1 we more or less adhere to the
             // maxConcurrentCheckpoints configuration, but allow for a small leeway with allowing
             // for simultaneous N ongoing concurrent checkpoints and for example clean up of one
             // aborted one.
+            // 创建一个异步操作线程池，该线程池的大小由maxConcurrentCheckpoints配置决定，
+            // 但会多出一个线程作为额外的缓冲，以便能够处理一些同时进行的N个并发检查点，
+            // 例如用于清理一个已中止的检查点。
             this.asyncOperationsThreadPool =
                     new ThreadPoolExecutor(
-                            0,
-                            configuration.getMaxConcurrentCheckpoints() + 1,
-                            60L,
+                            0,// 核心线程数设置为0，意味着线程池在创建后不会立即启动线程
+                            configuration.getMaxConcurrentCheckpoints() + 1,// 最大线程数设置为maxConcurrentCheckpoints + 1
+                            60L,// 线程空闲60秒后将终止
                             TimeUnit.SECONDS,
-                            new LinkedBlockingQueue<>(),
-                            new ExecutorThreadFactory("AsyncOperations", uncaughtExceptionHandler));
+                            new LinkedBlockingQueue<>(),// 使用LinkedBlockingQueue作为工作队列
+                            new ExecutorThreadFactory("AsyncOperations", uncaughtExceptionHandler)); // 使用自定义的线程工厂和未捕获异常处理器
 
             // Register all asynchronous checkpoint threads.
+            // 注册所有异步检查点线程。当需要关闭资源时，这些线程将被优雅地关闭。
             resourceCloser.registerCloseable(this::shutdownAsyncThreads);
+            // 假设cancelables是包含其他可取消资源的集合
             resourceCloser.registerCloseable(cancelables);
-
+            // 设置主邮箱执行器和异步操作线程池
             environment.setMainMailboxExecutor(mainMailboxExecutor);
             environment.setAsyncOperationsThreadPool(asyncOperationsThreadPool);
-
+            // 创建状态后端
             this.stateBackend = createStateBackend();
+            // 根据状态后端创建检查点存储
             this.checkpointStorage = createCheckpointStorage(stateBackend);
+            // 检查是否有状态变更日志存储，并获取其可用性提供器
             this.changelogWriterAvailabilityProvider =
                     environment.getTaskStateManager().getStateChangelogStorage() == null
                             ? null
@@ -460,57 +510,67 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                                     .getTaskStateManager()
                                     .getStateChangelogStorage()
                                     .getAvailabilityProvider();
-
+            // 创建检查点存储访问对象
             CheckpointStorageAccess checkpointStorageAccess =
                     checkpointStorage.createCheckpointStorage(getEnvironment().getJobID());
+            // 应用文件合并快照管理器到检查点存储访问对象
             checkpointStorageAccess =
                     applyFileMergingCheckpoint(
                             checkpointStorageAccess,
                             environment.getTaskStateManager().getFileMergingSnapshotManager());
+            // 将检查点存储访问对象设置到环境中
             environment.setCheckpointStorageAccess(checkpointStorageAccess);
 
             // if the clock is not already set, then assign a default TimeServiceProvider
+            // 如果计时服务尚未设置，则为其分配一个默认的TimeServiceProvider
             if (timerService == null) {
                 this.timerService = createTimerService("Time Trigger for " + getName());
             } else {
                 this.timerService = timerService;
             }
-
+            // 创建一个系统计时服务
             this.systemTimerService = createTimerService("System Time Trigger for " + getName());
-
+            // 创建一个子任务检查点协调器，用于协调和管理检查点
+            // SubtaskCheckpointCoordinatorImpl 是检查点协调器的实现类
             this.subtaskCheckpointCoordinator =
                     new SubtaskCheckpointCoordinatorImpl(
-                            checkpointStorage,
-                            checkpointStorageAccess,
-                            getName(),
-                            actionExecutor,
-                            getAsyncOperationsThreadPool(),
-                            environment,
-                            this,
-                            configuration.isUnalignedCheckpointsEnabled(),
+                            checkpointStorage,// 检查点存储的接口
+                            checkpointStorageAccess,// 检查点存储访问的接口
+                            getName(),// 获取当前任务的名称
+                            actionExecutor,// 执行操作的执行器
+                            getAsyncOperationsThreadPool(),// 获取异步操作的线程池
+                            environment,// 运行时环境
+                            this,// 当前任务实例的引用
+                            configuration.isUnalignedCheckpointsEnabled(),// 是否启用非对齐检查点
                             configuration
                                     .getConfiguration()
                                     .get(
                                             ExecutionCheckpointingOptions
-                                                    .ENABLE_CHECKPOINTS_AFTER_TASKS_FINISH),
-                            this::prepareInputSnapshot,
-                            configuration.getMaxConcurrentCheckpoints(),
+                                                    .ENABLE_CHECKPOINTS_AFTER_TASKS_FINISH),// 是否在任务完成后启用检查点
+                            this::prepareInputSnapshot,// 输入快照的回调函数
+                            configuration.getMaxConcurrentCheckpoints(),// 最大并发检查点的数量
                             BarrierAlignmentUtil.createRegisterTimerCallback(
-                                    mainMailboxExecutor, systemTimerService),
-                            configuration.getMaxSubtasksPerChannelStateFile());
+                                    mainMailboxExecutor, systemTimerService),// 创建用于注册时间回调的函数
+                            configuration.getMaxSubtasksPerChannelStateFile()); // 每个通道状态文件的最大子任务数
+            // 将检查点协调器注册为可关闭资源，确保在任务结束时能够正确关闭
             resourceCloser.registerCloseable(subtaskCheckpointCoordinator::close);
 
             // Register to stop all timers and threads. Should be closed first.
+            // 注册关闭所有计时器和线程的方法，应该首先关闭
+            // 停止时间服务
             resourceCloser.registerCloseable(this::tryShutdownTimerService);
-
+            // 将通道状态写入器注入到通道中
             injectChannelStateWriterIntoChannels();
-
+            // 启用busy时间度量
             environment.getMetricGroup().getIOMetricGroup().setEnableBusyTime(true);
+            // 获取任务管理器的配置
             Configuration taskManagerConf = environment.getTaskManagerInfo().getConfiguration();
-
+            // 缓冲区膨胀的周期（转换为毫秒）
             this.bufferDebloatPeriod = taskManagerConf.get(BUFFER_DEBLOAT_PERIOD).toMillis();
+            // 设置邮件箱指标的延迟测量
             mailboxMetricsControl.setupLatencyMeasurement(systemTimerService, mainMailboxExecutor);
         } catch (Exception ex) {
+            // 如果在创建过程中出现异常，尝试关闭已注册的资源
             try {
                 resourceCloser.close();
             } catch (Throwable throwable) {
@@ -843,24 +903,33 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     @Override
     public final void invoke() throws Exception {
         // Allow invoking method 'invoke' without having to call 'restore' before it.
+        // 如果当前不是运行状态，则会在调用 invoke 方法时触发恢复过程。
         if (!isRunning) {
+            // 如果当前不是运行状态，则记录日志信息，并调用内部恢复方法
             LOG.debug("Restoring during invoke will be called.");
+            // 调用内部恢复方法，可能是为了准备资源或恢复状态
             restoreInternal();
         }
 
         // final check to exit early before starting to run
+        // 在开始运行之前进行最后的检查，确保任务没有被取消
+        // 如果任务被取消，则不会继续执行后续的代码
         ensureNotCanceled();
 
+        // 调度缓冲区清理任务（可能是为了清理不再需要的资源或数据）
         scheduleBufferDebloater();
 
         // let the task do its work
+        // 标记任务开始，这通常用于监控和日志记录，以便跟踪任务的执行时间和性能
         getEnvironment().getMetricGroup().getIOMetricGroup().markTaskStart();
+        // 执行任务的主要逻辑，可能是通过邮件箱循环处理消息或执行其他任务
         runMailboxLoop();
 
         // if this left the run() method cleanly despite the fact that this was canceled,
         // make sure the "clean shutdown" is not attempted
+        // 再次确保任务没有被取消
         ensureNotCanceled();
-
+       // 调用 afterInvoke 方法进行后续处理
         afterInvoke();
     }
 
@@ -1630,6 +1699,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     // ------------------------------------------------------------------------
 
     /** Utility class to encapsulate the handling of asynchronous exceptions. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 封装异步异常处理
+    */
     static class StreamTaskAsyncExceptionHandler implements AsyncExceptionHandler {
         private final Environment environment;
 

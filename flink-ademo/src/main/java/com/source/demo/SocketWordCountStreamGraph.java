@@ -25,7 +25,7 @@ public class SocketWordCountStreamGraph {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.registerCachedFile("./a_conf/a.txt","cache");
         /** 设置检查点的时间间隔 */
-        env.enableCheckpointing(5000);
+        env.enableCheckpointing(3000000);
         /** 设置检查点路径*/
         env.getCheckpointConfig().setCheckpointStorage("file:///H:/chk");
         env.setParallelism(2);
@@ -37,7 +37,7 @@ public class SocketWordCountStreamGraph {
         mapStream.setDescription("aaaaaaa");
         /** 按照空格切分字符串*/
         SingleOutputStreamOperator<Tuple2<String,Integer>> flatMapStream = mapStream.flatMap(new Split());
-        mapStream.setDescription("bbbbb");
+        flatMapStream.setDescription("bbbbb");
 
         /** 分组聚合*/
         KeyedStream<Tuple2<String,Integer>,String> keyStream = flatMapStream.keyBy(value -> value.f0);

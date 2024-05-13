@@ -38,6 +38,14 @@ import java.security.Permission;
  * against user mistakes by gracefully handling them informing users rather than causing silent
  * unavailability.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于控制一些可以通过 Java 系统安全管理器捕获的行为。它可以用来控制可能影响集群可用性的意外用户行为，
+ * 例如，它可以警告或阻止用户代码通过 System.exit 终止 JVM 或通过日志记录或抛出异常来阻止 JVM 停止。
+ * 这并不一定能阻止那些试图自己调整安全管理器的恶意用户，但更多的是为了可靠地处理用户错误，
+ * 通过优雅地处理这些错误并通知用户，而不是导致无声的不可用状态。
+*/
 public class FlinkSecurityManager extends SecurityManager {
 
     static final Logger LOG = LoggerFactory.getLogger(FlinkSecurityManager.class);
@@ -154,11 +162,16 @@ public class FlinkSecurityManager extends SecurityManager {
 
     @Override
     public void checkExit(int status) {
+        // 检查是否监控用户系统退出
         if (userSystemExitMonitored()) {
+            // 根据用户系统退出模式进行不同的处理
             switch (userSystemExitMode) {
+                // 禁用模式，不执行任何操作
                 case DISABLED:
                     break;
                 case LOG:
+                    // 日志模式，记录异常追踪日志以帮助用户调试退出来源
+                    // 向日志中添加退出JVM的警告信息，并附带异常信息
                     // Add exception trace log to help users to debug where exit came from.
                     LOG.warn(
                             "Exiting JVM with status {} is monitored: The system will exit due to this call.",
@@ -166,8 +179,11 @@ public class FlinkSecurityManager extends SecurityManager {
                             new UserSystemExitException());
                     break;
                 case THROW:
+                    // 抛出异常模式，直接抛出UserSystemExitException异常
                     throw new UserSystemExitException();
                 default:
+                    // 不应该发生的情况，如果上面已经详尽处理了所有模式
+                    // 在已经处于退出路径时记录警告
                     // Must not happen if exhaustively handling all modes above. Logging as being
                     // already at exit path.
                     LOG.warn("No valid check exit mode configured: {}", userSystemExitMode);
@@ -175,11 +191,15 @@ public class FlinkSecurityManager extends SecurityManager {
         }
         // As this security manager is current at outer most of the chain and it has exit guard
         // option, invoke inner security manager here after passing guard checking above, if any.
+        // 由于此安全管理器位于链的最外层，并且具有退出守卫选项，
+        // 如果在上面的守卫检查之后存在其他安全管理器，则在此处调用它
         if (originalSecurityManager != null) {
             originalSecurityManager.checkExit(status);
         }
         // At this point, exit is determined. Halt if defined, otherwise check ended, JVM will call
         // System.exit
+        // 此时，退出已经确定。如果定义了haltOnSystemExit，则立即停止JVM，
+        // 否则检查结束，JVM将调用System.exit()退出
         if (haltOnSystemExit) {
             Runtime.getRuntime().halt(status);
         }

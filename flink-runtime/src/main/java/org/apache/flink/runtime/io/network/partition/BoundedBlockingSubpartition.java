@@ -63,6 +63,11 @@ import static org.apache.flink.util.Preconditions.checkState;
  * <p>The method calls to create readers, dispose readers, and dispose the partition are thread-safe
  * vis-a-vis each other.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * ResultSubpartition的一个实现，用于以阻塞方式传输有界结果：结果首先被生成，然后被消费。这个结果可能会被多次消费。
+*/
 final class BoundedBlockingSubpartition extends ResultSubpartition {
 
     /** This lock guards the creation of readers and disposal of the memory mapped file. */
@@ -178,17 +183,29 @@ final class BoundedBlockingSubpartition extends ResultSubpartition {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 标记数据分区消费完成并返回已写入的字节数。
+    */
     @Override
     public int finish() throws IOException {
+        // 检查数据分区是否已经被释放
         checkState(!isReleased, "data partition already released");
+        // 检查数据分区是否已经完成
         checkState(!isFinished, "data partition already finished");
-
+        // 标记数据分区为已完成状态
         isFinished = true;
+        // 刷新当前缓冲区
         flushCurrentBuffer();
+        // 创建一个用于写入分区结束事件的BufferConsumer
         BufferConsumer eventBufferConsumer =
                 EventSerializer.toBufferConsumer(EndOfPartitionEvent.INSTANCE, false);
+        // 写入分区结束事件并关闭BufferConsumer
         writeAndCloseBufferConsumer(eventBufferConsumer);
+        // 标记数据分区写操作完成
         data.finishWrite();
+        // 返回已写入的字节数
         return eventBufferConsumer.getWrittenBytes();
     }
 

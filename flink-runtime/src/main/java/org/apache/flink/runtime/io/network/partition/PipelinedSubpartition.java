@@ -67,6 +67,11 @@ import static org.apache.flink.util.Preconditions.checkState;
  * PipelinedSubpartitionView#notifyDataAvailable() notification} for any {@link BufferConsumer}
  * present in the queue.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 一种只在内存中使用流水线的子分区，可以使用一次。
+*/
 public class PipelinedSubpartition extends ResultSubpartition implements ChannelStateHolder {
 
     private static final Logger LOG = LoggerFactory.getLogger(PipelinedSubpartition.class);
@@ -82,6 +87,7 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
     private final int receiverExclusiveBuffersPerChannel;
 
     /** All buffers of this subpartition. Access to the buffers is synchronized on this object. */
+    /** 此子分区的所有缓冲区。对缓冲区的访问在此对象上同步。 */
     final PrioritizedDeque<BufferConsumerWithPartialRecordLength> buffers =
             new PrioritizedDeque<>();
 
@@ -159,56 +165,94 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
         return true;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 标记数据分区消费完成并返回已写入的字节数。
+    */
     @Override
     public int finish() throws IOException {
+        // 创建一个用于写入分区结束事件的BufferConsumer
         BufferConsumer eventBufferConsumer =
                 EventSerializer.toBufferConsumer(EndOfPartitionEvent.INSTANCE, false);
+        // 调用add方法，将序列化后的EndOfPartitionEvent添加到某个地方（可能是队列或缓冲区）
         add(eventBufferConsumer, 0, true);
+        //打印日志
         LOG.debug("{}: Finished {}.", parent.getOwningTaskName(), this);
+        // 返回BufferConsumer中已写入的字节数
         return eventBufferConsumer.getWrittenBytes();
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 向某个缓冲区消费者添加数据，并返回新的缓冲区大小
+    */
     private int add(BufferConsumer bufferConsumer, int partialRecordLength, boolean finish) {
+        // 检查缓冲区消费者是否为空，如果为空则抛出异常
         checkNotNull(bufferConsumer);
-
+        // 初始化一个变量，用于标识是否需要通知数据可用
         final boolean notifyDataAvailable;
+        // 默认优先级序列号
         int prioritySequenceNumber = DEFAULT_PRIORITY_SEQUENCE_NUMBER;
+        // 新的缓冲区大小
         int newBufferSize;
+        // 使用buffers对象作为锁，确保线程安全
         synchronized (buffers) {
+            // 如果当前操作已完成或已释放，则关闭缓冲区消费者并返回错误码
             if (isFinished || isReleased) {
                 bufferConsumer.close();
                 return ADD_BUFFER_ERROR_CODE;
             }
 
             // Add the bufferConsumer and update the stats
+            // 尝试将缓冲区消费者添加到缓冲区，并更新统计信息
+            // 如果添加成功，则更新优先级序列号
             if (addBuffer(bufferConsumer, partialRecordLength)) {
                 prioritySequenceNumber = sequenceNumber;
             }
+            // 更新缓冲区消费者的统计信息
             updateStatistics(bufferConsumer);
+            // 增加在队列中等待的缓冲区数量
             increaseBuffersInBacklog(bufferConsumer);
+            // 根据是否完成或应该通知数据可用，设置notifyDataAvailable的值
             notifyDataAvailable = finish || shouldNotifyDataAvailable();
 
+            // 如果finish为true，则设置isFinished为true
             isFinished |= finish;
+            // 获取当前缓冲区的大小
             newBufferSize = bufferSize;
         }
-
+        // 通知优先级事件
         notifyPriorityEvent(prioritySequenceNumber);
+        // 如果需要通知数据可用，则执行通知操作
         if (notifyDataAvailable) {
             notifyDataAvailable();
         }
-
+        // 返回新的缓冲区大小
         return newBufferSize;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 方法用于向缓冲区中添加一个BufferConsumer对象，并可能处理具有特殊数据类型的BufferConsumer
+    */
     @GuardedBy("buffers")
     private boolean addBuffer(BufferConsumer bufferConsumer, int partialRecordLength) {
+        // 断言当前线程是否持有buffers对象的锁，确保线程安全
         assert Thread.holdsLock(buffers);
+        // 检查BufferConsumer的数据类型是否具有优先级
         if (bufferConsumer.getDataType().hasPriority()) {
+            // 如果数据类型具有优先级，则调用processPriorityBuffer方法来处理
             return processPriorityBuffer(bufferConsumer, partialRecordLength);
+            // 如果数据类型不是优先级类型，但是是TIMEOUTABLE_ALIGNED_CHECKPOINT_BARRIER类型
         } else if (Buffer.DataType.TIMEOUTABLE_ALIGNED_CHECKPOINT_BARRIER
                 == bufferConsumer.getDataType()) {
+            // 调用processTimeoutableCheckpointBarrier方法来处理这种特殊类型的BufferConsumer
             processTimeoutableCheckpointBarrier(bufferConsumer);
         }
+        // 如果BufferConsumer的数据类型既不是优先级类型也不是TIMEOUTABLE_ALIGNED_CHECKPOINT_BARRIER类型
+        // 则将其与partialRecordLength一起封装为一个新的BufferConsumerWithPartialRecordLength对象，并添加到buffers列表中
         buffers.add(new BufferConsumerWithPartialRecordLength(bufferConsumer, partialRecordLength));
         return false;
     }

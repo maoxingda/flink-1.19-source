@@ -63,6 +63,13 @@ import static org.apache.flink.util.Preconditions.checkState;
  * <p>This class has an open-prepareClose-close lifecycle that is connected with and maps to the
  * lifecycle of the encapsulated {@link TaskMailbox} (which is open-quiesce-close).
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 这个类封装了基于邮箱（Mailbox）的执行模型的逻辑。该模型的核心是{@link #runMailboxLoop()}方法，
+ * 该方法在循环中持续执行提供的{@link MailboxDefaultAction}。在每次迭代中，该方法还会检查邮箱中是否有待处理的操作，
+ * 并执行这些操作。这种模型确保了默认操作（例如记录处理）和邮箱操作（例如检查点触发、定时器触发等）之间的单线程执行。
+*/
 @Internal
 public class MailboxProcessor implements Closeable {
 
@@ -78,6 +85,7 @@ public class MailboxProcessor implements Closeable {
      * Action that is repeatedly executed if no action request is in the mailbox. Typically record
      * processing.
      */
+    /** 如果邮箱中没有操作请求，则重复执行的操作。通常是记录处理 */
     protected final MailboxDefaultAction mailboxDefaultAction;
 
     /**
@@ -211,23 +219,41 @@ public class MailboxProcessor implements Closeable {
      * suspended at any time by calling {@link #suspend()}. For resuming the loop this method should
      * be called again.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 运行邮箱处理循环。这是执行主要工作的地方。这个循环可以通过调用#suspend()在任何时候被挂起。要恢复循环，应该再次调用这个方法。
+    */
     public void runMailboxLoop() throws Exception {
+        // 切换邮箱循环的挂起状态
         suspended = !mailboxLoopRunning;
 
+        // 获取当前线程的邮箱实例
         final TaskMailbox localMailbox = mailbox;
 
+        /// 检查当前线程是否是已声明的邮箱线程
         checkState(
                 localMailbox.isMailboxThread(),
                 "Method must be executed by declared mailbox thread!");
 
+        //确认 TaskMailbox.State为开启状态
         assert localMailbox.getState() == TaskMailbox.State.OPEN : "Mailbox must be opened!";
 
+        // 创建一个邮箱控制器实例，与当前对象关联
         final MailboxController mailboxController = new MailboxController(this);
 
+
+        // 循环执行，判断是否是挂起状态，只要下一次循环是可能的
         while (isNextLoopPossible()) {
             // The blocking `processMail` call will not return until default action is available.
+            /**
+             * 阻塞调用,processMail方法检查Mailbox是否有Mail正在处理，只要mail有Mail,方法会等待Mail全部处理完毕后再返回，
+             */
             processMail(localMailbox, false);
+            // 再次检查下一次循环是否可能
             if (isNextLoopPossible()) {
+
+                //调用MailboxDefaultAction.runDefaultAction处理记录
                 mailboxDefaultAction.runDefaultAction(
                         mailboxController); // lock is acquired inside default action as needed
             }
@@ -335,22 +361,48 @@ public class MailboxProcessor implements Closeable {
      *
      * @return true if a mail has been processed.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理邮箱中的所有特殊动作。在当前设计中，此方法还评估所有控制标志的更改。
+     * 这样做可以保持 {@link #runMailboxLoop()} 方法的主要执行路径不受其他标志检查的干扰，
+     * 但代价是，所有标志更改都必须确保邮箱通过 mailbox#hasMail 发出信号。
+     *
+     * @param mailbox 要处理的邮箱实例
+     * @param singleStep 是否以单步模式处理邮件，如果为true，则只处理一批邮件；如果为false，则处理直到没有邮件可处理
+     * @return 如果已处理邮件，则返回true
+     * @throws Exception 如果在处理邮件过程中发生异常
+    */
     private boolean processMail(TaskMailbox mailbox, boolean singleStep) throws Exception {
         // Doing this check is an optimization to only have a volatile read in the expected hot
         // path, locks are only
         // acquired after this point.
+
+        // 这个检查是一个优化，只在预期的主要执行路径上执行一次volatile读取，
+        // 只有在这一点之后才会获取锁。
+        // 通过检查是否有可用的批处理来避免不必要的锁争用
         boolean isBatchAvailable = mailbox.createBatch();
 
         // Take mails in a non-blockingly and execute them.
+
+        // 以非阻塞方式取邮件并执行它们
+        // 只有在有可用批处理的情况下才会尝试处理邮件
         boolean processed = isBatchAvailable && processMailsNonBlocking(singleStep);
+
+        // 如果是在单步模式下，则直接返回是否处理了邮件
         if (singleStep) {
             return processed;
         }
 
         // If the default action is currently not available, we can run a blocking mailbox execution
         // until the default action becomes available again.
+
+        // 如果默认动作当前不可用，我们可以运行一个阻塞的邮箱执行，
+        // 直到默认动作再次变得可用
+        // 这里会尝试继续处理邮件，即使当前批处理已处理完毕
         processed |= processMailsWhenDefaultActionUnavailable();
 
+        // 返回是否处理了邮件
         return processed;
     }
 

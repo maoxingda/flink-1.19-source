@@ -24,7 +24,7 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
- * Context of shuffle input/output owner used to create partitions or gates belonging to the owner.
+ * Context of shuffle input/output owner used to create partitions or gates belonging to the owner.用于创建属于所有者的分区或InputGate的shuffle输入/输出所有者的上下文
  */
 public class ShuffleIOOwnerContext {
     private final String ownerName;

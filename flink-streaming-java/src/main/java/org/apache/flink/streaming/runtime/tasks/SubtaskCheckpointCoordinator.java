@@ -40,6 +40,11 @@ import java.util.function.Supplier;
  *   <li>maintain storage locations
  * </ol>
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 协调子任务（即 Task 和 StreamTask）中与检查点（checkpointing）相关的工作
+*/
 @Internal
 public interface SubtaskCheckpointCoordinator extends Closeable {
 

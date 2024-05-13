@@ -41,7 +41,7 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 
 /**
  * A result output of a task, pipelined (streamed) to the receivers.
- *
+ * 任务的一种结果输出，通过流水线（流式传输）到接收器。
  * <p>This result partition implementation is used both in batch and streaming. For streaming, it
  * supports low latency transfers (ensure data is sent within x milliseconds) or unconstrained while
  * for batch it transfers only once a buffer is full. Additionally, for streaming use this typically

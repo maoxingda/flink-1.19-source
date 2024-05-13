@@ -30,11 +30,12 @@ import org.apache.flink.shaded.guava31.com.google.common.collect.Multimap;
 /**
  * @授课老师(微信): yi_locus
  * email: 156184212@qq.com
- * 事件处理程序管理 EventListener 实例，
+ * 事事件处理器管理 EventListener 实例，并允许向发布事件。
 */
 public class TaskEventHandler {
 
     /** Listeners for each event type. */
+    /** 每种事件类型的监听器。 */
     private final Multimap<Class<? extends TaskEvent>, EventListener<TaskEvent>> listeners =
             HashMultimap.create();
 
@@ -52,7 +53,7 @@ public class TaskEventHandler {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 将任务事件发布给所有订阅的事件侦听器。
+     * 将任务事件发布给所有已订阅的事件监听器。
     */
     public void publish(TaskEvent event) {
         synchronized (listeners) {

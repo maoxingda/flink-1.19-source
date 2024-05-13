@@ -222,7 +222,7 @@ public class CliFrontend {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 运行成勋
+     * 运行
     */
     protected void run(String[] args) throws Exception {
         /** 记录一条信息级别的日志，表明正在执行“run”命令。 */

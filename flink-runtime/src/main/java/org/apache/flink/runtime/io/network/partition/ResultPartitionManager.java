@@ -80,6 +80,12 @@ public class ResultPartitionManager implements ResultPartitionProvider {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * Map<ResultPartitionID, ResultPartition> registeredPartitions
+     * 注册ResultPartition
+    */
     public void registerResultPartition(ResultPartition partition) throws IOException {
         // 获取PartitionRequestListenerManager对象，这里一个用于管理监听器的类
         PartitionRequestListenerManager listenerManager;

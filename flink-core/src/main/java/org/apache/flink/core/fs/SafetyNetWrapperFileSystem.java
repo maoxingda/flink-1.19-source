@@ -33,6 +33,11 @@ import java.net.URI;
  * <p>Streams obtained by this are therefore managed by the {@link SafetyNetCloseableRegistry} to
  * prevent resource leaks from unclosed streams.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 将所有打开的流包装为 ClosingFSDataInputStream 、ClosingFSDataOutputStream并将它们注册到 SafetyNetCloseableRegistry。
+*/
 @Internal
 public class SafetyNetWrapperFileSystem extends FileSystem implements WrappingProxy<FileSystem> {
 
