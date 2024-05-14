@@ -27,6 +27,13 @@ package org.apache.flink.streaming.runtime.partitioner;
  * the maximum parallelism might not have been determined and needs to be set at a stage when the
  * maximum parallelism could have been determined.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * StreamPartitioner 的接口，该接口需要与流转换的最大并行度进行配置。当在流图中添加内部边时，configure 方法会被调用。
+ * 这里的“流转换”可能指的是在流处理框架（如 Apache Flink）中数据流的各种转换操作（如 map、filter、reduce 等）。而“最大并行度”指的是在分布式系统中，可以并行执行这些转换操作的最大任务数。StreamPartitioner 可能是用于确定如何将数据分区到这些并行任务中的一个组件。
+ * 在流图中添加内部边时，框架会调用 configure 方法来确保 StreamPartitioner 被正确配置，以便根据流的最大并行度来执行其分区逻辑。
+*/
 public interface ConfigurableStreamPartitioner {
 
     /**

@@ -66,17 +66,24 @@ import java.util.Optional;
  * during that processing, we effectively lose the bounded processing guarantee of mails inside the
  * mailbox loop.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 任务邮箱提供了对邮箱的读写访问
+*/
 @Internal
 public interface TaskMailbox {
     /**
      * The minimal priority for mails. The priority is used when no operator is associated with the
      * mail.
      */
+    /** 邮件的最低优先级。当邮件没有与Operator关联时，会使用这个优先级。 */
     int MIN_PRIORITY = -1;
     /**
      * The maximal priority for mails. This priority indicates that the message should be performed
      * before any mail associated with an operator.
      */
+    /** 邮件的最高优先级。这个优先级表示该消息应该在与Operator关联的邮件之前执行。 */
     int MAX_PRIORITY = Integer.MAX_VALUE;
 
     /**

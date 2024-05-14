@@ -44,10 +44,23 @@ public class RecordWriterBuilder<T extends IOReadableWritable> {
         return this;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据提供的 ResultPartitionWriter 构建一个 RecordWriter 对象。
+     * RecordWriter 用于将数据写入 ResultPartitionWriter。
+     * @param writer ResultPartitionWriter 对象，用于实际写入数据
+     * @return 返回一个 RecordWriter 对象，用于将数据写入给定的 ResultPartitionWriter
+    */
     public RecordWriter<T> build(ResultPartitionWriter writer) {
+        // 检查选择器是否配置为广播模式
         if (selector.isBroadcast()) {
+            // 如果是广播模式，则使用 BroadcastRecordWriter 来广播数据到所有接收者
+            // BroadcastRecordWriter 会将数据复制到所有分区
             return new BroadcastRecordWriter<>(writer, timeout, taskName);
         } else {
+            // 如果不是广播模式，则使用 ChannelSelectorRecordWriter 来根据选择器策略将数据写入特定分区
+            // ChannelSelectorRecordWriter 会根据选择器的配置来决定数据写入哪个分区
             return new ChannelSelectorRecordWriter<>(writer, selector, timeout, taskName);
         }
     }

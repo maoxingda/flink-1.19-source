@@ -28,6 +28,11 @@ import java.io.Closeable;
  *
  * @param <T> The type of the elements that can be emitted.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于获取当前输入/输出水印的 Gauge
+ */
 public interface WatermarkGaugeExposingOutput<T> extends Output<T>, Closeable {
     Gauge<Long> getWatermarkGauge();
 }

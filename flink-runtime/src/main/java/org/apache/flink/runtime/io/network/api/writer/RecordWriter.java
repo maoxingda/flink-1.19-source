@@ -49,6 +49,11 @@ import static org.apache.flink.util.Preconditions.checkArgument;
  *
  * @param <T> the type of the record that can be emitted with this record writer
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 面向记录的抽象运行时结果写入器
+*/
 public abstract class RecordWriter<T extends IOReadableWritable> implements AvailabilityProvider {
 
     /** Default name for the output flush thread, if no name with a task reference is given. */
@@ -56,11 +61,11 @@ public abstract class RecordWriter<T extends IOReadableWritable> implements Avai
     public static final String DEFAULT_OUTPUT_FLUSH_THREAD_NAME = "OutputFlusher";
 
     private static final Logger LOG = LoggerFactory.getLogger(RecordWriter.class);
-
+    /** Task运行时用来存储结果的接口 */
     protected final ResultPartitionWriter targetPartition;
-
+    /** 子分区个数*/
     protected final int numberOfSubpartitions;
-
+    /** 一个简单且高效的序列化器，用于 DataOutput 接口 */
     protected final DataOutputSerializer serializer;
 
     protected final Random rng = new XORShiftRandom();
@@ -68,6 +73,7 @@ public abstract class RecordWriter<T extends IOReadableWritable> implements Avai
     protected final boolean flushAlways;
 
     /** The thread that periodically flushes the output, to give an upper latency bound. */
+   /** 定期刷新输出的线程，以提供一个最大的延迟上限。 */
     @Nullable private final OutputFlusher outputFlusher;
 
     /**
@@ -255,6 +261,11 @@ public abstract class RecordWriter<T extends IOReadableWritable> implements Avai
      *
      * <p>The thread is daemonic, because it is only a utility thread.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 一个专用线程，用于定期刷新输出缓冲区，以设置最大的延迟上限。
+    */
     private class OutputFlusher extends Thread {
 
         private final long timeout;

@@ -44,29 +44,42 @@ import static org.apache.flink.streaming.runtime.tasks.mailbox.TaskMailbox.State
  * Implementation of {@link TaskMailbox} in a {@link java.util.concurrent.BlockingQueue} fashion and
  * tailored towards our use case with multiple writers and single reader.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 以BlockingQueue风格实现的TaskMailbox，并且针对的使用场景进行了定制，支持多个写入者和单个读取者。
+*/
 @ThreadSafe
 public class TaskMailboxImpl implements TaskMailbox {
     /** Lock for all concurrent ops. */
+    /** 所有并发操作的锁 */
     private final ReentrantLock lock = new ReentrantLock();
 
     /** Internal queue of mails. */
+    /** 内部邮件队列*/
     @GuardedBy("lock")
     private final Deque<Mail> queue = new ArrayDeque<>();
 
     /** Condition that is triggered when the mailbox is no longer empty. */
+    /** 当邮箱不再为空时触发的条件 */
     @GuardedBy("lock")
     private final Condition notEmpty = lock.newCondition();
 
     /** The state of the mailbox in the lifecycle of open, quiesced, and closed. */
+    /** 在生命周期中，邮箱的打开、静默和关闭状态 */
     @GuardedBy("lock")
     private State state = OPEN;
 
     /** Reference to the thread that executes the mailbox mails. */
+    /** 执行邮箱邮件的线程引用 */
     @Nonnull private final Thread taskMailboxThread;
 
     /**
      * The current batch of mails. A new batch can be created with {@link #createBatch()} and
      * consumed with {@link #tryTakeFromBatch()}.
+     */
+    /**
+     * 当前邮件批次。可以使用createBatch()方法创建一个新的批次，并使用tryTakeFromBatch()方法消耗该批次中的邮件。
      */
     private final Deque<Mail> batch = new ArrayDeque<>();
 

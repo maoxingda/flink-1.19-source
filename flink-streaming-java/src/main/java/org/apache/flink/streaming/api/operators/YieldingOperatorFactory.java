@@ -24,6 +24,11 @@ import org.apache.flink.api.common.operators.MailboxExecutor;
  * An operator that needs access to the {@link MailboxExecutor} to yield to downstream operators
  * needs to be created through a factory implementing this interface.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ *
+*/
 @Experimental
 public interface YieldingOperatorFactory<OUT> extends StreamOperatorFactory<OUT> {
     void setMailboxExecutor(MailboxExecutor mailboxExecutor);

@@ -413,6 +413,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             TaskMailbox mailbox)
             throws Exception {
         // The registration of all closeable resources. The order of registration is important.
+        /** 所有可关闭资源的注册。里面存放是一个Map结构，用来存放可关闭或者清理的资源 */
         resourceCloser = new AutoCloseableRegistry();
         try {
             // 保存传入的环境配置对象。
@@ -421,15 +422,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             this.configuration = new StreamConfig(environment.getTaskConfiguration());
 
             // Initialize mailbox metrics
-            /** 初始化mailbox 指标  */
-            // 初始化 mailbox 相关的指标控制器
+            /** 初始化 mailbox 相关的指标控制器 */
             MailboxMetricsController mailboxMetricsControl =
                     new MailboxMetricsController(
                             environment.getMetricGroup().getIOMetricGroup().getMailboxLatency(),
                             environment
                                     .getMetricGroup()
                                     .getIOMetricGroup()
-
                                     .getNumMailsProcessedCounter());
             // 注册 mailbox 的大小提供者到指标组
             environment
@@ -438,11 +437,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                     .registerMailboxSizeSupplier(() -> mailbox.size());
             //
             /**
+             * 核心点1
              * 创建一个 MailboxProcessor 对象来处理邮箱中的消息
              * 1.使用当前对象的 processInput 方法来处理输入
              * 2.传入的任务邮箱
              * 3.传入的动作执行器
              * 4.传入的 mailbox 指标控制器
+             * 核心点
              */
             this.mailboxProcessor =
                     new MailboxProcessor(
@@ -457,10 +458,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                             new ExecutorThreadFactory("channel-state-unspilling"));
             // 将 channelIOExecutor 的关闭方法注册为可关闭资源
             resourceCloser.registerCloseable(channelIOExecutor::shutdown);
-           // 根据配置和环境创建 recordWriter 代理
+           //核心点2.根据配置和环境创建 recordWriter 代理
             this.recordWriter = createRecordWriterDelegate(configuration, environment);
             // Release the output resources. this method should never fail.
-            // 注册一个方法用于释放输出资源，这个方法应该永远不会失败
+            // 注册一个方法用于释放输出资源，
             resourceCloser.registerCloseable(this::releaseOutputResources);
             // If the operators won't be closed explicitly, register it to a hard close.
             // 如果操作器没有明确关闭，则将其注册为强制关闭。
@@ -635,6 +636,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
      *     stream task.
      * @throws Exception on any problems in the action.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 任务的默认操作（例如，处理来自输入的一个事件）
+    */
     protected void processInput(MailboxDefaultAction.Controller controller) throws Exception {
         DataInputStatus status = inputProcessor.processInput();
         switch (status) {
@@ -773,35 +779,44 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     }
 
     void restoreInternal() throws Exception {
+        // 如果任务正在运行，则拒绝重新恢复尝试
         if (isRunning) {
             LOG.debug("Re-restore attempt rejected.");
             return;
         }
+        // 标记任务正在恢复中
         isRestoring = true;
+        // 标记关闭的操作符为未关闭状态
         closedOperators = false;
+        // 标记任务初始化开始
         getEnvironment().getMetricGroup().getIOMetricGroup().markTaskInitializationStarted();
         LOG.debug("Initializing {}.", getName());
-
-        SubTaskInitializationMetricsBuilder initializationMetrics =
-                new SubTaskInitializationMetricsBuilder(
-                        SystemClock.getInstance().absoluteTimeMillis());
+        // 初始化度量指标构建器
+         SubTaskInitializationMetricsBuilder initializationMetrics =
+        new SubTaskInitializationMetricsBuilder(
+                SystemClock.getInstance().absoluteTimeMillis());
         try {
+            //初始化OperatorChain
             operatorChain =
                     getEnvironment().getTaskStateManager().isTaskDeployedAsFinished()
                             ? new FinishedOperatorChain<>(this, recordWriter)
                             : new RegularOperatorChain<>(this, recordWriter);
+            // 获取主操作符
             mainOperator = operatorChain.getMainOperator();
-
+            // 获取并设置恢复的检查点ID（如果存在）
             getEnvironment()
                     .getTaskStateManager()
                     .getRestoreCheckpointId()
                     .ifPresent(restoreId -> latestReportCheckpointId = restoreId);
 
             // task specific initialization
+            // 特定任务的初始化操作
             init();
+            // 清除初始配置，避免重复加载状态等
             configuration.clearInitialConfigs();
 
             // save the work of reloading state, etc, if the task is already canceled
+            // 确保任务未被取消
             ensureNotCanceled();
 
             // -------- Invoke --------
@@ -809,30 +824,38 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
             // we need to make sure that any triggers scheduled in open() cannot be
             // executed before all operators are opened
+            // 调用restoreStateAndGates方法，并确保在所有操作符打开之前，open()方法中调度的任何触发器都不会被执行
             CompletableFuture<Void> allGatesRecoveredFuture =
                     actionExecutor.call(() -> restoreStateAndGates(initializationMetrics));
 
             // Run mailbox until all gates will be recovered.
+            // 运行邮箱处理器，直到所有门恢复
             mailboxProcessor.runMailboxLoop();
-
+            // 添加门恢复的时间度量指标
             initializationMetrics.addDurationMetric(
                     GATE_RESTORE_DURATION,
                     SystemClock.getInstance().absoluteTimeMillis() - initializeStateEndTs);
-
+            // 确保任务未被取消
             ensureNotCanceled();
-
+            // 检查所有门是否已恢复完成
             checkState(
                     allGatesRecoveredFuture.isDone(),
                     "Mailbox loop interrupted before recovery was finished.");
 
             // we recovered all the gates, we can close the channel IO executor as it is no longer
             // needed
+            // 如果已经恢复了Gate，可以关闭不再需要的通道IO执行器
             channelIOExecutor.shutdown();
-
+            // 标记任务正在运行
             isRunning = true;
+            // 标记任务恢复完成
             isRestoring = false;
+            // 设置初始化状态为已完成
             initializationMetrics.setStatus(InitializationStatus.COMPLETED);
         } finally {
+            /**
+             * 汇报状态，初始化后要向JobMaster汇报Checkpoint等相关状态
+             */
             environment
                     .getTaskStateManager()
                     .reportInitializationMetrics(initializationMetrics.build());
@@ -1722,36 +1745,65 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     }
 
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 象用于序列化StreamRecord的写入操作。
+     *
+     * @param configuration StreamConfig类型的配置对象，用于配置流的相关参数
+     * @param environment Environment类型的环境对象，可能包含运行时环境信息
+     * @param <OUT> StreamRecord中泛型参数的类型，表示StreamRecord所承载的数据类型
+     * @return 返回一个RecordWriterDelegate对象，该对象包装了SerializationDelegate<StreamRecord<OUT>>类型的RecordWriter
+     *
+    */
     @VisibleForTesting
     public static <OUT>
             RecordWriterDelegate<SerializationDelegate<StreamRecord<OUT>>>
                     createRecordWriterDelegate(
                             StreamConfig configuration, Environment environment) {
+        // 根据配置和环境信息创建RecordWriter的列表
         List<RecordWriter<SerializationDelegate<StreamRecord<OUT>>>> recordWrites =
                 createRecordWriters(configuration, environment);
+        // 如果创建的RecordWriter只有一个
         if (recordWrites.size() == 1) {
+            // 则返回一个SingleRecordWriter的实例，该实例包装了唯一的RecordWriter
             return new SingleRecordWriter<>(recordWrites.get(0));
+            // 则返回一个NonRecordWriter的实例，表示不进行任何写入操作
         } else if (recordWrites.size() == 0) {
             return new NonRecordWriter<>();
+            // 如果创建的RecordWriter有多个
         } else {
+            // 则返回一个MultipleRecordWriters的实例，该实例能够处理多个RecordWriter的写入操作
             return new MultipleRecordWriters<>(recordWrites);
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据给定的 StreamConfig 和 Environment 创建 RecordWriter 列表，
+     * 这些 RecordWriter 用于序列化 StreamRecord 类型的输出。
+     * @param configuration StreamConfig 对象，包含流配置信息
+     * @param environment 当前执行环境的上下文
+     * @param <OUT> StreamRecord 中输出的泛型类型
+     * @return 包含 RecordWriter 对象的列表，这些对象用于将 SerializationDelegate<StreamRecord<OUT>> 写入输出
+    */
     private static <OUT>
             List<RecordWriter<SerializationDelegate<StreamRecord<OUT>>>> createRecordWriters(
                     StreamConfig configuration, Environment environment) {
+        // 创建一个空的 RecordWriter 列表
         List<RecordWriter<SerializationDelegate<StreamRecord<OUT>>>> recordWriters =
                 new ArrayList<>();
+        // 获取按非链式顺序排列的输出列表
         List<NonChainedOutput> outputsInOrder =
                 configuration.getVertexNonChainedOutputs(
                         environment.getUserCodeClassLoader().asClassLoader());
-
+        // 遍历每个非链式输出
         int index = 0;
         for (NonChainedOutput streamOutput : outputsInOrder) {
             replaceForwardPartitionerIfConsumerParallelismDoesNotMatch(
                     environment, streamOutput, index);
+            // 调用 createRecordWriter 方法，并将返回的 RecordWriter 添加到列表中
             recordWriters.add(
                     createRecordWriter(
                             streamOutput,
@@ -1760,6 +1812,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                             environment.getTaskInfo().getTaskNameWithSubtasks(),
                             streamOutput.getBufferTimeout()));
         }
+        // 返回创建的 RecordWriter 列表
         return recordWriters;
     }
 
@@ -1782,17 +1835,19 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             Environment environment,
             String taskNameWithSubtask,
             long bufferTimeout) {
-
+        // 创建 StreamPartitioner 对象，这里是为了避免多个流边共享同一个流分区器，
         StreamPartitioner<OUT> outputPartitioner = null;
 
         // Clones the partition to avoid multiple stream edges sharing the same stream partitioner,
         // like the case of https://issues.apache.org/jira/browse/FLINK-14087.
         try {
+            // 使用环境提供的用户代码类加载器来克隆分区器
             outputPartitioner =
                     InstantiationUtil.clone(
                             (StreamPartitioner<OUT>) streamOutput.getPartitioner(),
                             environment.getUserCodeClassLoader().asClassLoader());
         } catch (Exception e) {
+            // 如果克隆失败，则重新抛出异常
             ExceptionUtils.rethrow(e);
         }
 
@@ -1801,24 +1856,28 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                 outputPartitioner,
                 outputIndex,
                 taskNameWithSubtask);
-
+        // 从环境中获取结果分区写入器
         ResultPartitionWriter bufferWriter = environment.getWriter(outputIndex);
 
         // we initialize the partitioner here with the number of key groups (aka max. parallelism)
+        // 如果分区器是可配置的，则使用目标键组数（即最大并行度）进行配置
+        // 我们在这里初始化分区器
         if (outputPartitioner instanceof ConfigurableStreamPartitioner) {
             int numKeyGroups = bufferWriter.getNumTargetKeyGroups();
             if (0 < numKeyGroups) {
                 ((ConfigurableStreamPartitioner) outputPartitioner).configure(numKeyGroups);
             }
         }
-
+        // 创建一个 RecordWriter 对象，并设置相关的配置
         RecordWriter<SerializationDelegate<StreamRecord<OUT>>> output =
                 new RecordWriterBuilder<SerializationDelegate<StreamRecord<OUT>>>()
-                        .setChannelSelector(outputPartitioner)
-                        .setTimeout(bufferTimeout)
-                        .setTaskName(taskNameWithSubtask)
-                        .build(bufferWriter);
+                        .setChannelSelector(outputPartitioner)  // 设置通道选择器为前面创建的分区器
+                        .setTimeout(bufferTimeout)// 设置缓冲区超时时间
+                        .setTaskName(taskNameWithSubtask) // 设置任务名称
+                        .build(bufferWriter);// 构建 RecordWriter 对象
+        // 设置度量组
         output.setMetricGroup(environment.getMetricGroup().getIOMetricGroup());
+        // 返回构建好的 RecordWriter 对象
         return output;
     }
 

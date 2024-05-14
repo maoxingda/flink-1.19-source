@@ -44,6 +44,21 @@ public class StreamOperatorFactoryUtil {
      * @return a newly created and configured operator, and the {@link ProcessingTimeService}
      *     instance it can access.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个新的操作符，使用工厂方法并确保所有特殊的工厂特性得到正确处理。
+     *
+     * @param operatorFactory 操作符工厂。
+     * @param containingTask 包含操作符的任务。
+     * @param configuration 操作符的配置。
+     * @param output 操作符的输出。
+     * @param operatorEventDispatcher 操作符事件调度器，用于操作符和协调器之间的通信。
+     * @return <p>一个新创建并配置好的操作符，以及它可以访问的{@link ProcessingTimeService}实例。</p>
+     *         <p>Tuple2的第一个元素是操作符OP，第二个元素是ProcessingTimeService的可选实例（如果存在的话）。</p>
+     * @param <OUT> 操作符输出的数据类型。
+     * @param <OP> 操作符的类型，必须是StreamOperator<OUT>的子类。
+    */
     public static <OUT, OP extends StreamOperator<OUT>>
             Tuple2<OP, Optional<ProcessingTimeService>> createOperator(
                     StreamOperatorFactory<OUT> operatorFactory,
@@ -51,32 +66,36 @@ public class StreamOperatorFactoryUtil {
                     StreamConfig configuration,
                     Output<StreamRecord<OUT>> output,
                     OperatorEventDispatcher operatorEventDispatcher) {
-
+        // 获取邮箱执行器（MailboxExecutor），用于在任务之间发送和接收消息
         MailboxExecutor mailboxExecutor =
                 containingTask
                         .getMailboxExecutorFactory()
                         .createExecutor(configuration.getChainIndex());
-
+        // 如果操作符工厂是YieldingOperatorFactory的实例，则设置邮箱执行器
         if (operatorFactory instanceof YieldingOperatorFactory) {
             ((YieldingOperatorFactory<?>) operatorFactory).setMailboxExecutor(mailboxExecutor);
         }
-
+        // 创建ProcessingTimeService，该服务用于提供处理时间服务
         final Supplier<ProcessingTimeService> processingTimeServiceFactory =
                 () ->
                         containingTask
                                 .getProcessingTimeServiceFactory()
                                 .createProcessingTimeService(mailboxExecutor);
-
+        // 初始化ProcessingTimeService实例
         final ProcessingTimeService processingTimeService;
         if (operatorFactory instanceof ProcessingTimeServiceAware) {
+            // 如果操作符工厂是ProcessingTimeServiceAware的实例，则创建ProcessingTimeService并设置给工厂
             processingTimeService = processingTimeServiceFactory.get();
             ((ProcessingTimeServiceAware) operatorFactory)
                     .setProcessingTimeService(processingTimeService);
         } else {
+            // 否则，不需要ProcessingTimeService，将其设为null
             processingTimeService = null;
         }
 
         // TODO: what to do with ProcessingTimeServiceAware?
+
+        // 使用给定的参数创建操作符
         OP op =
                 operatorFactory.createStreamOperator(
                         new StreamOperatorParameters<>(
@@ -87,6 +106,7 @@ public class StreamOperatorFactoryUtil {
                                         ? () -> processingTimeService
                                         : processingTimeServiceFactory,
                                 operatorEventDispatcher));
+        //返回结果
         return new Tuple2<>(op, Optional.ofNullable(processingTimeService));
     }
 }

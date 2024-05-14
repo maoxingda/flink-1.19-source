@@ -36,6 +36,13 @@ import static org.apache.flink.util.Preconditions.checkState;
  * MailboxProcessor} and {@link org.apache.flink.streaming.runtime.tasks.StreamTask}. An instance of
  * this class contains and gives control over these dependencies.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 邮箱指标控制器类。邮箱指标的使用，特别是需要TimerService的调度延迟测量，
+ * 在MailboxProcessor和
+ * StreamTask之间引入了（循环）依赖关系。这个类的实例包含了这些依赖关系，并提供了对这些依赖关系的控制。
+*/
 @Internal
 public class MailboxMetricsController {
     /** Default timer interval in milliseconds for triggering mailbox latency measurement. */

@@ -21,6 +21,11 @@ package org.apache.flink.metrics;
 import org.apache.flink.annotation.Public;
 
 /** A Gauge is a {@link Metric} that calculates a specific value at a point in time. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * Gauge是一种｛@link Metric｝，用于计算某个时间点的特定值
+*/
 @Public
 public interface Gauge<T> extends Metric {
 

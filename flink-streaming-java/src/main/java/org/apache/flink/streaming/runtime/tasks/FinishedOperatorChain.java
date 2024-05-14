@@ -41,6 +41,11 @@ import java.util.function.Supplier;
  * The {@link OperatorChain} that is used for restoring tasks that are {@link
  * TaskStateManager#isTaskDeployedAsFinished()}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 如果 TaskStateManager#isTaskDeployedAsFinished() 所有任务都已经完成则创建FinishedOperatorChain
+*/
 @Internal
 public class FinishedOperatorChain<OUT, OP extends StreamOperator<OUT>>
         extends OperatorChain<OUT, OP> {

@@ -316,6 +316,11 @@ public class StreamConfig implements Serializable {
         setTypeSerializer(TYPE_SERIALIZER_OUT_1, serializer);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从配置文件中读取对象。
+    */
     public <T> TypeSerializer<T> getTypeSerializerOut(ClassLoader cl) {
         try {
             return InstantiationUtil.readObjectFromConfig(this.config, TYPE_SERIALIZER_OUT_1, cl);
@@ -403,14 +408,24 @@ public class StreamConfig implements Serializable {
         SimpleOperatorFactory<?> factory = getStreamOperatorFactory(cl);
         return (T) factory.getOperator();
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取StreamOperatorFactory
+    */
     public <T extends StreamOperatorFactory<?>> T getStreamOperatorFactory(ClassLoader cl) {
         try {
+            // 检查是否已经移除了SERIALIZED_UDF（可能是某个序列化的用户自定义函数）
+            // 如果已经移除，则抛出异常
             checkState(
                     !removedKeys.contains(SERIALIZED_UDF),
                     String.format("%s has been removed.", SERIALIZED_UDF));
+            // 从配置中读取并反序列化SERIALIZED_UDF为StreamOperatorFactory对象
+            // 这里假设config是一个包含序列化对象的配置对象，SERIALIZED_UDF是其中的键
+            // cl是用于加载类的ClassLoader
             return InstantiationUtil.readObjectFromConfig(this.config, SERIALIZED_UDF, cl);
         } catch (ClassNotFoundException e) {
+            //异常处理
             String classLoaderInfo = ClassLoaderUtil.getUserCodeClassLoaderInfo(cl);
             boolean loadableDoubleCheck = ClassLoaderUtil.validateClassLoadable(e, cl);
 
@@ -425,6 +440,8 @@ public class StreamConfig implements Serializable {
 
             throw new StreamTaskException(exceptionMessage, e);
         } catch (Exception e) {
+            // 捕获其他所有异常
+            // 抛出自定义的StreamTaskException异常，表示无法实例化用户函数
             throw new StreamTaskException("Cannot instantiate user function.", e);
         }
     }
@@ -605,15 +622,28 @@ public class StreamConfig implements Serializable {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从配置中获取传输链式任务配置。
+     *
+     * @param cl 类加载器，用于加载配置中可能存在的类
+     * @return 一个包含Integer键和StreamConfig值的Map，表示链式任务配置
+     * @throws StreamTaskException 如果配置无法实例化或CHAINED_TASK_CONFIG已被移除，则抛出此异常
+     */
     public Map<Integer, StreamConfig> getTransitiveChainedTaskConfigs(ClassLoader cl) {
         try {
+            // 检查CHAINED_TASK_CONFIG是否已被移除
             checkState(
                     !removedKeys.contains(CHAINED_TASK_CONFIG),
                     String.format("%s has been removed.", CHAINED_TASK_CONFIG));
+            // 从配置中读取CHAINED_TASK_CONFIG对应的链式任务配置
             Map<Integer, StreamConfig> confs =
                     InstantiationUtil.readObjectFromConfig(this.config, CHAINED_TASK_CONFIG, cl);
+            // 如果读取到的配置为空，则返回一个新的空的HashMap
             return confs == null ? new HashMap<Integer, StreamConfig>() : confs;
         } catch (Exception e) {
+            // 如果在读取或处理配置时发生异常，则抛出自定义的StreamTaskException异常
             throw new StreamTaskException("Could not instantiate configuration.", e);
         }
     }

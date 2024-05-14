@@ -26,6 +26,11 @@ import org.apache.flink.annotation.PublicEvolving;
  * <p>These release hooks are being executed just before the user code class loader is being
  * released.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * UserCodeClassLoader允许为用户代码类加载器注册释放挂钩。
+*/
 @PublicEvolving
 public interface UserCodeClassLoader {
 
@@ -34,6 +39,11 @@ public interface UserCodeClassLoader {
      *
      * @return actual class loader
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取实际的类加载器。
+    */
     ClassLoader asClassLoader();
 
     /**
@@ -44,5 +54,10 @@ public interface UserCodeClassLoader {
      * @param releaseHook releaseHook which is executed before the user code class loader is being
      *     released.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     void registerReleaseHookIfAbsent(String releaseHookName, Runnable releaseHook);
 }

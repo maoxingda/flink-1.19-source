@@ -63,6 +63,11 @@ public interface ResultPartitionWriter extends AutoCloseable, AvailabilityProvid
     void setMaxOverdraftBuffersPerGate(int maxOverdraftBuffersPerGate);
 
     /** Writes the given serialized record to the target subpartition. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的序列化记录写入目标子分区。
+    */
     void emitRecord(ByteBuffer record, int targetSubpartition) throws IOException;
 
     /**

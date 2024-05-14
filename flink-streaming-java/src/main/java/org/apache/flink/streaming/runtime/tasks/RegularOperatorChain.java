@@ -48,6 +48,11 @@ import java.util.function.Supplier;
 import static org.apache.flink.util.ExceptionUtils.firstOrSuppressed;
 
 /** A regular non finished on restore {@link OperatorChain}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ *  OperatorChain 包含在一个单独的  StreamTask 中作为链执行的所有 Operator。
+ */
 @Internal
 public class RegularOperatorChain<OUT, OP extends StreamOperator<OUT>>
         extends OperatorChain<OUT, OP> {

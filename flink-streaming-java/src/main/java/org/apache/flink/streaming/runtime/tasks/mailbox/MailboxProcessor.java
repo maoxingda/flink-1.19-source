@@ -69,6 +69,8 @@ import static org.apache.flink.util.Preconditions.checkState;
  * 这个类封装了基于邮箱（Mailbox）的执行模型的逻辑。该模型的核心是{@link #runMailboxLoop()}方法，
  * 该方法在循环中持续执行提供的{@link MailboxDefaultAction}。在每次迭代中，该方法还会检查邮箱中是否有待处理的操作，
  * 并执行这些操作。这种模型确保了默认操作（例如记录处理）和邮箱操作（例如检查点触发、定时器触发等）之间的单线程执行。
+ * 1.封装了Mailbox执行模型逻辑
+ * 2.runMailboxLoop真正循环处理的操作
 */
 @Internal
 public class MailboxProcessor implements Closeable {
@@ -79,6 +81,7 @@ public class MailboxProcessor implements Closeable {
      * The mailbox data-structure that manages request for special actions, like timers,
      * checkpoints, ...
      */
+    /** 任务邮箱提供了对邮箱的读写访问 */
     protected final TaskMailbox mailbox;
 
     /**

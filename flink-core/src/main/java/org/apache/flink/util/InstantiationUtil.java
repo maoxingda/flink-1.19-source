@@ -469,15 +469,29 @@ public final class InstantiationUtil {
             return null;
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从配置文件中读取对象。
+     *
+     * @param config  Configuration对象，用于从配置中获取数据
+     * @param key     键名，用于在配置中定位要读取的对象
+     * @param cl      ClassLoader对象，用于在反序列化时加载类
+     * @param <T>     泛型类型，表示读取并返回的对象类型
+     * @return 读取并反序列化后的对象，如果未找到对应键则返回null
+     * @throws IOException             如果读取配置文件时发生IO错误
+     * @throws ClassNotFoundException  如果反序列化对象时找不到类的定义
+    */
     @Nullable
     public static <T> T readObjectFromConfig(Configuration config, String key, ClassLoader cl)
             throws IOException, ClassNotFoundException {
+        // 从配置中获取字节数组
         byte[] bytes = config.getBytes(key, null);
+        // 如果未找到对应键，则返回null
         if (bytes == null) {
             return null;
         }
-
+        // 反序列化字节数组为对象
         return deserializeObject(bytes, cl);
     }
 
@@ -521,23 +535,46 @@ public final class InstantiationUtil {
         return serializer.deserialize(reuse, inputViewWrapper);
     }
 
+
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 序列化字节数组为对象
+    */
     @SuppressWarnings("unchecked")
     public static <T> T deserializeObject(byte[] bytes, ClassLoader cl)
             throws IOException, ClassNotFoundException {
+        //序列化字节数组为对象
         return deserializeObject(new ByteArrayInputStream(bytes), cl);
     }
 
+   /**
+    * @授课老师(微信): yi_locus
+    * email: 156184212@qq.com
+    * 将从输入流中读取的对象进行反序列化操作，并返回反序列化后的对象。
+    *
+    * @param in     待反序列化的输入流
+    * @param cl     类加载器，用于加载可能包含在反序列化对象中的类
+    * @param <T>    反序列化对象的类型
+    * @return       反序列化后的对象
+    * @throws IOException          如果读取输入流时发生I/O错误
+    * @throws ClassNotFoundException 如果在反序列化过程中找不到某个类的定义
+   */
     @SuppressWarnings("unchecked")
     public static <T> T deserializeObject(InputStream in, ClassLoader cl)
             throws IOException, ClassNotFoundException {
-
+        // 保存当前线程的上下文类加载器，以便在finally块中恢复
         final ClassLoader old = Thread.currentThread().getContextClassLoader();
         // not using resource try to avoid AutoClosable's close() on the given stream
         try {
+            // 使用指定的类加载器创建自定义的ObjectInputStream，用于在反序列化过程中加载类
             ObjectInputStream oois = new InstantiationUtil.ClassLoaderObjectInputStream(in, cl);
+            // 设置当前线程的上下文类加载器为传入的类加载器，确保在反序列化过程中使用正确的类加载器
             Thread.currentThread().setContextClassLoader(cl);
+            // 读取并返回反序列化后的对象
             return (T) oois.readObject();
         } finally {
+            // 恢复当前线程的上下文类加载器为原来的类加载器
             Thread.currentThread().setContextClassLoader(old);
         }
     }
