@@ -29,6 +29,11 @@ import org.apache.flink.streaming.runtime.watermarkstatus.WatermarkStatus;
 import org.apache.flink.util.OutputTag;
 
 /** Wrapping {@link Output} that updates metrics on the number of emitted elements. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 包装输出（Output）对象，用于更新已发出元素数量的指标。
+*/
 public class CountingOutput<OUT> implements WatermarkGaugeExposingOutput<StreamRecord<OUT>> {
     private final WatermarkGaugeExposingOutput<StreamRecord<OUT>> output;
     private final Counter numRecordsOut;

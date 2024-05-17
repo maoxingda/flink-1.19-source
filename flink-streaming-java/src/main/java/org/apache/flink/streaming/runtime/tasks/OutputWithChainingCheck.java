@@ -24,7 +24,7 @@ import org.apache.flink.util.OutputTag;
 
 /**
  * This is a wrapper for outputs to check whether the collected record has been emitted to a
- * downstream subtask or to a chained operator.
+ * downstream subtask or to a chained operator.这是一个输出包装器，用于检查收集的记录是否已发送到下游子任务或链式运算符。
  */
 @Internal
 public interface OutputWithChainingCheck<OUT> extends WatermarkGaugeExposingOutput<OUT> {

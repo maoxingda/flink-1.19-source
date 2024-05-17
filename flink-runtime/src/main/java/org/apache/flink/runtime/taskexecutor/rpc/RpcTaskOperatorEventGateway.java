@@ -53,6 +53,11 @@ public class RpcTaskOperatorEventGateway implements TaskOperatorEventGateway {
         this.errorHandler = errorHandler;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通过RPC通信向JobMaster 发送OperatorEvent事件
+    */
     @Override
     public void sendOperatorEventToCoordinator(
             OperatorID operator, SerializedValue<OperatorEvent> event) {

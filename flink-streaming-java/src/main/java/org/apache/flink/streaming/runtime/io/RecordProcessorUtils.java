@@ -44,17 +44,23 @@ public class RecordProcessorUtils {
     public static <T> ThrowingConsumer<StreamRecord<T>, Exception> getRecordProcessor(
             Input<T> input) {
         boolean canOmitSetKeyContext;
+        // 检查输入的Input对象是否是AbstractStreamOperator或其子类的实例
         if (input instanceof AbstractStreamOperator) {
+            // 如果是，则调用辅助方法来判断是否可以省略设置键上下文
             canOmitSetKeyContext = canOmitSetKeyContext((AbstractStreamOperator<?>) input, 0);
         } else {
+            // 如果不是，检查输入对象是否实现了KeyContextHandler接口，并且当前没有键上下文
             canOmitSetKeyContext =
                     input instanceof KeyContextHandler
                             && !((KeyContextHandler) input).hasKeyContext();
         }
-
+        // 根据是否可以设置键上下文的操作，返回不同的处理函数
         if (canOmitSetKeyContext) {
+            //返回Lambda表达式，也就是触发StreamOperator中的processElement
             return input::processElement;
         } else {
+            // 如果不能省略，返回一个Lambda表达式，该表达式在处理StreamRecord之前先设置键上下文
+            // 然后再调用Input对象的processElement方法
             return record -> {
                 input.setKeyContextElement(record);
                 input.processElement(record);

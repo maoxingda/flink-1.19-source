@@ -107,12 +107,21 @@ public abstract class RecordWriter<T extends IOReadableWritable> implements Avai
             outputFlusher.start();
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 发送记录到指定的子分区
+     *
+     * @param record 要发送的记录
+     * @param targetSubpartition 目标子分区的索引
+     * @throws IOException 如果在发送记录或刷新分区时发生I/O错误
+    */
     public void emit(T record, int targetSubpartition) throws IOException {
+        // 检查是否有错误发生
         checkErroneous();
-
+        // 序列化记录，并将序列化后的记录和目标子分区索引发送给目标分区
         targetPartition.emitRecord(serializeRecord(serializer, record), targetSubpartition);
-
+        // 如果总是需要刷新（flush），则刷新目标分区的指定子分区
         if (flushAlways) {
             targetPartition.flush(targetSubpartition);
         }

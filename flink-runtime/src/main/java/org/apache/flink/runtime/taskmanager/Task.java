@@ -871,7 +871,7 @@ public class Task
             /** 赋值 */
             this.invokable = invokable;
             /** 恢复并调用 */
-            restoreAndInvoke(invokable);
+             restoreAndInvoke(invokable);
 
             // make sure, we enter the catch block if the task leaves the invoke() method due
             // to the fact that it has been canceled

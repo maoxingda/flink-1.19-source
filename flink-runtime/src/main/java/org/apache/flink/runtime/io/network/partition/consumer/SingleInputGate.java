@@ -189,6 +189,7 @@ public class SingleInputGate extends IndexedInputGate {
     private boolean hasReceivedEndOfData;
 
     /** Flag indicating whether partitions have been requested. */
+    /** 指示是否已请求分区的标志 */
     private boolean requestedPartitionsFlag;
 
     private final List<TaskEvent> pendingEvents = new ArrayList<>();

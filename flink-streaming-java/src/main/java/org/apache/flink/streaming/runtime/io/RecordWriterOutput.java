@@ -50,6 +50,12 @@ import java.io.UncheckedIOException;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** Implementation of {@link Output} that sends data using a {@link RecordWriter}. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 使用｛@link RecordWriter｝发送数据的｛@linkOutput｝的实现
+ *
+*/
 @Internal
 public class RecordWriterOutput<OUT>
         implements WatermarkGaugeExposingOutput<StreamRecord<OUT>>,

@@ -103,12 +103,21 @@ public class RegularOperatorChain<OUT, OP extends StreamOperator<OUT>>
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 恢复StreamOperator状态
+    */
     @Override
     public void initializeStateAndOpenOperators(
             StreamTaskStateInitializer streamTaskStateInitializer) throws Exception {
+        // 遍历所有StreamOperator
         for (StreamOperatorWrapper<?, ?> operatorWrapper : getAllOperators(true)) {
+            //获取StreamOperator
             StreamOperator<?> operator = operatorWrapper.getStreamOperator();
+            //初始化StreamOperator所有状态
             operator.initializeState(streamTaskStateInitializer);
+            //在处理任何元素之前立即调用，通常做一些初始化操作。
             operator.open();
         }
     }

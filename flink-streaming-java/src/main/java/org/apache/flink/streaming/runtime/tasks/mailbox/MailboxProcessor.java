@@ -427,23 +427,39 @@ public class MailboxProcessor implements Closeable {
         return processedSomething;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 非阻塞地处理邮件。
+     *
+     * @param singleStep 是否只处理一个邮件后即停止（单步模式）
+     * @return 如果成功处理了邮件，则返回true；否则返回false
+     * @throws Exception 抛出异常以表示处理过程中出现的任何错误
+    */
     private boolean processMailsNonBlocking(boolean singleStep) throws Exception {
+        // 记录已处理的邮件数量
         long processedMails = 0;
+        // 存储尝试从批量中获取的邮件的可选对象
         Optional<Mail> maybeMail;
-
+        // 当可以继续循环且邮箱中有邮件可处理时
         while (isNextLoopPossible() && (maybeMail = mailbox.tryTakeFromBatch()).isPresent()) {
+            // 如果这是第一次处理邮件（processedMails为0），则可能暂停空闲计时器
             if (processedMails++ == 0) {
                 maybePauseIdleTimer();
             }
+            // 运行邮件处理逻辑
             runMail(maybeMail.get());
+            // 如果处于单步模式，处理完一个邮件后跳出循环
             if (singleStep) {
                 break;
             }
         }
+        // 如果成功处理了邮件，则可能重启空闲计时器，并返回true
         if (processedMails > 0) {
             maybeRestartIdleTimer();
             return true;
         } else {
+            // 如果没有处理任何邮件，则返回false
             return false;
         }
     }
@@ -469,7 +485,9 @@ public class MailboxProcessor implements Closeable {
     }
 
     private void maybeRestartIdleTimer() {
+        // 如果存在被暂停的默认操作，并且该操作有一个暂停计时器
         if (suspendedDefaultAction != null && suspendedDefaultAction.suspensionTimer != null) {
+            // 标记暂停计时器的开始，可能是为了重新计算空闲时间或重置计时器
             suspendedDefaultAction.suspensionTimer.markStart();
         }
     }

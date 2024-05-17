@@ -69,7 +69,7 @@ public final class StreamOneInputProcessor<IN> implements StreamInputProcessor {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 处理输入的数据
+     * 处理输入的数据返回状态
     */
     @Override
     public DataInputStatus processInput() throws Exception {

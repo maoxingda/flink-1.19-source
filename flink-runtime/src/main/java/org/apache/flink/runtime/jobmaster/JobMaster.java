@@ -695,6 +695,11 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
         schedulerNG.declineCheckpoint(decline);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 接收到Task发送的OperatorEvent事件
+    */
     @Override
     public CompletableFuture<Acknowledge> sendOperatorEventToCoordinator(
             final ExecutionAttemptID task,

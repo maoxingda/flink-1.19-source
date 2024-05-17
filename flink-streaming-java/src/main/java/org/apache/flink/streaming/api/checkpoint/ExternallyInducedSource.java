@@ -40,6 +40,13 @@ import org.apache.flink.util.FlinkException;
  *     org.apache.flink.streaming.api.functions.source.SourceFunction} API, which is due to be
  *     removed. Use the new {@link org.apache.flink.api.connector.source.Source} API instead.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 实现此接口的源（或资源）在接收到来自检查点协调器的触发消息时，会延迟检查点的触发，直到其输入数据/事件表明应该触发检查点为止。
+ *
+ * 简单地说，这些源在接收到一个要求触发检查点的消息时，并不会立即执行，而是会等待它们的输入数据或事件来决定何时真正触发这个检查点。
+*/
 @Deprecated
 @PublicEvolving
 public interface ExternallyInducedSource<T, CD>

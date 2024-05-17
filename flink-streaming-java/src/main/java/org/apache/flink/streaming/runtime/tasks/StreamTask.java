@@ -639,46 +639,61 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 任务的默认操作（例如，处理来自输入的一个事件）
+     *  处理输入的数据
     */
-    protected void processInput(MailboxDefaultAction.Controller controller) throws Exception {
+    protected void  processInput(MailboxDefaultAction.Controller controller) throws Exception {
+        //获取数据状态
         DataInputStatus status = inputProcessor.processInput();
         switch (status) {
+            /** 指示有更多数据可用，并且可以立即再次调用输入以生成更多数据。 */
             case MORE_AVAILABLE:
                 if (taskIsAvailable()) {
                     return;
                 }
                 break;
+            /** 指示当前没有数据可用，但未来会有更多数据可用。 */
             case NOTHING_AVAILABLE:
                 break;
+            /** 指示数据交换的所有持久化数据已成功恢复。 */
             case END_OF_RECOVERY:
                 throw new IllegalStateException("We should not receive this event here.");
+            /** 指示由于停止而停止输入的存储点没有耗尽。 */
             case STOPPED:
                 endData(StopMode.NO_DRAIN);
                 return;
+            /** 指示输入已到达数据末尾的指示符。 */
             case END_OF_DATA:
                 endData(StopMode.DRAIN);
                 notifyEndOfData();
                 return;
+            /** 指示输入已达到数据的末尾。 */
             case END_OF_INPUT:
                 // Suspend the mailbox processor, it would be resumed in afterInvoke and finished
                 // after all records processed by the downstream tasks. We also suspend the default
                 // actions to avoid repeat executing the empty default operation (namely process
                 // records).
+                // 暂停邮箱处理器，在afterInvoke之后恢复，并在所有下游任务处理完记录后完成
+                // 我们还暂停默认操作，以避免重复执行空的默认操作（即处理记录）
                 controller.suspendDefaultAction();
                 mailboxProcessor.suspend();
                 return;
         }
-
+        // 获取I/O度量组
         TaskIOMetricGroup ioMetrics = getEnvironment().getMetricGroup().getIOMetricGroup();
+        // 创建一个计时器和一个恢复未来的对象
         PeriodTimer timer;
         CompletableFuture<?> resumeFuture;
+        // 根据不同的情况设置计时器和CompletableFuture
         if (!recordWriter.isAvailable()) {
+            // 如果记录写入器不可用
             timer = new GaugePeriodTimer(ioMetrics.getSoftBackPressuredTimePerSecond());
             resumeFuture = recordWriter.getAvailableFuture();
         } else if (!inputProcessor.isAvailable()) {
+            // 如果输入处理器不可用
             timer = new GaugePeriodTimer(ioMetrics.getIdleTimeMsPerSecond());
             resumeFuture = inputProcessor.getAvailableFuture();
+            // 如果changelog写入器不可用（并且提供了可用性检查）
+            // 等待changelog可用性的报告为忙碌状态
         } else if (changelogWriterAvailabilityProvider != null
                 && !changelogWriterAvailabilityProvider.isAvailable()) {
             // waiting for changelog availability is reported as busy
@@ -686,8 +701,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             resumeFuture = changelogWriterAvailabilityProvider.getAvailableFuture();
         } else {
             // data availability has changed in the meantime; retry immediately
+            // 数据可用性在此期间已更改；立即重试
             return;
         }
+        // 当恢复未来完成时，执行ResumeWrapper中的操作，并传入计时器
+        // 这里假设assertNoException是自定义的方法，用于确保在异步执行中没有异常
         assertNoException(
                 resumeFuture.thenRun(
                         new ResumeWrapper(controller.suspendDefaultAction(timer), timer)));
@@ -797,11 +815,19 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                 SystemClock.getInstance().absoluteTimeMillis());
         try {
             //初始化OperatorChain
+            /**
+             * 核心1：
+             * 初始化OperatorChain
+             */
             operatorChain =
                     getEnvironment().getTaskStateManager().isTaskDeployedAsFinished()
                             ? new FinishedOperatorChain<>(this, recordWriter)
                             : new RegularOperatorChain<>(this, recordWriter);
             // 获取主操作符
+            /**
+             * 核心2：
+             * 获取HeadOperator
+             */
             mainOperator = operatorChain.getMainOperator();
             // 获取并设置恢复的检查点ID（如果存在）
             getEnvironment()
@@ -810,7 +836,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                     .ifPresent(restoreId -> latestReportCheckpointId = restoreId);
 
             // task specific initialization
-            // 特定任务的初始化操作
+            /**
+             * 核心3：
+             * 特定任务的初始化操作
+             * 初始化DataOutput、StreamTaskInput、StreamInputProcessor
+             */
             init();
             // 清除初始配置，避免重复加载状态等
             configuration.clearInitialConfigs();
@@ -824,12 +854,16 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
             // we need to make sure that any triggers scheduled in open() cannot be
             // executed before all operators are opened
-            // 调用restoreStateAndGates方法，并确保在所有操作符打开之前，open()方法中调度的任何触发器都不会被执行
+            //
+            /**
+             * 核心4
+             * 调用restoreStateAndGates方法，并确保在所有Operator运行之前，open()方法中调度的任何触发器都不会被执行
+             */
             CompletableFuture<Void> allGatesRecoveredFuture =
                     actionExecutor.call(() -> restoreStateAndGates(initializationMetrics));
 
             // Run mailbox until all gates will be recovered.
-            // 运行邮箱处理器，直到所有门恢复
+            // 运行邮箱处理器，直到所有InputGate恢复
             mailboxProcessor.runMailboxLoop();
             // 添加门恢复的时间度量指标
             initializationMetrics.addDurationMetric(
@@ -861,35 +895,49 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                     .reportInitializationMetrics(initializationMetrics.build());
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 恢复状态以及InputGate
+    */
     private CompletableFuture<Void> restoreStateAndGates(
             SubTaskInitializationMetricsBuilder initializationMetrics) throws Exception {
-
+        // 记录邮箱开始时间戳
         long mailboxStartTs = SystemClock.getInstance().absoluteTimeMillis();
+        // 添加邮箱开始时间到初始化度量指标
         initializationMetrics.addDurationMetric(
                 MAILBOX_START_DURATION,
                 mailboxStartTs - initializationMetrics.getInitializationStartTs());
-
+        //读取检查点/保存点期间保存的通道状态。
         SequentialChannelStateReader reader =
                 getEnvironment().getTaskStateManager().getSequentialChannelStateReader();
+        // 读取输出数据
         reader.readOutputData(
                 getEnvironment().getAllWriters(), !configuration.isGraphContainingLoops());
-
+        // 记录读取输出数据时间戳
         long readOutputDataTs = SystemClock.getInstance().absoluteTimeMillis();
+        // 添加读取输出数据时间到初始化度量指标
         initializationMetrics.addDurationMetric(
                 READ_OUTPUT_DATA_DURATION, readOutputDataTs - mailboxStartTs);
-
+        /**
+         * 核心点：
+         * 初始化状态 Operators状态
+         */
         operatorChain.initializeStateAndOpenOperators(
                 createStreamTaskStateInitializer(initializationMetrics));
-
+        // 记录状态初始化结束时间戳
         initializeStateEndTs = SystemClock.getInstance().absoluteTimeMillis();
+        // 添加状态初始化时间到初始化度量指标
         initializationMetrics.addDurationMetric(
                 INITIALIZE_STATE_DURATION, initializeStateEndTs - readOutputDataTs);
-        IndexedInputGate[] inputGates = getEnvironment().getAllInputGates();
 
+        // 获取所有InputGate
+        IndexedInputGate[] inputGates = getEnvironment().getAllInputGates();
+        // 异步执行读取输入数据操作
         channelIOExecutor.execute(
                 () -> {
                     try {
+                        //读取数据
                         reader.readInputData(inputGates);
                     } catch (Exception e) {
                         asyncExceptionHandler.handleAsyncException(
@@ -900,10 +948,17 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
         // We wait for all input channel state to recover before we go into RUNNING state, and thus
         // start checkpointing. If we implement incremental checkpointing of input channel state
         // we must make sure it supports CheckpointType#FULL_CHECKPOINT
+        // 我们等待所有输入通道状态恢复后再进入运行状态，并开始检查点。
+        // 如果我们实现输入通道状态的增量检查点，我们必须确保它支持CheckpointType#FULL_CHECKPOINT
         List<CompletableFuture<?>> recoveredFutures = new ArrayList<>(inputGates.length);
         for (InputGate inputGate : inputGates) {
+            // 将每个InputGate的状态消费未来添加到列表中
             recoveredFutures.add(inputGate.getStateConsumedFuture());
 
+            /**
+             * 当状态消费完成时，调用requestPartitions
+             * 请求由 partitionId 和 consumedSubpartitionIndexSet 指定的子分区。
+             */
             inputGate
                     .getStateConsumedFuture()
                     .thenRun(

@@ -22,6 +22,11 @@ import org.apache.flink.runtime.operators.coordination.OperatorEvent;
 import java.util.Objects;
 
 /** Signals source operators the maximum watermark that emitted records can have. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 向source operators 发出信号，表明发出的记录可以具有的最大水印（watermark）值。
+*/
 public class WatermarkAlignmentEvent implements OperatorEvent {
 
     private static final long serialVersionUID = 1L;

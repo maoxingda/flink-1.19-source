@@ -25,6 +25,11 @@ import org.apache.flink.core.io.IOReadableWritable;
  *
  * @param <T> the type of record which is sent through the attached output gate
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 确定应将记录写入哪些逻辑通道。
+*/
 public interface ChannelSelector<T extends IOReadableWritable> {
 
     /**
@@ -33,6 +38,11 @@ public interface ChannelSelector<T extends IOReadableWritable> {
      * @param numberOfChannels the total number of output channels which are attached to respective
      *     output gate.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 使用输出通道的数量初始化通道选择器。
+    */
     void setup(int numberOfChannels);
 
     /**
@@ -44,6 +54,11 @@ public interface ChannelSelector<T extends IOReadableWritable> {
      * @return an integer number which indicates the index of the output channel through which the
      *     record shall be forwarded.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的数据记录写入到对应的通道索引中，如果是广播使用了此方法直接抛出异常
+    */
     int selectChannel(T record);
 
     /**
@@ -51,5 +66,10 @@ public interface ChannelSelector<T extends IOReadableWritable> {
      *
      * @return true if the selector is for broadcast mode.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回通道选择器是否始终选择所有输出通道=>广播通道。
+    */
     boolean isBroadcast();
 }

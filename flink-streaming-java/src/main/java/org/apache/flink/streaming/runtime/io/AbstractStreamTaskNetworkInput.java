@@ -92,54 +92,75 @@ public abstract class AbstractStreamTaskNetworkInput<
                 new RecordAttributesCombiner(checkpointedInputGate.getNumberOfInputChannels());
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取数据并消费
+    */
     @Override
     public DataInputStatus emitNext(DataOutput<T> output) throws Exception {
-
+        // while循环
         while (true) {
             // get the stream element from the deserializer
+            // 从反序列化器中获取流元素
             if (currentRecordDeserializer != null) {
                 RecordDeserializer.DeserializationResult result;
                 try {
+                    // 尝试从反序列化委托中获取下一个记录
                     result = currentRecordDeserializer.getNextRecord(deserializationDelegate);
                 } catch (IOException e) {
+                    // 如果无法获取记录，则抛出IO异常
                     throw new IOException(
                             String.format("Can't get next record for channel %s", lastChannel), e);
                 }
+                // 如果缓冲区已经被消耗完毕
                 if (result.isBufferConsumed()) {
                     currentRecordDeserializer = null;
                 }
-
+                // 如果获取到完整的记录
                 if (result.isFullRecord()) {
+                    //处理数据
                     final boolean breakBatchEmitting =
                             processElement(deserializationDelegate.getInstance(), output);
                     if (canEmitBatchOfRecords.check() && !breakBatchEmitting) {
                         continue;
                     }
+                    // 表明还有更多可用的输入
                     return DataInputStatus.MORE_AVAILABLE;
                 }
             }
-
+            // 从checkpointedInputGate中轮询下一个Buffer或事件
             Optional<BufferOrEvent> bufferOrEvent = checkpointedInputGate.pollNext();
             if (bufferOrEvent.isPresent()) {
                 // return to the mailbox after receiving a checkpoint barrier to avoid processing of
                 // data after the barrier before checkpoint is performed for unaligned checkpoint
                 // mode
+                // 如果轮询到的是Buffer
                 if (bufferOrEvent.get().isBuffer()) {
+                    // 处理Buffer
                     processBuffer(bufferOrEvent.get());
                 } else {
+                    // 如果轮询到的是数据处理状态
                     DataInputStatus status = processEvent(bufferOrEvent.get());
+                    // 如果事件处理后表明还有更多可用的输入，并且可以emit
                     if (status == DataInputStatus.MORE_AVAILABLE && canEmitBatchOfRecords.check()) {
+                        //继续处理
                         continue;
                     }
+                    // 返回处理事件后的状态
                     return status;
                 }
             } else {
+                // 如果没有更多的数据或事件
                 if (checkpointedInputGate.isFinished()) {
+                    // 检查是否已完成并且Future已完成
                     checkState(
                             checkpointedInputGate.getAvailableFuture().isDone(),
                             "Finished BarrierHandler should be available");
+                    // 表明输入已经结束
                     return DataInputStatus.END_OF_INPUT;
                 }
+                // 表明当前没有可用的数据或事件
                 return DataInputStatus.NOTHING_AVAILABLE;
             }
         }
@@ -151,31 +172,55 @@ public abstract class AbstractStreamTaskNetworkInput<
      * allow behavior change in emitNext method. For example, the behavior of emitNext may need to
      * change right after process a RecordAttributes.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理给定的流数据，并返回一个布尔值表示是否停止处理并从emitNext方法中返回，
+     * @param streamElement 要处理的流元素
+     * @param output        用于发射处理结果的数据输出
+     * @return              如果处理完RecordAttributes后需要改变emitNext的行为，则返回true；否则返回false
+     * @throws Exception    处理过程中出现异常时抛出
+    */
     private boolean processElement(StreamElement streamElement, DataOutput<T> output)
             throws Exception {
+        // 如果流元素是记录类型
         if (streamElement.isRecord()) {
+            // DataOutput发送给HeadOperator
             output.emitRecord(streamElement.asRecord());
+            // 不需要改变emitNext的行为，返回false
             return false;
+            // 如果元素是水印类型
         } else if (streamElement.isWatermark()) {
+            // 获取水印信息
+            // 获取最后一个通道的索引
             statusWatermarkValve.inputWatermark(
                     streamElement.asWatermark(), flattenedChannelIndices.get(lastChannel), output);
+            // 不需要改变emitNext的行为，返回false
             return false;
+            // 如果元素是延迟标记类型
         } else if (streamElement.isLatencyMarker()) {
+            //延迟发射
             output.emitLatencyMarker(streamElement.asLatencyMarker());
+            // 不需要改变emitNext的行为，返回false
             return false;
         } else if (streamElement.isWatermarkStatus()) {
+            // 如果流元素是水印状态类型
             statusWatermarkValve.inputWatermarkStatus(
                     streamElement.asWatermarkStatus(),
                     flattenedChannelIndices.get(lastChannel),
                     output);
+            // 不需要改变emitNext的行为，返回false
             return false;
+            // 如果元素是记录属性类型
         } else if (streamElement.isRecordAttributes()) {
             recordAttributesCombiner.inputRecordAttributes(
                     streamElement.asRecordAttributes(),
                     flattenedChannelIndices.get(lastChannel),
                     output);
+            // 不需要改变emitNext的行为，返回false
             return true;
         } else {
+            //抛出异常
             throw new UnsupportedOperationException("Unknown type of StreamElement");
         }
     }

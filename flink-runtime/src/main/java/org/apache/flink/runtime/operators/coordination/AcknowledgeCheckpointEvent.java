@@ -22,6 +22,11 @@ package org.apache.flink.runtime.operators.coordination;
  * An {@link OperatorEvent} sent from a subtask to its {@link OperatorCoordinator} to signal that
  * the checkpoint of an individual task is completed.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 从子任务发送到【OperatorCoordinator】的【OperatorEvent】，用于表示单个任务的检查点已完成。
+*/
 public class AcknowledgeCheckpointEvent implements OperatorEvent {
 
     /** The ID of the checkpoint that this event is related to. */

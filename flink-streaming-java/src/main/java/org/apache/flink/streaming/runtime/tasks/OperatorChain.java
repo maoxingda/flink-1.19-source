@@ -115,7 +115,7 @@ public abstract class OperatorChain<OUT, OP extends StreamOperator<OUT>>
 
     private static final Logger LOG = LoggerFactory.getLogger(OperatorChain.class);
 
-    protected final RecordWriterOutput<?>[] streamOutputs;
+    protected final RecordWriterOutput<?>[] streamOutputs;//用于将处理后的数据发送到网络中
 
     protected final WatermarkGaugeExposingOutput<StreamRecord<OUT>> mainOperatorOutput;
 
@@ -767,7 +767,7 @@ public abstract class OperatorChain<OUT, OP extends StreamOperator<OUT>>
             throw new StreamTaskException(
                     "Could not load SinkWriterOperatorFactory class from userCodeClassloader.", e);
         }
-        // 获取操作符的度量组
+        // 获取Operator的度量组
         InternalOperatorMetricGroup operatorMetricGroup =
                 containingTask
                         .getEnvironment()

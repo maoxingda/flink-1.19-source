@@ -93,39 +93,56 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
             throws Exception {
         super(env, timeProvider);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化DataOutput、StreamTaskInput、StreamInputProcessor
+    */
     @Override
     public void init() throws Exception {
+        // 获取流配置
         StreamConfig configuration = getConfiguration();
+        // 获取网络输入的数量
         int numberOfInputs = configuration.getNumberOfNetworkInputs();
-
+        // 如果输入数量大于0
         if (numberOfInputs > 0) {
+            // 创建一个检查点InputGate 内部包括CheckpointedInputGate[]
             CheckpointedInputGate inputGate = createCheckpointedInputGate();
+            // 为主操作器设置记录数量计数器
             Counter numRecordsIn = setupNumRecordsInCounter(mainOperator);
+            // 创建一个数据输出
             DataOutput<IN> output = createDataOutput(numRecordsIn);
+            // 创建一个任务输入
             StreamTaskInput<IN> input = createTaskInput(inputGate);
 
+            // 获取输入配置
             StreamConfig.InputConfig[] inputConfigs =
                     configuration.getInputs(getUserCodeClassLoader());
             StreamConfig.InputConfig inputConfig = inputConfigs[0];
+            // 如果需要排序输入
             if (requiresSorting(inputConfig)) {
+                // 检查是否启用了检查点，因为排序输入不允许检查点
                 checkState(
                         !configuration.isCheckpointingEnabled(),
                         "Checkpointing is not allowed with sorted inputs.");
+                // 封装输入以便进行排序
                 input = wrapWithSorted(input);
             }
-
+            // 重用输入记录的计数器
             getEnvironment()
                     .getMetricGroup()
                     .getIOMetricGroup()
                     .reuseRecordsInputCounter(numRecordsIn);
-
+            // 创建一个流单输入处理器，处理输入、输出和操作器链
             inputProcessor = new StreamOneInputProcessor<>(input, output, operatorChain);
         }
+        // 为主操作器的指标组添加当前输入水印的度量（Gauge）
+        // 由于注册的度量必须是唯一的，所以需要包装水印度量
         mainOperator
                 .getMetricGroup()
                 .gauge(MetricNames.IO_CURRENT_INPUT_WATERMARK, inputWatermarkGauge);
         // wrap watermark gauge since registered metrics must be unique
+        // 在环境指标组中注册当前输入水印的度量，并提供一个获取值的函数
         getEnvironment()
                 .getMetricGroup()
                 .gauge(MetricNames.IO_CURRENT_INPUT_WATERMARK, inputWatermarkGauge::getValue);
@@ -232,9 +249,16 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
             this.recordProcessor = RecordProcessorUtils.getRecordProcessor(operator);
         }
 
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 将StreamRecord发送给HeadOperator
+        */
         @Override
         public void emitRecord(StreamRecord<IN> record) throws Exception {
+            //记录数据条数
             numRecordsIn.inc();
+            //将StreamRecord发送给HeadOperator
             recordProcessor.accept(record);
         }
 

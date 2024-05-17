@@ -268,6 +268,11 @@ public abstract class AbstractStreamOperator<OUT>
         return metrics;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化StreamOperator所有状态
+    */
     @Override
     public final void initializeState(StreamTaskStateInitializer streamTaskStateManager)
             throws Exception {

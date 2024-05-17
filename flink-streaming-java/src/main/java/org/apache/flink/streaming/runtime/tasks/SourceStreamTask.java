@@ -116,17 +116,25 @@ public class SourceStreamTask<
         getEnvironment().getMetricGroup().getIOMetricGroup().setEnableBusyTime(false);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化方法，用于设置和检查相关的源和检查点
+    */
     @Override
     protected void init() {
         // we check if the source is actually inducing the checkpoints, rather
         // than the trigger
+        // 检查是否由源触发了检查点，而不是由触发器
+        // 获取主要的操作器的用户函数
         SourceFunction<?> source = mainOperator.getUserFunction();
         if (source instanceof ExternallyInducedSource) {
+            // 如果是，则设置检查点标志为true
             externallyInducedCheckpoints = true;
-
+            // 创建一个检查点触发器的匿名内部类
             ExternallyInducedSource.CheckpointTrigger triggerHook =
                     new ExternallyInducedSource.CheckpointTrigger() {
-
+                        // 覆盖triggerCheckpoint方法，用于触发检查点
                         @Override
                         public void triggerCheckpoint(long checkpointId) throws FlinkException {
                             // TODO - we need to see how to derive those. We should probably not
@@ -136,18 +144,25 @@ public class SourceStreamTask<
                             // TODO -   message from the master, and the source's trigger
                             // notification
                             final CheckpointOptions checkpointOptions =
+                                    // TODO: 我们需要查看如何推导这些参数。我们可能不应该在源的触发消息中编码这些，
+                                    // 而是在此任务中在主节点触发消息和源的触发通知之间进行握手
+
+                                    // 根据配置创建检查点选项
                                     CheckpointOptions.forConfig(
                                             CheckpointType.CHECKPOINT,
                                             CheckpointStorageLocationReference.getDefault(),
                                             configuration.isExactlyOnceCheckpointMode(),
                                             configuration.isUnalignedCheckpointsEnabled(),
                                             configuration.getAlignedCheckpointTimeout().toMillis());
+                            // 获取当前时间戳
                             final long timestamp = System.currentTimeMillis();
 
+                            // 创建一个包含检查点ID和时间戳的元数据对象
                             final CheckpointMetaData checkpointMetaData =
                                     new CheckpointMetaData(checkpointId, timestamp, timestamp);
 
                             try {
+                                // 异步触发检查点，并等待其完成
                                 SourceStreamTask.super
                                         .triggerCheckpointAsync(
                                                 checkpointMetaData, checkpointOptions)
@@ -159,15 +174,17 @@ public class SourceStreamTask<
                             }
                         }
                     };
-
+            // 将检查点触发器设置到源上
             ((ExternallyInducedSource<?, ?>) source).setCheckpointTrigger(triggerHook);
         }
+        // 设置检查点启动延迟时间的度量指标
         getEnvironment()
                 .getMetricGroup()
                 .getIOMetricGroup()
                 .gauge(
                         MetricNames.CHECKPOINT_START_DELAY_TIME,
                         this::getAsyncCheckpointStartDelayNanos);
+        // 设置每个InputGate的最大透支缓冲区大小。
         recordWriter.setMaxOverdraftBuffersPerGate(0);
     }
 
@@ -181,26 +198,37 @@ public class SourceStreamTask<
         // does not hold any resources, so no cleanup needed
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理输入数据的方法。
+     *
+     * @param controller 控制器对象，用于管理邮箱的默认操作。
+     * @throws Exception 当在方法执行过程中发生异常时抛出。
+    */
     @Override
     protected void processInput(MailboxDefaultAction.Controller controller) throws Exception {
-
+        // 暂停邮箱的默认操作，以便在此方法中执行自定义操作。
         controller.suspendDefaultAction();
 
         // Against the usual contract of this method, this implementation is not step-wise but
         // blocking instead for
         // compatibility reasons with the current source interface (source functions run as a loop,
         // not in steps).
+        //设置TaskDescription
         sourceThread.setTaskDescription(getName());
-
+        // 启动sourceThread线程，用于处理数据或执行其他任务。
         sourceThread.start();
 
         sourceThread
                 .getCompletionFuture()
                 .whenComplete(
                         (Void ignore, Throwable sourceThreadThrowable) -> {
+                            // 如果sourceThread在执行过程中抛出异常
                             if (sourceThreadThrowable != null) {
                                 mailboxProcessor.reportThrowable(sourceThreadThrowable);
                             } else {
+                                // 如果sourceThread成功完成，则通知数据结束
                                 notifyEndOfData();
                                 mailboxProcessor.suspend();
                             }

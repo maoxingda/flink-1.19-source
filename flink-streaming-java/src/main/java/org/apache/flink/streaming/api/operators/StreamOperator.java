@@ -58,7 +58,13 @@ public interface StreamOperator<OUT> extends CheckpointListener, KeyContext, Ser
      *     the recovery of an operator chain (operators are opened from the tail operator to the
      *     head operator).
      * @throws java.lang.Exception An exception in this method causes the operator to fail.
+     *
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 在处理任何元素之前立即调用，通常做一些初始化操作。
+    */
     void open() throws Exception;
 
     /**
@@ -135,6 +141,11 @@ public interface StreamOperator<OUT> extends CheckpointListener, KeyContext, Ser
             throws Exception;
 
     /** Provides a context to initialize all state in the operator. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化StreamOperator所有状态
+    */
     void initializeState(StreamTaskStateInitializer streamTaskStateManager) throws Exception;
 
     // ------------------------------------------------------------------------

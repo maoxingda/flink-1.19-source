@@ -31,7 +31,7 @@ import java.io.Closeable;
 /**
  * @授课老师(微信): yi_locus
  * email: 156184212@qq.com
- * 用于获取当前输入/输出水印的 Gauge
+ * 一个输出，使用一个水印量规来测量最后发出的水印。
  */
 public interface WatermarkGaugeExposingOutput<T> extends Output<T>, Closeable {
     Gauge<Long> getWatermarkGauge();

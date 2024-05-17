@@ -56,6 +56,11 @@ public interface TaskOperatorEventGateway {
      * Sends an event from the operator (identified by the given operator ID) to the operator
      * coordinator (identified by the same ID).
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从 operator（基于operator ID）向operator coordinator （由相同的ID标识）发送一个事件。
+    */
     void sendOperatorEventToCoordinator(OperatorID operator, SerializedValue<OperatorEvent> event);
 
     /**

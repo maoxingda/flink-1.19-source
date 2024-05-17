@@ -55,8 +55,14 @@ public final class ChannelSelectorRecordWriter<T extends IOReadableWritable>
         this.channelSelector.setup(numberOfSubpartitions);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将数据发送到下游的InputChannel中
+    */
     @Override
     public void emit(T record) throws IOException {
+        //channelSelector.selectChannel选择下游的InputChannel
         emit(record, channelSelector.selectChannel(record));
     }
 
