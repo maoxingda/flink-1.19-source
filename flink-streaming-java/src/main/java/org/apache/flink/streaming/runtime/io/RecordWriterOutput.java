@@ -109,8 +109,15 @@ public class RecordWriterOutput<OUT>
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 收集并可能检查记录是否链式输出。
+    */
     @Override
     public <X> void collect(OutputTag<X> outputTag, StreamRecord<X> record) {
+        // 调用 collectAndCheckIfChained 方法，尝试收集记录并检查是否链式输出
+        // 如果返回 true，则表示记录已被成功收集并可能进行了链式输出
         if (collectAndCheckIfChained(outputTag, record)) {
             numRecordsOut.inc();
         }
@@ -127,22 +134,46 @@ public class RecordWriterOutput<OUT>
         return true;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 收集记录并检查是否进行了链式输出。
+     *
+     * @param outputTag 输出的标签，用于标识输出的流或目标
+     * @param record 要收集的记录
+     * @param <X> 泛型参数，表示记录中数据的类型
+     * @return 如果记录被成功收集并可能进行了链式输出，则返回true；否则返回false
+    */
     @Override
     public <X> boolean collectAndCheckIfChained(OutputTag<X> outputTag, StreamRecord<X> record) {
+        // 检查当前OutputTag实例是否负责处理指定的outputTag
+        // 如果不是，表示当前OutputTag不应处理此记录的侧输出
         if (!OutputTag.isResponsibleFor(this.outputTag, outputTag)) {
             // we are not responsible for emitting to the side-output specified by this
             // OutputTag.
             return false;
         }
-
+        // pushToRecordWriter方法可能负责将记录写入到RecordWriter
         pushToRecordWriter(record);
+        //返回表示true
         return true;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将记录推送到RecordWriter进行序列化并输出。
+     *
+     * @param record 要推送的记录
+     * @param <X> 泛型参数，表示记录中数据的类型
+    */
     private <X> void pushToRecordWriter(StreamRecord<X> record) {
+        // 设置serializationDelegate的实例为传入的record
+        //内部依然是序列化
         serializationDelegate.setInstance(record);
 
         try {
+            //流转给RecordWriter写出
             recordWriter.emit(serializationDelegate);
         } catch (IOException e) {
             throw new UncheckedIOException(e.getMessage(), e);

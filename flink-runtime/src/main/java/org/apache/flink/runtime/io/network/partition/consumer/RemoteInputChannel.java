@@ -179,7 +179,7 @@ public class RemoteInputChannel extends InputChannel {
         checkState(
                 bufferManager.unsynchronizedGetAvailableExclusiveBuffers() == 0,
                 "Bug in input channel setup logic: exclusive buffers have already been set for this input channel.");
-
+        //调用BufferManager.requestExclusiveBuffers方法从提供者请求独占缓冲区。
         bufferManager.requestExclusiveBuffers(initialCredit);
     }
 
@@ -377,9 +377,24 @@ public class RemoteInputChannel extends InputChannel {
     /**
      * Enqueue this input channel in the pipeline for notifying the producer of unannounced credit.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将此输入通道加入管道中，以便通知生产者有未声明的信用额度可用。
+     *
+     * <p>当生产者需要知道是否有额外的信用额度可用时，它会调用此方法。
+     * 这通常发生在生产者需要发送更多数据到消费者，但之前可能由于某些原因（如流量控制）
+     * 而被限制发送时。</p>
+     *
+     * <p>注意：在调用此方法之前，需要确保相关的分区请求队列已经被初始化。
+     * 如果没有初始化，则可能会抛出异常。</p>
+     *
+     * @throws IOException 如果在尝试通知信用额度可用时发生I/O错误
+    */
     private void notifyCreditAvailable() throws IOException {
+        // 检查分区请求队列是否已初始化
         checkPartitionRequestQueueInitialized();
-
+        // 通知生产者此通道有信用额度可用
         partitionRequestClient.notifyCreditAvailable(this);
     }
 
@@ -430,9 +445,22 @@ public class RemoteInputChannel extends InputChannel {
      * The unannounced credit is increased by the given amount and might notify increased credit to
      * the producer.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 增加未声明的信用额度并可能通知生产者信用额度已增加。
+     *
+     * <p>此方法会将给定的信用额度数量增加到未声明的信用额度中，
+     * 如果在增加之前未声明的信用额度为0，则可能会通知生产者有新的信用额度可用。</p>
+     *
+     * @param numAvailableBuffers 可用缓冲区的数量
+     * @throws IOException 如果在通知过程中发生I/O错误
+    */
     @Override
     public void notifyBufferAvailable(int numAvailableBuffers) throws IOException {
+        // 如果在调用getAndAdd之前unannouncedCredit的值为0（即没有未声明的信用额度），
         if (numAvailableBuffers > 0 && unannouncedCredit.getAndAdd(numAvailableBuffers) == 0) {
+            // 并且现在增加了numAvailableBuffers的信用额度，则执行notifyCreditAvailable()方法
             notifyCreditAvailable();
         }
     }
@@ -561,7 +589,23 @@ public class RemoteInputChannel extends InputChannel {
      *
      * @param backlog The number of unsent buffers in the producer's sub partition.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 接收来自生产者缓冲响应的积压（backlog）。
+     * 如果可用缓冲区的数量小于积压（backlog）与初始信用（initialCredit）之和，
+     * 它将向缓冲区管理器请求浮动缓冲区（floating buffers），
+     * 然后向生产者通知未声明的信用（credits）。
+     *
+     * @param backlog 生产者子分区中未发送的缓冲区数量
+     * @throws IOException 如果在请求缓冲区或通知信用时发生I/O错误
+    */
     public void onSenderBacklog(int backlog) throws IOException {
+        /**
+         * 1.计算需要请求的缓冲区总数，即积压（backlog）与初始信用（initialCredit）之和
+         * 2.调用缓冲区管理器的requestFloatingBuffers方法，请求所需的浮动缓冲区
+         * 3.调用notifyBufferAvailable方法，通知可用的缓冲区数量
+         */
         notifyBufferAvailable(bufferManager.requestFloatingBuffers(backlog + initialCredit));
     }
 

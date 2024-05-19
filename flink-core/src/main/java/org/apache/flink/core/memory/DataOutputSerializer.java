@@ -31,7 +31,7 @@ import java.util.Arrays;
 /**
  * @授课老师(微信): yi_locus
  * email: 156184212@qq.com
- * 一个简单且高效的序列化器，用于 DataOutput 接口
+ * 对二进制数据进行序列化
 */
 public class DataOutputSerializer implements DataOutputView, MemorySegmentWritable {
 

@@ -44,27 +44,42 @@ import static org.apache.flink.util.Preconditions.checkState;
  * <p><strong>NOTE:</strong> before using this buffer in the netty stack, a buffer allocator must be
  * set via {@link #setAllocator(ByteBufAllocator)}!
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * MemorySegment池实例的包装器
+*/
 public class NetworkBuffer extends AbstractReferenceCountedByteBuf implements Buffer {
 
     /** The backing {@link MemorySegment} instance. */
+    /** MemorySegment实例 */
     private final MemorySegment memorySegment;
 
     /** The recycler for the backing {@link MemorySegment}. */
+    /** MemorySegment的回收器 */
     private BufferRecycler recycler;
 
     /** The {@link DataType} this buffer represents. */
+    /** 缓冲区的数据类型 */
     private DataType dataType;
 
     /** Allocator for further byte buffers (needed by netty). */
+    /** 用于进一步字节缓冲区的分配器（netty需要）。 */
     private ByteBufAllocator allocator;
 
     /**
      * The current size of the buffer in the range from 0 (inclusive) to the size of the backing
      * {@link MemorySegment} (inclusive).
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 缓冲区的当前大小，范围从0（包括0）到 MemorySegment 的大小（包括0和0）。
+    */
     private int currentSize;
 
     /** Whether the buffer is compressed or not. */
+    /** 缓冲区是否被压缩。 */
     private boolean isCompressed = false;
 
     /**

@@ -60,6 +60,11 @@ public interface Buffer {
      *
      * @return <tt>true</tt> if this is a real buffer, <tt>false</tt> if this is an event
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回此缓冲区表示的是缓冲区还是事件。
+    */
     boolean isBuffer();
 
     /**
@@ -70,6 +75,11 @@ public interface Buffer {
      *
      * @return the memory segment backing this buffer
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回底层的MemorySegment内存段。只有在使用 {@link #getMemorySegmentOffset()} 时才使用它。
+    */
     @Deprecated
     MemorySegment getMemorySegment();
 
@@ -79,6 +89,11 @@ public interface Buffer {
      * @return the offset where this (potential slice) {@link Buffer}'s data start in the underlying
      *     memory segment.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 这个方法将在未来被移除。对于写入操作，请使用{@link BufferBuilder}。
+    */
     @Deprecated
     int getMemorySegmentOffset();
 
@@ -87,6 +102,11 @@ public interface Buffer {
      *
      * @return buffer recycler
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取缓冲区的回收器（Recycler）
+    */
     BufferRecycler getRecycler();
 
     /**
@@ -99,6 +119,11 @@ public interface Buffer {
      *
      * @param bufferRecycler the new buffer recycler
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 设置缓冲区的回收器（Recycler）
+     */
     void setRecycler(BufferRecycler bufferRecycler);
 
     /**
@@ -107,6 +132,13 @@ public interface Buffer {
      *
      * @see #retainBuffer()
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 一旦释放此缓冲区，即减少引用计数并在引用计数达到<tt>0</tt>时回收缓冲区。
+     * 一个缓冲区（Buffer）的引用计数机制。当一个缓冲区不再需要时，应该调用这个方法来减少其引用计数。如果引用计数减少到<tt>0</tt>
+     * 那么这个缓冲区将被回收（recycled），以便之后可以被重新利用
+    */
     void recycleBuffer();
 
     /**
@@ -114,6 +146,11 @@ public interface Buffer {
      *
      * @return <tt>true</tt> if already recycled, <tt>false</tt> otherwise
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回此缓冲区是否已被回收。
+    */
     boolean isRecycled();
 
     /**
@@ -133,6 +170,11 @@ public interface Buffer {
      *
      * @return a read-only sliced buffer
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回此缓冲区可读字节的只读切片
+    */
     Buffer readOnlySlice();
 
     /**
@@ -145,6 +187,11 @@ public interface Buffer {
      * @param length the length of the slice
      * @return a read-only sliced buffer
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 返回此缓冲区的只读切片Slice。
+    */
     Buffer readOnlySlice(int index, int length);
 
     /**

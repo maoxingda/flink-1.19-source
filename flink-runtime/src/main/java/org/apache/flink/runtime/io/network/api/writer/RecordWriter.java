@@ -120,6 +120,7 @@ public abstract class RecordWriter<T extends IOReadableWritable> implements Avai
         // 检查是否有错误发生
         checkErroneous();
         // 序列化记录，并将序列化后的记录和目标子分区索引发送给目标分区
+        //流转给ResultPartitionWriter写出
         targetPartition.emitRecord(serializeRecord(serializer, record), targetSubpartition);
         // 如果总是需要刷新（flush），则刷新目标分区的指定子分区
         if (flushAlways) {
@@ -157,18 +158,35 @@ public abstract class RecordWriter<T extends IOReadableWritable> implements Avai
         targetPartition.abortCheckpoint(checkpointId, cause);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的 IOReadableWritable 类型的 record 序列化为一个 ByteBuffer
+     *
+     * @param serializer 用于序列化的 DataOutputSerializer 对象
+     * @param record   需要被序列化的 IOReadableWritable 类型的对象
+     * @return         序列化后的 ByteBuffer
+     * @throws IOException 如果在序列化过程中发生 I/O 错误
+    */
     @VisibleForTesting
     public static ByteBuffer serializeRecord(
             DataOutputSerializer serializer, IOReadableWritable record) throws IOException {
         // the initial capacity should be no less than 4 bytes
+        //todo
+        // 初始的容量应该不小于4个字节，因为我们要先预留4个字节的位置来写入序列化后的数据长度
+        // 设置 serializer 的位置为 4，表示从 ByteBuffer 的第 5 个字节开始写入数据（索引从 0 开始）
         serializer.setPositionUnsafe(4);
 
         // write data
+        // 调用 record 对象的 write 方法，将数据写入到 serializer 中
         record.write(serializer);
 
         // write length
+        // 写入序列化后的数据长度（从第5个字节开始到当前位置的长度），到 ByteBuffer 的前4个字节
+        // 注意：这里使用了 serializer.length() - 4 来获取实际的数据长度（因为前面预留了4个字节）
+        // 第二个参数 0 表示要写入的位置是 ByteBuffer 的起始位置
         serializer.writeIntUnsafe(serializer.length() - 4, 0);
-
+        // 将 serializer 封装为一个 ByteBuffer 并返回
         return serializer.wrapAsByteBuffer();
     }
 

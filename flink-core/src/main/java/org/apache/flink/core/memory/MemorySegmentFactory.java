@@ -121,8 +121,15 @@ public final class MemorySegmentFactory {
      * @param owner The owner to associate with the off-heap memory segment.
      * @return A new memory segment, backed by unpooled off-heap memory.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 分配一些堆外内存，并创建一个表示该内存的新内存段。
+    */
     public static MemorySegment allocateUnpooledOffHeapMemory(int size, Object owner) {
+        // todo 申请直接内存
         ByteBuffer memory = allocateDirectMemory(size);
+        // todo 构造 MemorySegment
         return new MemorySegment(memory, owner);
     }
 
@@ -131,11 +138,23 @@ public final class MemorySegmentFactory {
         return allocateOffHeapUnsafeMemory(size, null, NO_OP);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 分配指定大小的直接内存（非JVM堆内存）并返回其对应的ByteBuffer对象。
+     * @param size 需要分配的直接内存大小，以字节为单位
+     * @return 分配的直接内存对应的ByteBuffer对象
+     * @throws Exception 如果在分配内存时发生OutOfMemoryError异常，
+    */
     private static ByteBuffer allocateDirectMemory(int size) {
         //noinspection ErrorNotRethrown
+        // 使用try-catch块捕获OutOfMemoryError异常，以避免直接崩溃
+
         try {
+            // todo 分配指定大小的直接内存，并返回其对应的ByteBuffer对象
             return ByteBuffer.allocateDirect(size);
         } catch (OutOfMemoryError outOfMemoryError) {
+            //抛出异常
             // TODO: this error handling can be removed in future,
             // once we find a common way to handle OOM errors in netty threads.
             // Here we enrich it to propagate better OOM message to the receiver

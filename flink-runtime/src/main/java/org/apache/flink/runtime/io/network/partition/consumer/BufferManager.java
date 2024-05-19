@@ -178,38 +178,70 @@ public class BufferManager implements BufferListener, BufferRecycler {
      * returns the actual requested amount. If the required amount is not fully satisfied, it will
      * register as a listener.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从缓冲区池中请求浮动缓冲区，基于给定的所需数量，并返回实际请求的数量。
+     * 如果所需数量没有完全满足，则将其作为监听器注册。
+     *
+     * @param numRequired 所需的缓冲区数量
+     * @return 实际请求的缓冲区数量
+     */
     int requestFloatingBuffers(int numRequired) {
+        // 用于记录实际请求的缓冲区数量
         int numRequestedBuffers = 0;
+        // 同步访问bufferQueue，确保在多线程环境下的线程安全
         synchronized (bufferQueue) {
             // Similar to notifyBufferAvailable(), make sure that we never add a buffer after
             // channel
             // released all buffers via releaseAllResources().
+            // 确保在channel释放所有资源后，我们不会添加缓冲区
+            // 这与notifyBufferAvailable()方法中的逻辑类似
             if (inputChannel.isReleased()) {
+                // 如果输入通道已被释放，则直接返回，不请求任何缓冲区
                 return numRequestedBuffers;
             }
-
+            // 更新所需的缓冲区数量（虽然此处赋值与参数值相同，但为了代码清晰性，还是进行了赋值）
             numRequiredBuffers = numRequired;
+            // 尝试从缓冲区池中请求缓冲区
+            // 假设tryRequestBuffers()方法会处理具体的请求逻辑，并返回实际请求的缓冲区数量
             numRequestedBuffers = tryRequestBuffers();
         }
+        // 返回实际请求的缓冲区数量
         return numRequestedBuffers;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 用于尝试请求缓冲区
+    */
     private int tryRequestBuffers() {
+        // 断言当前线程持有bufferQueue的锁，确保线程安全
         assert Thread.holdsLock(bufferQueue);
-
+         // 初始化请求到的缓冲区数量为0
         int numRequestedBuffers = 0;
+        // 当bufferQueue中可用的缓冲区数量小于所需数量numRequiredBuffers，并且没有等待浮动缓冲区时，执行循环
         while (bufferQueue.getAvailableBufferSize() < numRequiredBuffers
                 && !isWaitingForFloatingBuffers) {
+            // 获取输入通道的输入门的缓冲区池
             BufferPool bufferPool = inputChannel.inputGate.getBufferPool();
+            // 从缓冲区池中请求一个缓冲区
             Buffer buffer = bufferPool.requestBuffer();
             if (buffer != null) {
+                // 如果成功获取到缓冲区，则将其添加到浮动缓冲区队列中
                 bufferQueue.addFloatingBuffer(buffer);
+                // 请求到的缓冲区数量加一
                 numRequestedBuffers++;
             } else if (bufferPool.addBufferListener(this)) {
+                // 如果没有可用的缓冲区，但成功添加了缓冲区监听器（即当缓冲区可用时通知当前对象）
+                // 则设置等待浮动缓冲区的标志为true
                 isWaitingForFloatingBuffers = true;
+                // 跳出循环，等待缓冲区可用时的通知
                 break;
             }
         }
+        // 返回成功请求到的缓冲区数量
         return numRequestedBuffers;
     }
 
@@ -439,12 +471,27 @@ public class BufferManager implements BufferListener, BufferRecycler {
          * @param numRequiredBuffers The number of required buffers
          * @return An released floating buffer, may be null if the numRequiredBuffers is not met.
          */
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 添加独占缓冲区并尝试获取浮动缓冲区
+         *
+         * 将给定的Buffer添加到独占缓冲区列表中，并尝试从浮动缓冲区队列中获取一个Buffer，
+         * 但前提是当前可用的缓冲区大小大于所需的缓冲区数量。
+         * @param buffer 要添加的独占缓冲区
+         * @param numRequiredBuffers 所需的缓冲区数量
+         * @return 如果可用缓冲区大小大于所需数量，则返回浮动缓冲区队列中的一个Buffer，否则返回null
+        */
         @Nullable
         Buffer addExclusiveBuffer(Buffer buffer, int numRequiredBuffers) {
+            // 将给定的缓冲区添加到独占缓冲区列表中
             exclusiveBuffers.add(buffer);
+            // 如果当前可用的缓冲区大小大于所需的缓冲区数量
             if (getAvailableBufferSize() > numRequiredBuffers) {
+                // 从浮动缓冲区队列中尝试获取一个Buffer并返回
                 return floatingBuffers.poll();
             }
+            // 如果当前可用缓冲区大小不足以满足需求，则返回null
             return null;
         }
 

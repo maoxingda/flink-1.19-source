@@ -28,6 +28,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /** A simple and efficient deserializer for the {@link java.io.DataInput} interface. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 对二进制数据进行反序列化
+*/
 public class DataInputDeserializer implements DataInputView, java.io.Serializable {
 
     private static final byte[] EMPTY = new byte[0];

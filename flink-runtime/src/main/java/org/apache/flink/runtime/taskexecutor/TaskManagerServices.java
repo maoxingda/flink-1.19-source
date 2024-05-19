@@ -340,7 +340,7 @@ public class TaskManagerServices {
         // start the I/O manager, it will create some temp directories.
         final IOManager ioManager =
                 new IOManagerAsync(taskManagerServicesConfiguration.getTmpDirPaths());
-
+        //创建ShuffleEnvironment
         final ShuffleEnvironment<?, ?> shuffleEnvironment =
                 createShuffleEnvironment(
                         taskManagerServicesConfiguration,
@@ -483,7 +483,11 @@ public class TaskManagerServices {
                 timerService,
                 memoryVerificationExecutor);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个ShuffleEnvironment实例的静态方法，该方法用于配置和管理任务管理器中的Shuffle环境
+    */
     private static ShuffleEnvironment<?, ?> createShuffleEnvironment(
             TaskManagerServicesConfiguration taskManagerServicesConfiguration,
             TaskEventDispatcher taskEventDispatcher,
@@ -491,7 +495,7 @@ public class TaskManagerServices {
             Executor ioExecutor,
             ScheduledExecutor scheduledExecutor)
             throws FlinkException {
-
+        // 创建一个ShuffleEnvironmentContext对象，用于存储Shuffle环境的上下文信息
         final ShuffleEnvironmentContext shuffleEnvironmentContext =
                 new ShuffleEnvironmentContext(
                         taskManagerServicesConfiguration.getConfiguration(),
@@ -505,9 +509,11 @@ public class TaskManagerServices {
                         taskManagerMetricGroup,
                         ioExecutor,
                         scheduledExecutor);
-
+        // 加载Shuffle服务工厂
+        // 使用taskManagerServicesConfiguration中的配置信息来确定使用哪个Shuffle服务实现
         return ShuffleServiceLoader.loadShuffleServiceFactory(
                         taskManagerServicesConfiguration.getConfiguration())
+                // 使用创建的ShuffleEnvironmentContext来创建一个ShuffleEnvironment实例
                 .createShuffleEnvironment(shuffleEnvironmentContext);
     }
 

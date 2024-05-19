@@ -69,19 +69,27 @@ public class TaskExecutorResourceUtils {
 
     private TaskExecutorResourceUtils() {}
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从给定的配置（Configuration）中创建并返回一个TaskExecutorResourceSpec实例。
+    */
     static TaskExecutorResourceSpec resourceSpecFromConfig(Configuration config) {
         try {
+            // 检查任务执行器的资源配置是否已设置
             checkTaskExecutorResourceConfigSet(config);
         } catch (IllegalConfigurationException e) {
+            // 如果检查失败，则抛出包含额外错误信息的IllegalConfigurationException
             throw new IllegalConfigurationException("Failed to create TaskExecutorResourceSpec", e);
         }
+        // 使用从配置中获取的各种资源参数来创建新的TaskExecutorResourceSpec实例
         return new TaskExecutorResourceSpec(
-                new CPUResource(config.get(TaskManagerOptions.CPU_CORES)),
-                config.get(TaskManagerOptions.TASK_HEAP_MEMORY),
-                config.get(TaskManagerOptions.TASK_OFF_HEAP_MEMORY),
-                config.get(TaskManagerOptions.NETWORK_MEMORY_MIN),
-                config.get(TaskManagerOptions.MANAGED_MEMORY_SIZE),
-                ExternalResourceUtils.getExternalResourcesCollection(config));
+                new CPUResource(config.get(TaskManagerOptions.CPU_CORES)),// 使用配置的CPU核心数创建CPUResource实例
+                config.get(TaskManagerOptions.TASK_HEAP_MEMORY),// 获取任务堆内存配置
+                config.get(TaskManagerOptions.TASK_OFF_HEAP_MEMORY),// 获取任务非堆内存配置
+                config.get(TaskManagerOptions.NETWORK_MEMORY_MIN),// 获取网络内存最小配置
+                config.get(TaskManagerOptions.MANAGED_MEMORY_SIZE),// 获取管理内存大小配置
+                ExternalResourceUtils.getExternalResourcesCollection(config));// 获取外部资源集合（如果有）
     }
 
     private static void checkTaskExecutorResourceConfigSet(Configuration config) {

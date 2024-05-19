@@ -110,6 +110,11 @@ public interface AvailabilityProvider {
             return or(other.getAvailableFuture());
         }
 
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 判断将当前可用状态重置为不可用
+        */
         /** Judges to reset the current available state as unavailable. */
         public void resetUnavailable() {
             if (isAvailable()) {

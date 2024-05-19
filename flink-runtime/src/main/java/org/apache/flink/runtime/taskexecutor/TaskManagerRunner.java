@@ -586,6 +586,23 @@ public class TaskManagerRunner implements FatalErrorHandler {
         return TaskExecutorToServiceAdapter.createFor(taskExecutor);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *  此方法主要是读取配置构建TaskExecutor
+     * @param configuration 配置对象
+     * @param resourceID 资源ID
+     * @param rpcService RPC服务
+     * @param highAvailabilityServices 高可用性服务
+     * @param heartbeatServices 心跳服务
+     * @param metricRegistry 度量注册中心
+     * @param taskExecutorBlobService TaskExecutor Blob服务
+     * @param localCommunicationOnly
+     * @param externalResourceInfoProvider 外部资源信息提供者
+     * @param workingDirectory  工作目录
+     * @param fatalErrorHandler  致命错误处理器
+     * @param delegationTokenReceiverRepository
+    */
     public static TaskExecutor startTaskManager(
             Configuration configuration,
             ResourceID resourceID,
@@ -600,21 +617,24 @@ public class TaskManagerRunner implements FatalErrorHandler {
             FatalErrorHandler fatalErrorHandler,
             DelegationTokenReceiverRepository delegationTokenReceiverRepository)
             throws Exception {
-
+        // 检查参数非空
         checkNotNull(configuration);
         checkNotNull(resourceID);
         checkNotNull(rpcService);
         checkNotNull(highAvailabilityServices);
-
+        // 打印日志，显示启动的TaskManager的资源ID
         LOG.info("Starting TaskManager with ResourceID: {}", resourceID.getStringWithMetadata());
 
+        // 重定向系统输出和错误到配置指定的位置
         SystemOutRedirectionUtils.redirectSystemOutAndError(configuration);
-
+        // 获取RPC服务的地址
         String externalAddress = rpcService.getAddress();
 
+        // 从配置中获取TaskExecutor的资源规格
         final TaskExecutorResourceSpec taskExecutorResourceSpec =
                 TaskExecutorResourceUtils.resourceSpecFromConfig(configuration);
 
+        // 根据配置和其他参数生成TaskManagerServicesConfiguration
         TaskManagerServicesConfiguration taskManagerServicesConfiguration =
                 TaskManagerServicesConfiguration.fromConfiguration(
                         configuration,
@@ -624,6 +644,7 @@ public class TaskManagerRunner implements FatalErrorHandler {
                         taskExecutorResourceSpec,
                         workingDirectory);
 
+        // 实例化TaskManager的度量组
         Tuple2<TaskManagerMetricGroup, MetricGroup> taskManagerMetricGroup =
                 MetricUtils.instantiateTaskManagerMetricGroup(
                         metricRegistry,
@@ -631,11 +652,13 @@ public class TaskManagerRunner implements FatalErrorHandler {
                         resourceID,
                         taskManagerServicesConfiguration.getSystemResourceMetricsProbingInterval());
 
+        // 创建一个固定大小的线程池，用于IO操作
         final ExecutorService ioExecutor =
                 Executors.newFixedThreadPool(
                         taskManagerServicesConfiguration.getNumIoThreads(),
                         new ExecutorThreadFactory("flink-taskexecutor-io"));
 
+        //根据配置和其他服务创建TaskManagerServices
         TaskManagerServices taskManagerServices =
                 TaskManagerServices.fromConfiguration(
                         taskManagerServicesConfiguration,
@@ -650,7 +673,7 @@ public class TaskManagerRunner implements FatalErrorHandler {
                 taskManagerMetricGroup.f1,
                 taskManagerServices.getTaskSlotTable(),
                 taskManagerServices::getManagedMemorySize);
-
+        //构建TaskManagerConfiguration 专门用于TaskExecutor启动
         TaskManagerConfiguration taskManagerConfiguration =
                 TaskManagerConfiguration.fromConfiguration(
                         configuration,
@@ -659,7 +682,7 @@ public class TaskManagerRunner implements FatalErrorHandler {
                         workingDirectory.getTmpDirectory());
 
         String metricQueryServiceAddress = metricRegistry.getMetricQueryServiceGatewayRpcAddress();
-
+        //创建TaskExecutor对象
         return new TaskExecutor(
                 rpcService,
                 taskManagerConfiguration,

@@ -109,6 +109,7 @@ public class LocalBufferPool implements BufferPool {
      * somehow referenced through this pool (e.g. wrapped in Buffer instances or as available
      * segments).
      */
+    /** */
     @GuardedBy("availableMemorySegments")
     private int numberOfRequestedMemorySegments;
 
@@ -244,23 +245,39 @@ public class LocalBufferPool implements BufferPool {
     // Properties
     // ------------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 预留内存段
+     *
+     * 预留指定数量的内存段。如果预留的数量超过所需内存段的总数，则会抛出异常。
+     * @param numberOfSegmentsToReserve 要预留的内存段数量
+    */
     @Override
     public void reserveSegments(int numberOfSegmentsToReserve) throws IOException {
+        // 检查参数是否有效，预留的内存段数量不能超过所需内存段的总数
         checkArgument(
                 numberOfSegmentsToReserve <= numberOfRequiredMemorySegments,
                 "Can not reserve more segments than number of required segments.");
 
+        // 异步通知对象，用于在预留完成后通知等待线程
         CompletableFuture<?> toNotify = null;
+        // 同步块，确保对availableMemorySegments的线程安全访问
         synchronized (availableMemorySegments) {
+            // 检查LocalBufferPool缓冲区池是否已被销毁
             checkDestroyed();
 
+            // 如果已请求的内存段数量小于要预留的数量
             if (numberOfRequestedMemorySegments < numberOfSegmentsToReserve) {
+                // 从网络缓冲区池中阻塞式地请求剩余所需的内存段数量
+                // 并将其添加到可用内存段列表中
                 availableMemorySegments.addAll(
                         networkBufferPool.requestPooledMemorySegmentsBlocking(
                                 numberOfSegmentsToReserve - numberOfRequestedMemorySegments));
                 toNotify = availabilityHelper.getUnavailableToResetAvailable();
             }
         }
+        // 获取一个用于在内存段可用时重置的异步通知对象
         mayNotifyAvailable(toNotify);
     }
 
@@ -324,8 +341,17 @@ public class LocalBufferPool implements BufferPool {
         return Math.max(0, numberOfRequestedMemorySegments - availableMemorySegments.size());
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 请求一个缓冲区
+     *
+     * 调用此方法会请求一个新的内存段（Memory Segment），并将其转换为一个Buffer对象。
+     * 如果请求成功，则返回该Buffer对象；如果请求失败或遇到其他问题，则返回null（或抛出异常，取决于具体实现）。
+    */
     @Override
     public Buffer requestBuffer() {
+        //申请的MemorySegment转换为Buffer
         return toBuffer(requestMemorySegment());
     }
 
@@ -334,8 +360,18 @@ public class LocalBufferPool implements BufferPool {
         return toBufferBuilder(requestMemorySegment(UNKNOWN_CHANNEL), UNKNOWN_CHANNEL);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个针对指定目标通道的BufferBuilder对象
+     * @param targetChannel 目标通道编号
+     * @return 返回一个BufferBuilder对象，该对象用于在指定通道上构建缓冲区
+    */
     @Override
     public BufferBuilder requestBufferBuilder(int targetChannel) {
+        // 调用requestMemorySegment方法请求指定通道的内存段
+        // 然后将得到的内存段以及目标通道作为参数传递给toBufferBuilder方法
+        // toBufferBuilder方法将内存段转化为一个BufferBuilder对象并返回
         return toBufferBuilder(requestMemorySegment(targetChannel), targetChannel);
     }
 
@@ -355,10 +391,20 @@ public class LocalBufferPool implements BufferPool {
         return toBufferBuilder(requestMemorySegmentBlocking(targetChannel), targetChannel);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的MemorySegment转换为Buffer对象。
+     *
+     * @param memorySegment 要转换的MemorySegment对象。如果为null，则返回null。
+     * @return 转换后的Buffer对象（类型为NetworkBuffer），如果memorySegment为null则返回null。
+     */
     private Buffer toBuffer(MemorySegment memorySegment) {
+        // 如果传入的MemorySegment为null，则直接返回null
         if (memorySegment == null) {
             return null;
         }
+        // 使用传入的MemorySegment和当前对象（this）来创建一个新的NetworkBuffer对象
         return new NetworkBuffer(memorySegment, this);
     }
 
@@ -389,32 +435,51 @@ public class LocalBufferPool implements BufferPool {
         return segment;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 请求指定目标通道的内存段
+     *
+     * @param targetChannel 目标通道编号
+     * @return 返回请求到的内存段，如果无法获取则返回null
+    */
     @Nullable
     private MemorySegment requestMemorySegment(int targetChannel) {
+        //声明MemorySegment类型变量
         MemorySegment segment = null;
+        // 同步块，确保对availableMemorySegments的线程安全访问
         synchronized (availableMemorySegments) {
+            // 检查LocalBufferPool对象是否已被销毁
             checkDestroyed();
-
+            // 如果可用内存段列表不为空
             if (!availableMemorySegments.isEmpty()) {
+                // 从可用内存段列表中获取并移除一个内存段
                 segment = availableMemorySegments.poll();
             } else if (isRequestedSizeReached()) {
                 // Only when the buffer request reaches the upper limit(i.e. current pool size),
                 // requests an overdraft buffer.
+                // 如果已经到达请求的内存段上限（即当前内存池大小）
+                // 则从全局中请求透支内存段
+                // 仅当缓冲区请求达到上限时，请求透支缓冲区
                 segment = requestOverdraftMemorySegmentFromGlobal();
             }
-
+            // 如果segment仍然为null，则返回null
             if (segment == null) {
                 return null;
             }
 
+            // 如果目标通道不是UNKNOWN_CHANNEL
             if (targetChannel != UNKNOWN_CHANNEL) {
+                // 增加对应目标通道的子分区缓冲区计数
                 if (++subpartitionBuffersCount[targetChannel] == maxBuffersPerChannel) {
+                    // 如果达到每个通道的最大缓冲区数，则增加不可用子分区计数
                     unavailableSubpartitionsCount++;
                 }
             }
-
+            // 检查并更新可用性状态
             checkAndUpdateAvailability();
         }
+        // 返回请求到的内存段
         return segment;
     }
 
@@ -425,8 +490,15 @@ public class LocalBufferPool implements BufferPool {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 申请MemorySegment
+     *
+    */
     @Override
     public MemorySegment requestMemorySegment() {
+        //申请MemorySegment
         return requestMemorySegment(UNKNOWN_CHANNEL);
     }
 
@@ -446,30 +518,52 @@ public class LocalBufferPool implements BufferPool {
         return false;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从全局请求透支内存段
+     *
+     * @return 返回请求到的透支内存段，如果无法获取则返回null
+     *
+    */
     @GuardedBy("availableMemorySegments")
     private MemorySegment requestOverdraftMemorySegmentFromGlobal() {
+        // 断言确保调用此方法时已经持有了availableMemorySegments的锁
         assert Thread.holdsLock(availableMemorySegments);
 
         // if overdraft buffers(i.e. buffers exceeding poolSize) is greater than or equal to
         // maxOverdraftBuffersPerGate, no new buffer can be requested.
+        // 如果透支的内存段（即超过池大小的缓冲区）数量大于或等于每个门（gate）的最大透支内存段数量，
+        // 则不能请求新的内存段。
         if (numberOfRequestedMemorySegments - currentPoolSize >= maxOverdraftBuffersPerGate) {
             return null;
         }
-
+        // 请求池化的内存段
         return requestPooledMemorySegment();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 请求池化的内存段
+     * @return 返回请求到的池化内存段，如果无法获取则返回null
+    */
     @Nullable
     @GuardedBy("availableMemorySegments")
     private MemorySegment requestPooledMemorySegment() {
+        // 检查池是否已被销毁
+        // 如果已销毁，则不应该再获取内存段，因为这会导致缓冲区泄漏
         checkState(
                 !isDestroyed,
                 "Destroyed buffer pools should never acquire segments - this will lead to buffer leaks.");
-
+        // 从网络缓冲区池中请求一个池化的内存段
         MemorySegment segment = networkBufferPool.requestPooledMemorySegment();
+        // 如果成功获取到内存段
         if (segment != null) {
+            // 增加已请求的内存段数量
             numberOfRequestedMemorySegments++;
         }
+        // 返回请求到的内存段
         return segment;
     }
 
