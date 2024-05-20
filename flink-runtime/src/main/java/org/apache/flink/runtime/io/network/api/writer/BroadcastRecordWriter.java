@@ -36,8 +36,14 @@ public final class BroadcastRecordWriter<T extends IOReadableWritable> extends R
         super(writer, timeout, taskName);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 广播到所有下游的InputChannel
+    */
     @Override
     public void emit(T record) throws IOException {
+        //将所有数据写入到下游
         broadcastEmit(record);
     }
 

@@ -384,6 +384,11 @@ public class NettyShuffleEnvironment
      *
      * @return a port to connect to the task executor for shuffle data exchange, -1 if only local connection is possible.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 启动ConnectionManager
+    */
     @Override
     public int start() throws IOException {
         synchronized (lock) {
@@ -394,6 +399,7 @@ public class NettyShuffleEnvironment
 
             try {
                 LOG.debug("Starting network connection manager");
+                //调用ConnectionManager的启动方法启动客户端服务端
                 return connectionManager.start();
             } catch (IOException t) {
                 throw new IOException("Failed to instantiate network connection manager.", t);

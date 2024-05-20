@@ -318,6 +318,7 @@ public abstract class BufferWritingResultPartition extends ResultPartition {
             // 请求一个新的BufferBuilder
             buffer = requestNewUnicastBufferBuilder(targetSubpartition);
             // 将新的BufferBuilder添加到目标子分区中，并设置其初始的序列号和记录长度
+            // 同时构建BufferConsumer放入队列
             addToSubpartition(buffer, targetSubpartition, 0, record.remaining());
         }
         // 将ByteBuffer中的数据追加到BufferBuilder中
@@ -326,26 +327,37 @@ public abstract class BufferWritingResultPartition extends ResultPartition {
         return buffer;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 数据追加到BufferBuilder
+    */
     private int append(ByteBuffer record, BufferBuilder buffer) {
         // Try to avoid hard back-pressure in the subsequent calls to request buffers
         // by ignoring Buffer Debloater hints and extending the buffer if possible (trim).
         // This decreases the probability of hard back-pressure in cases when
         // the output size varies significantly and BD suggests too small values.
         // The hint will be re-applied on the next iteration.
+        // 检查ByteBuffer中剩余的数据是否大于或等于BufferBuilder的可写字节数
         if (record.remaining() >= buffer.getWritableBytes()) {
             // This 2nd check is expensive, so it shouldn't be re-ordered.
             // However, it has the same cost as the subsequent call to request buffer, so it doesn't
             // affect the performance much.
+            // 如果缓冲区池没有可用的缓冲区
             if (!bufferPool.isAvailable()) {
                 // add 1 byte to prevent immediately flushing the buffer and potentially fit the
                 // next record
+                // 计算新的缓冲区大小，确保至少为buffer的最大容量，或者足够存储当前剩余数据和额外的一个字节
                 int newSize =
                         buffer.getMaxCapacity()
                                 + (record.remaining() - buffer.getWritableBytes())
                                 + 1;
+                // 尝试扩展缓冲区的大小，但不超过其最大容量
                 buffer.trim(Math.max(buffer.getMaxCapacity(), newSize));
             }
         }
+        // 将ByteBuffer中的数据追加到BufferBuilder，并提交更改
+        // 返回实际追加的字节数
         return buffer.appendAndCommit(record);
     }
     /**

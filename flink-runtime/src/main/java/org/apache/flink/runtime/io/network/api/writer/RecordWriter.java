@@ -52,7 +52,7 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 /**
  * @授课老师(微信): yi_locus
  * email: 156184212@qq.com
- * 面向记录的抽象运行时结果写入器
+ * 将Task运行的结果通过RecordWriter写出到网络栈
 */
 public abstract class RecordWriter<T extends IOReadableWritable> implements AvailabilityProvider {
 

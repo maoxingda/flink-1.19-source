@@ -408,14 +408,23 @@ public class LocalBufferPool implements BufferPool {
         return new NetworkBuffer(memorySegment, this);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建BufferBuilder
+    */
     private BufferBuilder toBufferBuilder(MemorySegment memorySegment, int targetChannel) {
+        // 如果传入的MemorySegment为null，则不创建BufferBuilder，直接返回null。
         if (memorySegment == null) {
             return null;
         }
-
+        // 如果targetChannel是UNKNOWN_CHANNEL
+        // 则创建一个新的BufferBuilder实例，使用传入的memorySegment和当前对象（this）作为参数。
+        // 这里可以假设当前对象（this）是BufferBuilder的工厂类或管理者，用于创建和管理BufferBuilder实例。
         if (targetChannel == UNKNOWN_CHANNEL) {
             return new BufferBuilder(memorySegment, this);
         } else {
+            // 如果targetChannel不是UNKNOWN_CHANNEL，则可能是指定了某个特定的子分区或通道。
             return new BufferBuilder(memorySegment, subpartitionBufferRecyclers[targetChannel]);
         }
     }

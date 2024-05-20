@@ -1883,6 +1883,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构建RecordWriter
+    */
     @SuppressWarnings("unchecked")
     private static <OUT> RecordWriter<SerializationDelegate<StreamRecord<OUT>>> createRecordWriter(
             NonChainedOutput streamOutput,
