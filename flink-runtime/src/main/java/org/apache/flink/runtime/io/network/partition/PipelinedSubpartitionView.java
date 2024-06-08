@@ -44,14 +44,25 @@ public class PipelinedSubpartitionView implements ResultSubpartitionView {
         this.isReleased = new AtomicBoolean();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *  * 从父对象中获取下一个可用的BufferAndBacklog。
+    */
     @Nullable
     @Override
     public BufferAndBacklog getNextBuffer() {
         return parent.pollBuffer();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 当有新数据可用时，此方法将被调用以通知监听器。
+    */
     @Override
     public void notifyDataAvailable() {
+        //调用BufferAvailabilityListener监听器通知数据可用
         availabilityListener.notifyDataAvailable(this);
     }
 

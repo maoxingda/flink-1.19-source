@@ -107,11 +107,27 @@ public class DataOutputSerializer implements DataOutputView, MemorySegmentWritab
     //                               Data Output
     // ----------------------------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将一个整数（字节）写入缓冲区。
+     * 如果当前位置（position）已达到或超过缓冲区（buffer）的长度，
+     * 则会先调整缓冲区的大小（增加1个字节的容量）。
+     * 然后将传入的整数（b）的最低8位（即一个字节）转换为byte类型，
+     * 并写入到当前位置（position），随后将位置（position）增加1。
+     *
+     * @param b 要写入的整数（其最低8位将被视为一个字节写入）
+     * @throws IOException 如果在写入过程中发生I/O错误（但在此实现中，不会发生）
+    */
     @Override
     public void write(int b) throws IOException {
         if (this.position >= this.buffer.length) {
+            // 如果当前位置（position）已达到或超过缓冲区（buffer）的长度
+            // 则调用resize方法调整缓冲区大小（增加1个字节的容量）
             resize(1);
         }
+        // 将传入的整数（b）的最低8位转换为byte类型，并写入到当前位置（position）
+        // 然后将位置（position）增加1
         this.buffer[this.position++] = (byte) (b & 0xff);
     }
 

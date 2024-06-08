@@ -216,9 +216,23 @@ public class MemoryManager {
      * @throws MemoryAllocationException Thrown, if this memory manager does not have the requested
      *     amount of memory pages any more.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从这个内存管理器中分配一组内存段。
+     *
+     * <p>总分配的内存不会超过在构造函数中声明的大小限制。
+     * @param owner 内存段的所有者，用于备用释放。
+     *               当内存段不再需要时，可以通过所有者来识别并进行释放操作。
+     * @param target 存储已分配内存页的列表。
+     *               此方法会将分配的内存段添加到这个列表中。
+     * @param numberOfPages 要分配的页面数量。
+     * @throws MemoryAllocationException 如果这个内存管理器没有请求的页面数量的内存了，则抛出此异常。
+    */
     public void allocatePages(Object owner, Collection<MemorySegment> target, int numberOfPages)
             throws MemoryAllocationException {
         // sanity check
+        // 检查输入参数的有效性
         Preconditions.checkNotNull(owner, "The memory owner must not be null.");
         Preconditions.checkState(!isShutDown, "Memory manager has been shut down.");
         Preconditions.checkArgument(
@@ -228,32 +242,42 @@ public class MemoryManager {
                 totalNumberOfPages);
 
         // reserve array space, if applicable
+        // 如果目标是 ArrayList 类型，预留数组空间（如果需要）
+        // 如果适用，则预留数组空间
+        // (例如，提前避免ArrayList的多次扩容)
         if (target instanceof ArrayList) {
             ((ArrayList<MemorySegment>) target).ensureCapacity(numberOfPages);
         }
-
+        // 计算需要预留的内存量
         long memoryToReserve = numberOfPages * pageSize;
         try {
+            // 在内存预算中预留内存
             memoryBudget.reserveMemory(memoryToReserve);
         } catch (MemoryReservationException e) {
             throw new MemoryAllocationException(
                     String.format("Could not allocate %d pages", numberOfPages), e);
         }
-
+        // 创建一个用于释放页面的Runnable对象
         Runnable pageCleanup = this::releasePage;
+        // 将分配的内存段与所有者关联，并添加到目标集合中
+        // 使用 compute 方法更新 allocatedSegments Map
         allocatedSegments.compute(
                 owner,
                 (o, currentSegmentsForOwner) -> {
+                    // 获取或创建一个与所有者关联的页面集合
                     Set<MemorySegment> segmentsForOwner =
                             currentSegmentsForOwner == null
                                     ? CollectionUtil.newHashSetWithExpectedSize(numberOfPages)
                                     : currentSegmentsForOwner;
+                    // 分配指定数量的内存段，并将它们添加到目标集合和所有者的集合中
                     for (long i = numberOfPages; i > 0; i--) {
+                        // 分配非堆外内存，并关联所有者与清理操作
                         MemorySegment segment =
                                 allocateOffHeapUnsafeMemory(getPageSize(), owner, pageCleanup);
                         target.add(segment);
                         segmentsForOwner.add(segment);
                     }
+                    // 返回更新后的页面集合
                     return segmentsForOwner;
                 });
 
@@ -687,6 +711,11 @@ public class MemoryManager {
      * @param memorySize The total size of the off-heap memory to be managed by this memory manager.
      * @param pageSize The size of the pages handed out by the memory manager.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建具有给定容量和给定页面大小的内存管理器。
+    */
     public static MemoryManager create(long memorySize, int pageSize) {
         return new MemoryManager(memorySize, pageSize);
     }

@@ -114,6 +114,11 @@ public class FsStateBackend extends AbstractFileStateBackend implements Configur
     private static final long serialVersionUID = -8191916350224044011L;
 
     /** Maximum size of state that is stored with the metadata, rather than in files (1 MiByte). */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 与元数据一起存储的状态的最大大小，而不是存储在文件中（1兆字节）
+    */
     private static final int MAX_FILE_STATE_THRESHOLD = 1024 * 1024;
 
     // ------------------------------------------------------------------------
@@ -122,6 +127,11 @@ public class FsStateBackend extends AbstractFileStateBackend implements Configur
      * State below this size will be stored as part of the metadata, rather than in files. A value
      * of '-1' means not yet configured, in which case the default will be used.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 低于这个大小的状态将被作为元数据的一部分存储，而不是存储在文件中。如果值为 '-1'，则表示尚未配置，此时将使用默认值。
+    */
     private final int fileStateThreshold;
 
     /**
@@ -129,12 +139,23 @@ public class FsStateBackend extends AbstractFileStateBackend implements Configur
      * threshold when we want state below that threshold stored as part of metadata not files. A
      * value of '-1' means not yet configured, in which case the default will be used.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建的检查点流的写缓冲区大小，当我们希望将低于阈值的状态作为元数据的一部分而不是文件存储时，这个大小不应小于文件状态阈值。
+     * 值“-1”表示尚未配置，这种情况下将使用默认值。
+    */
     private final int writeBufferSize;
 
     /**
      * Switch to create checkpoint sub-directory with name of jobId. A value of 'undefined' means
      * not yet configured, in which case the default will be used.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 切换到使用作业ID作为名称来创建检查点子目录。如果值为 'undefined'，则表示尚未配置，此时将使用默认值。
+    */
     private boolean createCheckpointSubDirs;
 
     // -----------------------------------------------------------------------
@@ -530,6 +551,11 @@ public class FsStateBackend extends AbstractFileStateBackend implements Configur
     //  initialization and cleanup
     // ------------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为给定作业的检查点创建存储。检查点存储用于写入检查点数据和元数据。
+    */
     @Override
     public CheckpointStorageAccess createCheckpointStorage(JobID jobId) throws IOException {
         checkNotNull(jobId, "jobId");
@@ -545,49 +571,65 @@ public class FsStateBackend extends AbstractFileStateBackend implements Configur
     // ------------------------------------------------------------------------
     //  state holding structures
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建KeyedStateBackend
+    */
     @Override
     public <K> AbstractKeyedStateBackend<K> createKeyedStateBackend(
             KeyedStateBackendParameters<K> parameters) throws BackendBuildingException {
-
+        // 获取任务状态管理器，用于管理任务的状态
         TaskStateManager taskStateManager = parameters.getEnv().getTaskStateManager();
+        // 创建本地恢复配置，通常用于在失败时恢复状态
         LocalRecoveryConfig localRecoveryConfig = taskStateManager.createLocalRecoveryConfig();
+        // 创建一个基于堆的优先级队列集合工厂，用于构建内部数据结构
         HeapPriorityQueueSetFactory priorityQueueSetFactory =
                 new HeapPriorityQueueSetFactory(
                         parameters.getKeyGroupRange(), parameters.getNumberOfKeyGroups(), 128);
-
+        // 构建并设置延迟跟踪状态配置，用于监控和报告状态访问的延迟
         LatencyTrackingStateConfig latencyTrackingStateConfig =
                 latencyTrackingConfigBuilder.setMetricGroup(parameters.getMetricGroup()).build();
+        // 使用给定的参数构建一个HeapKeyedStateBackendBuilder对象，并最终构建出KeyedStateBackend实例
         return new HeapKeyedStateBackendBuilder<>(
-                        parameters.getKvStateRegistry(),
-                        parameters.getKeySerializer(),
-                        parameters.getEnv().getUserCodeClassLoader().asClassLoader(),
-                        parameters.getNumberOfKeyGroups(),
-                        parameters.getKeyGroupRange(),
-                        parameters.getEnv().getExecutionConfig(),
-                        parameters.getTtlTimeProvider(),
-                        latencyTrackingStateConfig,
-                        parameters.getStateHandles(),
+                        parameters.getKvStateRegistry(),// 键值状态注册表
+                        parameters.getKeySerializer(),// 键的序列化器
+                        parameters.getEnv().getUserCodeClassLoader().asClassLoader(),// 用户代码类加载器
+                        parameters.getNumberOfKeyGroups(),// 键组的数量
+                        parameters.getKeyGroupRange(),// 使用的键组范围
+                        parameters.getEnv().getExecutionConfig(),// 执行配置
+                        parameters.getTtlTimeProvider(),// TTL时间提供者，用于状态过期管理
+                        latencyTrackingStateConfig,// 延迟跟踪状态配置
+                        parameters.getStateHandles(),// 状态句柄的集合，用于状态恢复
                         AbstractStateBackend.getCompressionDecorator(
-                                parameters.getEnv().getExecutionConfig()),
-                        localRecoveryConfig,
-                        priorityQueueSetFactory,
-                        isUsingAsynchronousSnapshots(),
+                                parameters.getEnv().getExecutionConfig()),// 压缩装饰器，用于状态压缩
+                        localRecoveryConfig,// 本地恢复配置
+                        priorityQueueSetFactory,// 优先级队列集合工厂
+                        isUsingAsynchronousSnapshots(),// 是否使用异步快照
                         parameters.getCancelStreamRegistry())
-                .build();
+                .build();// 构建KeyedStateBackend实例
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个操作符状态后端实例。
+     *
+     * @param parameters 操作符状态后端构建所需的参数
+     * @return 创建好的操作符状态后端实例
+     * @throws BackendBuildingException 如果在构建过程中发生错误，则抛出此异常
+    */
     @Override
     public OperatorStateBackend createOperatorStateBackend(
             OperatorStateBackendParameters parameters) throws BackendBuildingException {
 
         return new DefaultOperatorStateBackendBuilder(
-                        parameters.getEnv().getUserCodeClassLoader().asClassLoader(),
-                        parameters.getEnv().getExecutionConfig(),
-                        isUsingAsynchronousSnapshots(),
-                        parameters.getStateHandles(),
-                        parameters.getCancelStreamRegistry())
-                .build();
+                        parameters.getEnv().getUserCodeClassLoader().asClassLoader(), // 使用用户代码类加载器作为类加载器
+                        parameters.getEnv().getExecutionConfig(),// 传入执行配置，包含了一系列系统级和任务级配置参数
+                        isUsingAsynchronousSnapshots(),// 判断是否使用异步快照
+                        parameters.getStateHandles(),// 传入状态句柄集合，这些句柄包含了状态数据的引用
+                        parameters.getCancelStreamRegistry())// 传入在恢复过程中可能需要关闭的流或资源的注册中心
+                .build();// 调用构建器构建操作符状态后端实例
     }
 
     // ------------------------------------------------------------------------

@@ -184,16 +184,28 @@ public class DataInputDeserializer implements DataInputView, java.io.Serializabl
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从缓冲区中读取一个int类型的值。
+     *
+     * @return 读取到的int值
+     * @throws IOException 如果读取位置超出缓冲区有效范围，则抛出EOFException
+    */
     @Override
     public int readInt() throws IOException {
+        // 检查当前位置是否在缓冲区有效范围内（至少还有3个字节的空间来读取一个int值，因为int是4个字节，但需要减去当前位置）
         if (this.position >= 0 && this.position < this.end - 3) {
             @SuppressWarnings("restriction")
+            // 使用UNSAFE类（通常是sun.misc.Unsafe）来直接从内存中读取int值
             int value = UNSAFE.getInt(this.buffer, BASE_OFFSET + this.position);
+            // 如果系统是小端字节序（Least Significant Byte first），则需要对读取到的int值进行字节反转
             if (LITTLE_ENDIAN) {
                 value = Integer.reverseBytes(value);
             }
-
+            // 更新当前位置为下一个待读取位置（即当前位置加上4，因为一个int值占4个字节）
             this.position += 4;
+            // 返回读取到的int值
             return value;
         } else {
             throw new EOFException();

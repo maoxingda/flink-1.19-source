@@ -114,16 +114,24 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
         channelStatePersister.stopPersisting(checkpointId);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @Override
     protected void requestSubpartitions() throws IOException {
-
+        // 用于标记是否需要重新触发请求
         boolean retriggerRequest = false;
+        // 用于标记是否通知数据可用
         boolean notifyDataAvailable = false;
 
         // The lock is required to request only once in the presence of retriggered requests.
+        // 使用同步锁来确保在重新触发请求的情况下只请求一次
         synchronized (requestLock) {
+            // 检查是否已经释放，如果已经释放则抛出异常
             checkState(!isReleased, "LocalInputChannel has been released already");
-
+            // 如果 subpartitionView 为空，表示需要请求子分区
             if (subpartitionView == null) {
                 LOG.debug(
                         "{}: Requesting LOCAL subpartitions {} of partition {}. {}",
@@ -133,34 +141,42 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
                         channelStatePersister);
 
                 try {
+                    // 调用分区管理器来创建子分区视图
                     ResultSubpartitionView subpartitionView =
                             partitionManager.createSubpartitionView(
                                     partitionId, consumedSubpartitionIndexSet, this);
-
+                    // 如果子分区视图为空，抛出 IOException
                     if (subpartitionView == null) {
                         throw new IOException("Error requesting subpartition.");
                     }
 
                     // make the subpartition view visible
+                    //赋值
                     this.subpartitionView = subpartitionView;
 
                     // check if the channel was released in the meantime
+                    // 检查在此期间通道是否被释放
                     if (isReleased) {
+                        // 如果被释放，则释放所有资源并清空 subpartitionView
                         subpartitionView.releaseAllResources();
                         this.subpartitionView = null;
                     } else {
+                        // 如果没有被释放，则标记需要通知数据可用
                         notifyDataAvailable = true;
                     }
                 } catch (PartitionNotFoundException notFound) {
+                    // 如果找不到分区，则尝试增加重试间隔
                     if (increaseBackoff()) {
+                        // 如果成功增加重试间隔，则标记需要重新触发请求
                         retriggerRequest = true;
                     } else {
+                        // 如果增加重试间隔失败，则直接抛出异常
                         throw notFound;
                     }
                 }
             }
         }
-
+        // 如果子分区视图已经成功获取并且通道未被释放，则通知数据可用
         if (notifyDataAvailable) {
             notifyDataAvailable(this.subpartitionView);
         }
@@ -168,7 +184,10 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
         // Do this outside of the lock scope as this might lead to a
         // deadlock with a concurrent release of the channel via the
         // input gate.
+        // 在同步块外重新触发请求，因为重新触发请求可能会涉及到与其他组件的交互
+        // 如果在同步块内进行，可能会与输入门（input gate）的并发释放操作产生死锁
         if (retriggerRequest) {
+            // 调用输入门的 retriggerPartitionRequest 方法来重新触发对指定分区的请求
             inputGate.retriggerPartitionRequest(partitionId.getPartitionId(), channelInfo);
         }
     }
@@ -294,6 +313,11 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
                         next.getSequenceNumber()));
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @Override
     public void notifyDataAvailable(ResultSubpartitionView view) {
         notifyChannelNonEmpty();

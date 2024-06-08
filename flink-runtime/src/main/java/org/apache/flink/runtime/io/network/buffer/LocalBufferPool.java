@@ -530,10 +530,8 @@ public class LocalBufferPool implements BufferPool {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 从全局请求透支内存段
-     *
+     * 从全局请求请求内存段
      * @return 返回请求到的透支内存段，如果无法获取则返回null
-     *
     */
     @GuardedBy("availableMemorySegments")
     private MemorySegment requestOverdraftMemorySegmentFromGlobal() {
@@ -542,7 +540,7 @@ public class LocalBufferPool implements BufferPool {
 
         // if overdraft buffers(i.e. buffers exceeding poolSize) is greater than or equal to
         // maxOverdraftBuffersPerGate, no new buffer can be requested.
-        // 如果透支的内存段（即超过池大小的缓冲区）数量大于或等于每个门（gate）的最大透支内存段数量，
+        // 如果请求的的内存段（即超过池大小的缓冲区）数量大于或等于每个门（gate）的最大内存段数量，
         // 则不能请求新的内存段。
         if (numberOfRequestedMemorySegments - currentPoolSize >= maxOverdraftBuffersPerGate) {
             return null;

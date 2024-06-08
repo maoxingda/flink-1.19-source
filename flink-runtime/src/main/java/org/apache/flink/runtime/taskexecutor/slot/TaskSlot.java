@@ -90,6 +90,11 @@ public class TaskSlot<T extends TaskSlotPayload> implements AutoCloseableAsync {
     /** {@link Executor} for background actions, e.g. verify all managed memory released. */
     private final Executor asyncExecutor;
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * TaskSlot构造方法
+    */
     public TaskSlot(
             final int index,
             final ResourceProfile resourceProfile,
@@ -97,19 +102,23 @@ public class TaskSlot<T extends TaskSlotPayload> implements AutoCloseableAsync {
             final JobID jobId,
             final AllocationID allocationId,
             final Executor asyncExecutor) {
-
+        // 初始化任务槽的索引号
         this.index = index;
+        // 初始化资源配置文件，检查是否为null
         this.resourceProfile = Preconditions.checkNotNull(resourceProfile);
+        // 初始化异步执行器，检查是否为null
         this.asyncExecutor = Preconditions.checkNotNull(asyncExecutor);
-
+        // 初始化任务集合，预计初始大小为4（可能会存放4个任务）
         this.tasks = CollectionUtil.newHashMapWithExpectedSize(4);
+        // 初始化任务槽状态为已分配
         this.state = TaskSlotState.ALLOCATED;
-
+        // 初始化关联的作业ID
         this.jobId = jobId;
+        // 初始化分配ID
         this.allocationId = allocationId;
-
+        // 根据资源配置文件和内存页大小创建内存管理器
         this.memoryManager = createMemoryManager(resourceProfile, memoryPageSize);
-
+        // 创建一个CompletableFuture对象，用于表示任务槽的关闭状态（可能用于异步等待任务槽关闭）
         this.closingFuture = new CompletableFuture<>();
     }
 
@@ -344,8 +353,19 @@ public class TaskSlot<T extends TaskSlotPayload> implements AutoCloseableAsync {
                 asyncExecutor);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个内存管理器
+     *
+     * @param resourceProfile 资源配置文件，包含内存管理相关的配置
+     * @param pageSize        内存页的大小，用于内存分配
+     * @return 返回一个根据给定资源配置文件和内存页大小创建的内存管理器实例
+     */
     private static MemoryManager createMemoryManager(
             ResourceProfile resourceProfile, int pageSize) {
+        // 调用 MemoryManager 的静态方法 create 来创建内存管理器实例
+        // 参数包括从资源配置文件中获取的管理内存字节数（getBytes 方法获取）和内存页大小
         return MemoryManager.create(resourceProfile.getManagedMemory().getBytes(), pageSize);
     }
 }

@@ -35,6 +35,11 @@ import static org.apache.flink.runtime.io.network.partition.hybrid.tiered.common
  * A wrapper internal shuffle master class for tiered storage. All the tiered storage operations
  * with the shuffle master should be wrapped in this class.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于分层存储的包装器内部shuffle主类。所有带有shuffle master的分层存储操作都应包含在此类中。
+*/
 public class TieredInternalShuffleMaster {
 
     private final TieredStorageMasterClient tieredStorageMasterClient;

@@ -155,7 +155,11 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
         checkState(this.channelStateWriter == null, "Already initialized");
         this.channelStateWriter = checkNotNull(channelStateWriter);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 调用方法重载将BufferConsumer对象添加到队列
+    */
     @Override
     public int add(BufferConsumer bufferConsumer, int partialRecordLength) {
         return add(bufferConsumer, partialRecordLength, false);
@@ -496,39 +500,51 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从缓冲区队列中轮询获取一个Buffer
+    */
     @Nullable
     BufferAndBacklog pollBuffer() {
+        // 同步块，确保在多线程环境下对buffers的访问是线程安全的
         synchronized (buffers) {
+            // 如果当前线程被阻塞，则直接返回null
             if (isBlocked) {
                 return null;
             }
 
             Buffer buffer = null;
-
+            // 如果缓冲区队列为空，则清除flushRequested标志
             if (buffers.isEmpty()) {
                 flushRequested = false;
             }
-
+            // 当缓冲区队列不为空时，循环检查队列中的每个BufferConsumer
             while (!buffers.isEmpty()) {
+                // 从队列头部取出一个包含部分记录长度的BufferConsumer
                 BufferConsumerWithPartialRecordLength bufferConsumerWithPartialRecordLength =
                         buffers.peek();
                 BufferConsumer bufferConsumer =
                         bufferConsumerWithPartialRecordLength.getBufferConsumer();
+                // 如果数据类型是TIMEOUTABLE_ALIGNED_CHECKPOINT_BARRIER，则完成相关的超时检查点屏障
                 if (Buffer.DataType.TIMEOUTABLE_ALIGNED_CHECKPOINT_BARRIER
                         == bufferConsumer.getDataType()) {
                     completeTimeoutableCheckpointBarrier(bufferConsumer);
                 }
+                // 从BufferConsumer中构建并获取一个SliceBuffer
                 buffer = buildSliceBuffer(bufferConsumerWithPartialRecordLength);
-
+                // 检查当前BufferConsumer是否已完成处理或队列中只剩下一个Buffer
+                // 如果不是，则抛出异常
                 checkState(
                         bufferConsumer.isFinished() || buffers.size() == 1,
                         "When there are multiple buffers, an unfinished bufferConsumer can not be at the head of the buffers queue.");
-
+                // 如果队列中只剩下一个Buffer，则关闭flushRequested标志
                 if (buffers.size() == 1) {
                     // turn off flushRequested flag if we drained all the available data
+                    // 如果我们排空了所有可用的数据，则关闭flushRequested标志
                     flushRequested = false;
                 }
-
+                // 如果BufferConsumer已完成，则关闭并移除它，同时更新backlog中的缓冲区数量
                 if (bufferConsumer.isFinished()) {
                     requireNonNull(buffers.poll()).getBufferConsumer().close();
                     decreaseBuffersInBacklogUnsafe(bufferConsumer.isBuffer());
@@ -540,28 +556,35 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
                 // 1. all data of a buffer builder has been read and after that the buffer builder
                 // is finished
                 // 2. in approximate recovery mode, a partial record takes a whole buffer builder
+                // 如果我们有一个空的已完成的Buffer，并且独占的credit为0，我们直接返回这个空的Buffer
+                // 这样下游任务可以释放为这个空Buffer分配的credit
+                // 目前这主要发生在以下两种情况下：
+                // 1. 一个buffer builder的所有数据都已被读取，并且之后buffer builder被标记为已完成
+                // 2. 在近似恢复模式下，一个partialRecord占用了整个buffer builder
                 if (receiverExclusiveBuffersPerChannel == 0 && bufferConsumer.isFinished()) {
                     break;
                 }
-
+                // 如果当前Buffer有可读数据，则跳出循环
                 if (buffer.readableBytes() > 0) {
                     break;
                 }
+                // 如果没有可读数据，回收当前Buffer并重置为null
                 buffer.recycleBuffer();
                 buffer = null;
+                // 如果BufferConsumer未完成，也跳出循环
                 if (!bufferConsumer.isFinished()) {
                     break;
                 }
             }
-
+            // 如果没有找到有效的Buffer，则返回null
             if (buffer == null) {
                 return null;
             }
-
+            // 如果Buffer的数据类型会阻塞上游，则设置阻塞标志
             if (buffer.getDataType().isBlockingUpstream()) {
                 isBlocked = true;
             }
-
+            // 更新统计信息
             updateStatistics(buffer);
             // Do not report last remaining buffer on buffers as available to read (assuming it's
             // unfinished).
@@ -573,6 +596,7 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
                     buffer,
                     parent.getOwningTaskName(),
                     subpartitionInfo);
+            //返回BufferAndBacklog
             return new BufferAndBacklog(
                     buffer,
                     getBuffersInBacklogUnsafe(),
@@ -608,10 +632,23 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
         return isReleased;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个PipelinedSubpartitionView对象，该对象用于读取此子分区的数据。
+     * 这个方法只能在子分区未被释放且尚未被消费的情况下调用。
+     * Pipelined子分区只能被消费一次。
+     *
+     * @param availabilityListener 缓冲区可用性监听器
+     * @return PipelinedSubpartitionView对象，表示该子分区的读取视图
+     * @throws IllegalStateException 如果子分区已经被释放或已被消费
+    */
     @Override
     public PipelinedSubpartitionView createReadView(
             BufferAvailabilityListener availabilityListener) {
+        // 使用buffers对象作为锁，确保线程安全
         synchronized (buffers) {
+            // 检查子分区是否已经被释放
             checkState(!isReleased);
             checkState(
                     readView == null,
@@ -625,10 +662,10 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
                     parent.getOwningTaskName(),
                     getSubPartitionIndex(),
                     parent.getPartitionId());
-
+            // 创建一个新的PipelinedSubpartitionView对象，并将当前对象和监听器作为参数传入
             readView = new PipelinedSubpartitionView(this, availabilityListener);
         }
-
+        // 返回创建的读取视图
         return readView;
     }
 
@@ -712,21 +749,34 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
         return Math.max(buffers.size(), 0);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 刷新缓冲区中的数据。
+     *
+     * 此方法尝试刷新缓冲区中的数据，如果条件满足，会通知读取者数据可用。
+     * 使用synchronized块同步对buffers的访问，确保线程安全。
+    */
     @Override
     public void flush() {
         final boolean notifyDataAvailable;
         synchronized (buffers) {
+            // 如果缓冲区为空或者已经请求过刷新，则直接返回
             if (buffers.isEmpty() || flushRequested) {
                 return;
             }
             // if there is more than 1 buffer, we already notified the reader
             // (at the latest when adding the second buffer)
+            // 如果缓冲区中只有一个，并且这个缓冲区的数据对于消费者来说是可用的
+            // 我们认为存在未完成的缓冲区中有数据可用（因为添加第二个缓冲区时，我们已经通知过读取者）
             boolean isDataAvailableInUnfinishedBuffer =
                     buffers.size() == 1 && buffers.peek().getBufferConsumer().isDataAvailable();
             notifyDataAvailable = !isBlocked && isDataAvailableInUnfinishedBuffer;
             flushRequested = buffers.size() > 1 || isDataAvailableInUnfinishedBuffer;
         }
+        // 通知读取者数据可用，如果未阻塞并且存在未完成的缓冲区中有数据可用
         if (notifyDataAvailable) {
+            // 如果缓冲区中有多个数据或者未完成的缓冲区中有数据可用，则标记为已请求刷新
             notifyDataAvailable();
         }
     }
@@ -753,10 +803,18 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
         totalNumberOfBytes += buffer.getSize();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 减少待处理缓冲区（backlog）的数量
+    */
     @GuardedBy("buffers")
     private void decreaseBuffersInBacklogUnsafe(boolean isBuffer) {
+        // 断言，确保当前线程持有buffers对象的锁，如果没有则抛出AssertionError
         assert Thread.holdsLock(buffers);
+        // 如果传入的isBuffer参数为true
         if (isBuffer) {
+            // 则将buffersInBacklog变量（可能是表示待处理缓冲区数量的计数器）减一
             buffersInBacklog--;
         }
     }
@@ -765,11 +823,19 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
      * Increases the number of non-event buffers by one after adding a non-event buffer into this
      * subpartition.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 1.将非事件缓冲区添加到此子分区后
+     * 2.将非事件缓冲器的数量增加一。
+    */
     @GuardedBy("buffers")
     private void increaseBuffersInBacklog(BufferConsumer buffer) {
+        //确保获取的buffers队列的对象锁
         assert Thread.holdsLock(buffers);
-
+        //判断数据是否是缓冲，也就是非事件类型
         if (buffer != null && buffer.isBuffer()) {
+            //数量加1
             buffersInBacklog++;
         }
     }
@@ -777,16 +843,29 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
     /** Gets the number of non-event buffers in this subpartition. */
     @SuppressWarnings("FieldAccessNotGuarded")
     @Override
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取此子分区中非事件缓冲区的数量。
+    */
     public int getBuffersInBacklogUnsafe() {
+        // 如果子分区被阻塞或者缓冲区队列为空，则返回0
         if (isBlocked || buffers.isEmpty()) {
             return 0;
         }
-
+        // 如果以下任一条件为真，则返回buffersInBacklog的当前值：
+        // 1. 刷新请求被触发
+        // 2. 子分区已完成
+        // 3. 队列尾部的缓冲区不是事件缓冲区（即非事件缓冲区）
         if (flushRequested
                 || isFinished
                 || !checkNotNull(buffers.peekLast()).getBufferConsumer().isBuffer()) {
+            //直接返回数量
             return buffersInBacklog;
         } else {
+            // 否则，如果buffersInBacklog大于0，则返回buffersInBacklog减1的值，
+            // 因为当前队列尾部的缓冲区（假设是事件缓冲区）不应计入非事件缓冲区的数量
+            // 如果buffersInBacklog小于或等于0，则返回0
             return Math.max(buffersInBacklog - 1, 0);
         }
     }
@@ -799,10 +878,15 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
                 && !isBlocked
                 && getNumberOfFinishedBuffers() == 1;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通知数据可用
+    */
     private void notifyDataAvailable() {
         final PipelinedSubpartitionView readView = this.readView;
         if (readView != null) {
+            // 如果读取视图不为空，则通知其数据已经可用
             readView.notifyDataAvailable();
         }
     }

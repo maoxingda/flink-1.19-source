@@ -196,10 +196,25 @@ public class StreamingRuntimeContext extends AbstractRuntimeUDFContext {
     //  key/value state
     // ------------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据给定的ValueStateDescriptor获取一个ValueState对象。
+     * ValueState用于存储与特定键关联的值。
+     *
+     * @param stateProperties 用于描述ValueState属性的ValueStateDescriptor对象
+     * @param <T>           ValueState中存储的值的类型
+     * @return              与给定stateProperties匹配的ValueState对象
+     */
     @Override
     public <T> ValueState<T> getState(ValueStateDescriptor<T> stateProperties) {
+        // 检查前置条件并获取KeyedStateStore。
+        // KeyedStateStore是一个用于存储与键关联的状态的组件。
         KeyedStateStore keyedStateStore = checkPreconditionsAndGetKeyedStateStore(stateProperties);
+        // 初始化序列化器，如果尚未设置，则使用给定的createSerializer函数进行初始化。
+        // 这确保了ValueState中的值可以被正确地序列化和反序列化。
         stateProperties.initializeSerializerUnlessSet(this::createSerializer);
+        // 从KeyedStateStore中获取与给定stateProperties匹配的ValueState对象。
         return keyedStateStore.getState(stateProperties);
     }
 

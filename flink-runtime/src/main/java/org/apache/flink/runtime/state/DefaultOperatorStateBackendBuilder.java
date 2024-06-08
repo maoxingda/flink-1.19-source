@@ -59,21 +59,34 @@ public class DefaultOperatorStateBackendBuilder
         this.cancelStreamRegistry = cancelStreamRegistry;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构建并返回一个 DefaultOperatorStateBackend 实例。
+     *
+     * @return 构建的 DefaultOperatorStateBackend 实例
+     * @throws BackendBuildingException 如果在构建或恢复状态后端时发生错误，则抛出此异常
+    */
     @Override
     public DefaultOperatorStateBackend build() throws BackendBuildingException {
+        // 存储已注册的操作符分区列表状态的映射
         Map<String, PartitionableListState<?>> registeredOperatorStates = new HashMap<>();
+        // 存储已注册的广播状态的映射
         Map<String, BackendWritableBroadcastState<?, ?>> registeredBroadcastStates =
                 new HashMap<>();
+        // 用于管理需要关闭的流的注册中心
         CloseableRegistry cancelStreamRegistryForBackend = new CloseableRegistry();
-
+       // 获取流压缩装饰器，用于在状态快照时进行压缩
         final StreamCompressionDecorator compressionDecorator =
                 AbstractStateBackend.getCompressionDecorator(executionConfig);
+        // 创建状态快照策略，该策略包含了如何快照已注册的状态和如何进行压缩的逻辑
         DefaultOperatorStateBackendSnapshotStrategy snapshotStrategy =
                 new DefaultOperatorStateBackendSnapshotStrategy(
                         userClassloader,
                         registeredOperatorStates,
                         registeredBroadcastStates,
                         compressionDecorator);
+        // 创建状态恢复操作，该操作负责从持久化存储中恢复状态
         OperatorStateRestoreOperation restoreOperation =
                 new OperatorStateRestoreOperation(
                         cancelStreamRegistry,
@@ -82,12 +95,14 @@ public class DefaultOperatorStateBackendBuilder
                         registeredBroadcastStates,
                         restoreStateHandles);
         try {
+            // 尝试恢复状态
             restoreOperation.restore();
         } catch (Exception e) {
             IOUtils.closeQuietly(cancelStreamRegistryForBackend);
             throw new BackendBuildingException(
                     "Failed when trying to restore operator state backend", e);
         }
+        // 构建 DefaultOperatorStateBackend 实例
         return new DefaultOperatorStateBackend(
                 executionConfig,
                 cancelStreamRegistryForBackend,

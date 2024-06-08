@@ -217,20 +217,39 @@ public class OperatorStateRestoreOperation implements RestoreOperation<Void> {
         return null;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从给定的FSDataInputStream中反序列化操作员状态值，并将它们添加到PartitionableListState中。
+     *
+     * @param stateListForName 用于存储反序列化后状态的PartitionableListState对象
+     * @param in 用于读取数据的FSDataInputStream对象
+     * @param metaInfo 操作员状态句柄的元信息，可能包含状态偏移量
+     * @param <S> 状态值的类型
+     * @throws IOException 如果在读取或反序列化过程中发生I/O错误
+    */
     private <S> void deserializeOperatorStateValues(
             PartitionableListState<S> stateListForName,
             FSDataInputStream in,
             OperatorStateHandle.StateMetaInfo metaInfo)
             throws IOException {
-
+        // 如果元信息不为空
         if (null != metaInfo) {
+            // 获取元信息中的偏移量数组
             long[] offsets = metaInfo.getOffsets();
+            // 如果偏移量数组不为空
             if (null != offsets) {
+                // 创建一个DataInputView的包装器，用于将FSDataInputStream转换为DataInputView接口
                 DataInputView div = new DataInputViewStreamWrapper(in);
+                // 获取状态列表的分区状态序列化器
                 TypeSerializer<S> serializer =
                         stateListForName.getStateMetaInfo().getPartitionStateSerializer();
+                // 遍历偏移量数组
                 for (long offset : offsets) {
+                    // 将输入流的位置设置到当前偏移量
                     in.seek(offset);
+                    // 使用序列化器从输入流中反序列化状态值
+                    // 将反序列化后的状态值添加到状态列表中
                     stateListForName.add(serializer.deserialize(div));
                 }
             }

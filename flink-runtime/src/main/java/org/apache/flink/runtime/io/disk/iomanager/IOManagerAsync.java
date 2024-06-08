@@ -72,28 +72,52 @@ public class IOManagerAsync extends IOManager implements UncaughtExceptionHandle
      *
      * @param tempDirs The directories to write temporary files to.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构造一个新的异步I/O管理器，通过给定的目录以轮询方式写入临时文件。
+     *
+     * @param tempDirs 写入临时文件的目录数组。
+    */
     public IOManagerAsync(String[] tempDirs) {
+        // 调用父类构造函数，传入tempDirs作为参数，可能用于初始化一些基本的I/O管理功能
         super(tempDirs);
 
         // start a write worker thread for each directory
+        // 为每个目录启动一个写入工作线程
+        // 这些线程负责向对应目录写入数据
         this.writers = new WriterThread[tempDirs.length];
         for (int i = 0; i < this.writers.length; i++) {
+            // 创建一个新的WriterThread实例
             final WriterThread t = new WriterThread();
+            // 将创建的线程实例保存到writers数组中
             this.writers[i] = t;
+            // 设置线程的名字，便于识别和管理
             t.setName("IOManager writer thread #" + (i + 1));
+            // 设置线程为守护线程，即JVM关闭时会自动停止它
             t.setDaemon(true);
+            // 设置线程未捕获异常的处理器为当前实例（IOManagerAsync），这样可以在这里处理异常
             t.setUncaughtExceptionHandler(this);
+            // 启动线程
             t.start();
         }
 
+        // 为每个目录启动一个读取工作线程
+        // 这些线程负责从对应目录读取数据
         // start a reader worker thread for each directory
         this.readers = new ReaderThread[tempDirs.length];
         for (int i = 0; i < this.readers.length; i++) {
+            // 创建一个新的ReaderThread实例
             final ReaderThread t = new ReaderThread();
+            // 将创建的线程实例保存到readers数组中
             this.readers[i] = t;
+            // 设置线程的名字
             t.setName("IOManager reader thread #" + (i + 1));
+            // 设置线程为守护线程
             t.setDaemon(true);
+            // 设置线程未捕获异常的处理器
             t.setUncaughtExceptionHandler(this);
+            // 启动线程
             t.start();
         }
 
@@ -471,16 +495,19 @@ public class IOManagerAsync extends IOManager implements UncaughtExceptionHandle
 
         @Override
         public void run() {
-
+            // 当线程处于活动状态时，持续运行
             while (this.alive) {
 
                 WriteRequest request = null;
 
                 // get the next buffer. ignore interrupts that are not due to a shutdown.
+                // 获取下一个缓冲区，忽略非因关闭而导致的中断
                 while (alive && request == null) {
                     try {
+                        // 从请求队列中取出下一个请求，如果队列为空则阻塞等待
                         request = requestQueue.take();
                     } catch (InterruptedException e) {
+                        // 如果线程被中断且不是由于关闭操作，则记录警告日志
                         if (!this.alive) {
                             return;
                         } else {
@@ -491,14 +518,17 @@ public class IOManagerAsync extends IOManager implements UncaughtExceptionHandle
                 }
 
                 // remember any IO exception that occurs, so it can be reported to the writer
+                // 记录可能出现的IOException，以便向写入器报告
                 IOException ioex = null;
 
                 try {
                     // write buffer to the specified channel
+                    // 将缓冲区写入到指定的通道
                     request.write();
                 } catch (IOException e) {
                     ioex = e;
                 } catch (Throwable t) {
+                    //抛出异常
                     ioex = new IOException("The buffer could not be written: " + t.getMessage(), t);
                     IOManagerAsync.LOG.error(
                             "I/O writing thread encountered an error"
@@ -508,6 +538,7 @@ public class IOManagerAsync extends IOManager implements UncaughtExceptionHandle
 
                 // invoke the processed buffer handler of the request issuing writer object
                 try {
+                    // 通知请求已完成，并传递可能发生的IOException
                     request.requestDone(ioex);
                 } catch (Throwable t) {
                     IOManagerAsync.LOG.error(

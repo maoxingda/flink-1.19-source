@@ -77,10 +77,12 @@ public final class MemorySegment {
             System.getProperties().containsKey(CHECK_MULTIPLE_FREE_PROPERTY);
 
     /** The unsafe handle for transparent memory copied (heap / off-heap). */
+    /** 创建Unsafe句柄 */
     @SuppressWarnings("restriction")
     private static final sun.misc.Unsafe UNSAFE = MemoryUtils.UNSAFE;
 
     /** The beginning of the byte array contents, relative to the byte array object. */
+    /** 字节数组内容的开头，相对于字节数组对象 */
     @SuppressWarnings("restriction")
     private static final long BYTE_ARRAY_BASE_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
 
@@ -88,6 +90,7 @@ public final class MemorySegment {
      * Constant that flags the byte order. Because this is a boolean constant, the JIT compiler can
      * use this well to aggressively eliminate the non-applicable code paths.
      */
+    /** 标记字节顺序的常量。因为这是一个布尔常量，JIT编译器可以很好地使用它来积极地消除不适用的代码路径。 */
     private static final boolean LITTLE_ENDIAN =
             (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN);
 
@@ -101,6 +104,7 @@ public final class MemorySegment {
      * segment will point to undefined addresses outside the heap and may in out-of-order execution
      * cases cause segmentation faults.
      */
+    /** 相对于我们访问内存的堆字节数组对象。 */
     @Nullable private final byte[] heapMemory;
 
     /**
@@ -113,18 +117,27 @@ public final class MemorySegment {
      * The address to the data, relative to the heap memory byte array. If the heap memory byte
      * array is <tt>null</tt>, this becomes an absolute memory address outside the heap.
      */
+    /**
+     * 数据的地址，相对于堆内存字节数组。
+     * 如果堆内存字节数组＜tt＞为null＜/tt＞，则这将成为堆外的绝对内存地址。
+     */
     private long address;
 
     /**
      * The address one byte after the last addressable byte, i.e. <tt>address + size</tt> while the
      * segment is not disposed.
      */
+    /**
+     * 最后一个可寻址字节后一个字节的地址，即未处理段时的<tt>地址+大小</tt>。
+     */
     private final long addressLimit;
 
     /** The size in bytes of the memory segment. */
+    /** 内存段的大小（以字节为单位）。 */
     private final int size;
 
     /** Optional owner of the memory segment. */
+    /** 内存段的可选所有者 */
     @Nullable private final Object owner;
 
     @Nullable private Runnable cleaner;
@@ -133,6 +146,10 @@ public final class MemorySegment {
      * Wrapping is not allowed when the underlying memory is unsafe. Unsafe memory can be actively
      * released, without reference counting. Therefore, access from wrapped buffers, which may not
      * be aware of the releasing of memory, could be risky.
+     */
+    /**
+     * 当基础内存不安全时，不允许换行。不安全的内存可以主动释放，
+     * 而无需进行引用计数。因此，从可能不知道内存释放的封装缓冲区进行访问可能是有风险的。
      */
     private final boolean allowWrap;
 
@@ -149,13 +166,23 @@ public final class MemorySegment {
      * @param buffer The byte array whose memory is represented by this memory segment.
      * @param owner The owner references by this memory segment.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建表示字节数组内存的新内存段。
+     * @param buffer 表示此内存段所代表的内存的字节数组。
+     * @param owner 被此内存段引用的所有者。
+    */
     MemorySegment(@Nonnull byte[] buffer, @Nullable Object owner) {
         this.heapMemory = buffer;
         this.offHeapBuffer = null;
         this.size = buffer.length;
+        //字节数组内容的开头，相对于字节数组对象
         this.address = BYTE_ARRAY_BASE_OFFSET;
+        // 计算内存段的地址范围限制
         this.addressLimit = this.address + this.size;
         this.owner = owner;
+        // 允许内存段进行包装（某种特定的内存管理或引用计数机制）
         this.allowWrap = true;
         this.cleaner = null;
         this.isFreedAtomic = new AtomicBoolean(false);
@@ -173,7 +200,18 @@ public final class MemorySegment {
      * @param owner The owner references by this memory segment.
      * @throws IllegalArgumentException Thrown, if the given ByteBuffer is not direct.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个新的内存段，该内存段表示给定直接字节缓冲区（direct byte buffer）所支持的内存。
+     * 注意，给定的 ByteBuffer 必须是直接缓冲区（通过 java.nio.ByteBuffer#allocateDirect(int) 创建），
+     * <p>内存段引用了给定的所有者。
+     * @param buffer 表示此内存段所代表的内存的字节缓冲区。
+     * @param owner 被此内存段引用的所有者。
+     * @throws IllegalArgumentException 如果给定的 ByteBuffer 不是直接缓冲区，则抛出此异常。
+    */
     MemorySegment(@Nonnull ByteBuffer buffer, @Nullable Object owner) {
+        // 调用重载的构造函数，传入缓冲区、所有者、一个表示是否应该检查缓冲区的布尔值（此处为true）和清理器（此处为null）
         this(buffer, owner, true, null);
     }
 
@@ -191,19 +229,43 @@ public final class MemorySegment {
      * @param cleaner The cleaner to be called on free segment.
      * @throws IllegalArgumentException Thrown, if the given ByteBuffer is not direct.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个新的内存段，该内存段表示给定直接字节缓冲区（direct byte buffer）所支持的内存。
+     * 注意，给定的 ByteBuffer 必须是直接缓冲区（通过 java.nio.ByteBuffer#allocateDirect(int) 创建），
+     * 否则此方法将抛出 IllegalArgumentException。
+     *
+     * <p>内存段引用了给定的所有者。
+     *
+     * @param buffer 表示此内存段所代表的内存的字节缓冲区。
+     * @param owner 被此内存段引用的所有者。
+     * @param allowWrap 是否允许从此内存段包装（wrap）ByteBuffer。
+     * @param cleaner 当内存段被释放时需要调用的清理器。
+     * @throws IllegalArgumentException 如果给定的 ByteBuffer 不是直接缓冲区，则抛出此异常。
+    */
     MemorySegment(
             @Nonnull ByteBuffer buffer,
             @Nullable Object owner,
             boolean allowWrap,
             @Nullable Runnable cleaner) {
+        // 堆内存引用设置为null，因为此内存段是堆外内存
         this.heapMemory = null;
+        // 将传入的直接ByteBuffer赋值给offHeapBuffer，表示这是堆外内存
         this.offHeapBuffer = buffer;
+        // 设置内存段的大小为ByteBuffer的容量
         this.size = buffer.capacity();
+        // 获取ByteBuffer在内存中的地址
         this.address = getByteBufferAddress(buffer);
+        // 计算内存段的地址范围限制
         this.addressLimit = this.address + this.size;
+        // 设置内存段的所有者
         this.owner = owner;
+        // 设置是否允许从此内存段包装ByteBuffer
         this.allowWrap = allowWrap;
+        // 设置清理器，当内存段被释放时调用
         this.cleaner = cleaner;
+        // 原子变量，表示此内存段是否已被释放
         this.isFreedAtomic = new AtomicBoolean(false);
     }
 
@@ -378,14 +440,28 @@ public final class MemorySegment {
      * @throws IndexOutOfBoundsException Thrown, if the index is negative, or larger or equal to the
      *     size of the memory segment.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 读取给定位置上的字节。
+     *
+     * @param index 从哪个位置读取字节
+     * @return 给定位置上的字节
+     * @throws IndexOutOfBoundsException 如果索引是负数，或者大于或等于内存段的大小，则抛出此异常
+    */
     public byte get(int index) {
+        // 将索引转换为内存中的绝对位置（通过添加基地址address）
         final long pos = address + index;
+        // 检查索引是否有效，并且是否位于分配的内存范围内
         if (index >= 0 && pos < addressLimit) {
+            // 使用UNSAFE类从内存中指定的位置读取字节
             return UNSAFE.getByte(heapMemory, pos);
         } else if (address > addressLimit) {
+            // 如果基地址大于地址限制（这通常是一个异常情况，可能表示内存段已经被释放）
             throw new IllegalStateException("segment has been freed");
         } else {
             // index is in fact invalid
+            // 索引无效（可能是负数或超出了内存段的大小）
             throw new IndexOutOfBoundsException();
         }
     }
@@ -857,14 +933,31 @@ public final class MemorySegment {
      * @throws IndexOutOfBoundsException Thrown, if the index is negative, or larger than the
      *     segment size minus 4.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的int值（32位，4字节）以系统原生字节序写入到指定位置。
+     * 此方法提供了最佳的整数写入速度，并且应当被使用，除非需要特定的字节序。
+     * 在大多数情况下，知道值是以相同的字节序写入和读取的（如内存中的临时存储，或用于I/O和网络的序列化）
+     * 就足够了，这使得此方法成为首选。
+     *
+     * @param index 将要写入值的位置。
+     * @param value 要写入的int值。
+     * @throws IndexOutOfBoundsException 如果索引是负数，或者大于段大小减去4，则抛出此异常。
+    */
     public void putInt(int index, int value) {
+        // 将索引转换为内存中的绝对位置（通过添加基地址address）
         final long pos = address + index;
+        // 检查索引是否有效，并且是否位于分配的内存范围内（减去4字节以确保有足够的空间写入int）
         if (index >= 0 && pos <= addressLimit - 4) {
+            // 使用UNSAFE类将int值直接写入到内存中指定的位置
             UNSAFE.putInt(heapMemory, pos, value);
         } else if (address > addressLimit) {
+            // 如果基地址大于地址限制（这通常是一个异常情况，可能表示内存段已经被释放）
             throw new IllegalStateException("segment has been freed");
         } else {
             // index is in fact invalid
+            // 索引无效（可能是负数或超出了内存段的大小）
             throw new IndexOutOfBoundsException();
         }
     }

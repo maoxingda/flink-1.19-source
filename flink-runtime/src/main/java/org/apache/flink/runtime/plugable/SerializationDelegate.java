@@ -49,8 +49,17 @@ public class SerializationDelegate<T> implements IOReadableWritable {
         return this.instance;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将当前对象的实例序列化到指定的DataOutputView输出流中。
+     *
+     * @param out 用于写入序列化数据的DataOutputView对象
+     * @throws IOException 如果在序列化过程中发生I/O错误
+    */
     @Override
     public void write(DataOutputView out) throws IOException {
+        // 调用序列化器的serialize方法，将当前对象的实例序列化到输出流中
         this.serializer.serialize(this.instance, out);
     }
 

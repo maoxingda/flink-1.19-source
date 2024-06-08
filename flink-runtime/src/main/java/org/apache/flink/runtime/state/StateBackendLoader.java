@@ -110,24 +110,40 @@ public class StateBackendLoader {
      * @throws IOException May be thrown by the StateBackendFactory when instantiating the state
      *     backend
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从配置中加载 StateBackend。
+     *
+     * @param config Flink 配置对象，其中包含状态后端的配置信息
+     * @param classLoader 用于加载用户代码的类加载器
+     * @param logger 可选的日志记录器，用于记录日志信息（如果为null，则不记录日志）
+     * @return 加载的 StateBackend 实例
+     * @throws IllegalConfigurationException 如果在加载过程中遇到配置错误
+     * @throws DynamicCodeLoadingException 如果在动态加载代码时发生错误
+     * @throws IOException 如果在读取配置文件或进行I/O操作时发生错误
+    */
     @Nonnull
     public static StateBackend loadStateBackendFromConfig(
             ReadableConfig config, ClassLoader classLoader, @Nullable Logger logger)
             throws IllegalConfigurationException, DynamicCodeLoadingException, IOException {
-
+        // 检查配置对象是否为空
         checkNotNull(config, "config");
         checkNotNull(classLoader, "classLoader");
-
+        // 基于类型从配置中获取状态后端的名称
         final String backendName = config.get(StateBackendOptions.STATE_BACKEND);
 
         // by default the factory class is the backend name
+        // 默认情况下，工厂类的名称与状态后端的名称相同
         String factoryClassName = backendName;
 
+        // 根据状态后端的名称选择具体的实现
         switch (backendName.toLowerCase()) {
             case MEMORY_STATE_BACKEND_NAME:
+                // 创建并配置MemoryStateBackend实例
                 MemoryStateBackend backend =
                         new MemoryStateBackendFactory().createFromConfig(config, classLoader);
-
+                //打印日志
                 if (logger != null) {
                     logger.warn(
                             "MemoryStateBackend has been deprecated. Please use 'hashmap' state "
@@ -136,8 +152,9 @@ public class StateBackendLoader {
 
                     logger.info("State backend is set to job manager {}", backend);
                 }
-
+                // 返回创建的MemoryStateBackend实例
                 return backend;
+                //如果类型是HASH、FSData
             case FS_STATE_BACKEND_NAME:
                 if (logger != null) {
                     logger.warn(
@@ -147,14 +164,16 @@ public class StateBackendLoader {
                 }
                 // fall through and use the HashMapStateBackend instead which
                 // utilizes the same HeapKeyedStateBackend runtime implementation.
+                //创建HashMapStateBackend
             case HASHMAP_STATE_BACKEND_NAME:
                 HashMapStateBackend hashMapStateBackend =
                         new HashMapStateBackendFactory().createFromConfig(config, classLoader);
                 if (logger != null) {
                     logger.info("State backend is set to heap memory {}", hashMapStateBackend);
                 }
+                //返回
                 return hashMapStateBackend;
-
+            //如果是RockDb 则设置org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackendFactory
             case ROCKSDB_STATE_BACKEND_NAME:
                 factoryClassName = ROCKSDB_STATE_BACKEND_FACTORY;
 
@@ -165,7 +184,7 @@ public class StateBackendLoader {
                 if (logger != null) {
                     logger.info("Loading state backend via factory {}", factoryClassName);
                 }
-
+                //反射创建org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackendFactory
                 StateBackendFactory<?> factory;
                 try {
                     @SuppressWarnings("rawtypes")
@@ -187,7 +206,7 @@ public class StateBackendLoader {
                                     + ')',
                             e);
                 }
-
+                //创建EmbeddedRocksDBStateBackend并返回
                 return factory.createFromConfig(config, classLoader);
         }
     }
@@ -286,6 +305,20 @@ public class StateBackendLoader {
      * @throws IOException May be thrown by the StateBackendFactory when instantiating the state
      *     backend
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从应用程序配置、作业配置或默认配置中加载 StateBackend。
+     * @param fromApplication 从应用程序配置中获取的状态后端，如果为null，则尝试从其他配置源加载
+     * @param jobConfig Flink 作业的配置对象
+     * @param clusterConfig Flink 集群的配置对象
+     * @param classLoader 用于加载用户代码的类加载器
+     * @param logger 可选的日志记录器，用于记录日志信息（如果为null，则不记录日志）
+     * @return 加载的 StateBackend 实例
+     * @throws IllegalConfigurationException 如果在加载过程中遇到配置错误
+     * @throws DynamicCodeLoadingException 如果在动态加载代码时发生错误
+     * @throws IOException 如果在读取配置文件或进行I/O操作时发生错误
+     */
     public static StateBackend fromApplicationOrConfigOrDefault(
             @Nullable StateBackend fromApplication,
             Configuration jobConfig,
@@ -293,18 +326,20 @@ public class StateBackendLoader {
             ClassLoader classLoader,
             @Nullable Logger logger)
             throws IllegalConfigurationException, DynamicCodeLoadingException, IOException {
-
+        // 内部方法，用于从应用程序配置、作业配置或默认配置中加载 StateBackend
         StateBackend rootBackend =
                 loadFromApplicationOrConfigOrDefaultInternal(
                         fromApplication, jobConfig, clusterConfig, classLoader, logger);
-
+        // 检查是否启用状态变更日志
         boolean enableChangeLog =
                 jobConfig
                         .getOptional(StateChangelogOptions.ENABLE_STATE_CHANGE_LOG)
                         .orElse(clusterConfig.get(StateChangelogOptions.ENABLE_STATE_CHANGE_LOG));
 
         StateBackend backend;
+        // 如果启用了状态变更日志
         if (enableChangeLog) {
+            // 包装原始 StateBackend，以便添加状态变更日志功能
             backend = wrapStateBackend(rootBackend, classLoader, CHANGELOG_STATE_BACKEND);
             LOG.info(
                     "State backend loader loads {} to delegate {}",
@@ -316,6 +351,7 @@ public class StateBackendLoader {
                     "State backend loader loads the state backend as {}",
                     backend.getClass().getSimpleName());
         }
+        // 返回加载的 StateBackend
         return backend;
     }
 
@@ -363,12 +399,26 @@ public class StateBackendLoader {
      * @throws DynamicCodeLoadingException Thrown if keyed state handles of wrapped state backend
      *     are found and the class was not found or could not be instantiated.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 加载状态后端，它可能会包装原始状态后端以进行恢复。
+     *
+     * @param originalStateBackend 从应用程序或配置中加载的StateBackend。
+     * @param classLoader 用户代码的类加载器。
+     * @param keyedStateHandles 用于恢复的状态句柄集合。
+     * @return 包装后的状态后端，用于恢复。
+    */
     public static StateBackend loadStateBackendFromKeyedStateHandles(
             StateBackend originalStateBackend,
             ClassLoader classLoader,
             Collection<KeyedStateHandle> keyedStateHandles)
             throws DynamicCodeLoadingException {
         // Wrapping ChangelogStateBackend or ChangelogStateBackendHandle is not supported currently.
+        // 当前不支持包装ChangelogStateBackend或ChangelogStateBackendHandle。
+        // 如果原始状态后端不是ChangelogStateBackend类型，
+        // 但给定的状态句柄中存在ChangelogStateBackendHandle的实例，
+        // 则将其包装为禁用日志的状态后端。
         if (!isChangelogStateBackend(originalStateBackend)
                 && keyedStateHandles.stream()
                         .anyMatch(
@@ -377,6 +427,7 @@ public class StateBackendLoader {
             return wrapStateBackend(
                     originalStateBackend, classLoader, DEACTIVATED_CHANGELOG_STATE_BACKEND);
         }
+        // 如果不满足上述条件，则返回原始状态后端。
         return originalStateBackend;
     }
 

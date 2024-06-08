@@ -448,6 +448,11 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         return Optional.ofNullable(changelogStorageName);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 开启Checkpointing
+    */
     @Override
     public void enableCheckpointing(
             CheckpointCoordinatorConfiguration chkConfig,
@@ -459,82 +464,101 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
             CheckpointStatsTracker statsTracker,
             CheckpointsCleaner checkpointsCleaner,
             String changelogStorageName) {
-
+        // 检查作业状态是否处于"CREATED"状态，只有在这个状态下才能启用检查点
         checkState(state == JobStatus.CREATED, "Job must be in CREATED state");
+        // 检查是否已启用检查点，如果已启用，则不允许再次启用
         checkState(checkpointCoordinator == null, "checkpointing already enabled");
 
+         // 构建操作员协调器的检查点上下文集合
+        // 这些上下文将用于在检查点过程中协调操作员的状态
         final Collection<OperatorCoordinatorCheckpointContext> operatorCoordinators =
                 buildOpCoordinatorCheckpointContexts();
-
+        // 确保提供了检查点统计追踪器
         checkpointStatsTracker = checkNotNull(statsTracker, "CheckpointStatsTracker");
+        // 确保提供了检查点协调器的配置
         checkpointCoordinatorConfiguration =
                 checkNotNull(chkConfig, "CheckpointCoordinatorConfiguration");
-
+        // 创建一个检查点失败管理器实例，用于处理检查点失败的情况
         CheckpointFailureManager failureManager =
                 new CheckpointFailureManager(
-                        chkConfig.getTolerableCheckpointFailureNumber(),
-                        new CheckpointFailureManager.FailJobCallback() {
+                        chkConfig.getTolerableCheckpointFailureNumber(),// 传入可容忍的检查点失败次数
+                        new CheckpointFailureManager.FailJobCallback() {// 提供一个失败回调接口的实现，当达到失败次数阈值时，将调用failJob方法
+                            // 当检查点失败达到阈值时，触发该方法，并在作业主线程上执行failGlobal方法
                             @Override
                             public void failJob(Throwable cause) {
                                 getJobMasterMainThreadExecutor().execute(() -> failGlobal(cause));
                             }
 
+                            // 当某个任务执行失败导致检查点失败时，触发该方法
                             @Override
                             public void failJobDueToTaskFailure(
                                     Throwable cause, ExecutionAttemptID failingTask) {
                                 getJobMasterMainThreadExecutor()
                                         .execute(
                                                 () ->
+                                                        // 检查该任务是否仍在运行，如果是，则触发全局失败
                                                         failGlobalIfExecutionIsStillRunning(
                                                                 cause, failingTask));
                             }
                         });
-
+        // 检查是否已经存在一个checkpointCoordinatorTimer，如果存在则抛出异常，确保不重复创建
         checkState(checkpointCoordinatorTimer == null);
 
+        // 创建一个单线程的定时任务执行器，用于处理检查点的定时任务
+       // 使用自定义的线程工厂来创建线程，线程名为"Checkpoint Timer"
         checkpointCoordinatorTimer =
                 Executors.newSingleThreadScheduledExecutor(
                         new DispatcherThreadFactory(
                                 Thread.currentThread().getThreadGroup(), "Checkpoint Timer"));
 
         // create the coordinator that triggers and commits checkpoints and holds the state
+        //创建触发和提交检查点并保持状态的协调器
         checkpointCoordinator =
                 new CheckpointCoordinator(
-                        jobInformation.getJobId(),
-                        chkConfig,
-                        operatorCoordinators,
-                        checkpointIDCounter,
-                        checkpointStore,
-                        checkpointStorage,
-                        ioExecutor,
-                        checkpointsCleaner,
-                        new ScheduledExecutorServiceAdapter(checkpointCoordinatorTimer),
-                        failureManager,
+                        jobInformation.getJobId(),// 作业的唯一ID
+                        chkConfig,// 检查点配置
+                        operatorCoordinators,// 操作符协调器列表，用于协调操作符级别的检查点
+                        checkpointIDCounter,// 检查点ID计数器，用于生成唯一的检查点ID
+                        checkpointStore,// CompletedCheckpointStore
+                        checkpointStorage, // CheckpointStorage
+                        ioExecutor,// I/O 执行器，用于异步执行I/O操作
+                        checkpointsCleaner,// 检查点清理器，用于清理不再需要的检查点数据
+                        new ScheduledExecutorServiceAdapter(checkpointCoordinatorTimer),// 将ScheduledExecutorService包装成CheckpointCoordinator可以使用的适配器
+                        failureManager,// 检查点失败管理器，用于处理检查点失败的情况
                         createCheckpointPlanCalculator(
-                                chkConfig.isEnableCheckpointsAfterTasksFinish()),
-                        checkpointStatsTracker);
+                                chkConfig.isEnableCheckpointsAfterTasksFinish()),// 创建一个检查点计划计算器，根据配置决定是否在任务完成后启用检查点
+                        checkpointStatsTracker);// 检查点统计跟踪器，用于跟踪检查点的统计信息
 
         // register the master hooks on the checkpoint coordinator
+        // 注册主钩子（hooks）到检查点协调器上
+       // 这些钩子可以在检查点过程中执行自定义操作
         for (MasterTriggerRestoreHook<?> hook : masterHooks) {
+            // 如果检查点协调器已经添加了一个相同名称的钩子，则不会再次添加
+            // 并记录一个警告日志
             if (!checkpointCoordinator.addMasterHook(hook)) {
                 LOG.warn(
                         "Trying to register multiple checkpoint hooks with the name: {}",
                         hook.getIdentifier());
             }
         }
-
+        // 如果配置了周期性检查点
         if (checkpointCoordinator.isPeriodicCheckpointingConfigured()) {
             // the periodic checkpoint scheduler is activated and deactivated as a result of
             // job status changes (running -> on, all other states -> off)
+            // 周期性检查点调度器会根据作业状态的变化来激活或禁用
+            // 当作业状态变为运行中时，调度器被激活；当作业状态变为其他状态时，调度器被禁用
+            // 注册一个作业状态监听器来管理检查点调度器的激活和禁用
             registerJobStatusListener(checkpointCoordinator.createActivatorDeactivator());
         }
-
+        // 获取状态后端的名称
         this.stateBackendName = checkpointStateBackend.getName();
+        // 检查是否启用了状态变更日志（changelog）
         this.stateChangelogEnabled =
                 TernaryBoolean.fromBoolean(
                         StateBackendLoader.isChangelogStateBackend(checkpointStateBackend));
-
+        // 获取检查点存储的类名（简单名称）
         this.checkpointStorageName = checkpointStorage.getClass().getSimpleName();
+        // 获取变更日志存储的名称（如果已设置）
         this.changelogStorageName = changelogStorageName;
     }
 

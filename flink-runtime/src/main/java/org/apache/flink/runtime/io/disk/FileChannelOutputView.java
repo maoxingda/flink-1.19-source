@@ -136,18 +136,43 @@ public class FileChannelOutputView extends AbstractPagedOutputView {
         return ((long) numBlocksWritten) * segmentSize + getCurrentPositionInSegment();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 重写方法，用于获取下一个内存段或磁盘上的块
+     *
+     * @param current 当前正在处理的内存段，可能为null
+     * @param posInSegment 当前内存段中的位置（此方法内部可能根据需求决定是否使用此参数）
+     * @return 下一个可用的内存段或磁盘上的块
+     * @throws IOException 如果在写入或获取内存段时发生I/O错误
+    */
     @Override
     protected MemorySegment nextSegment(MemorySegment current, int posInSegment)
             throws IOException {
+        // 如果当前内存段不为null，则将其写入（可能是写入到磁盘或执行其他操作）
         if (current != null) {
             writeSegment(current, posInSegment);
         }
+        // 从写入器（可能是磁盘写入器）中获取下一个返回的块
+        // 假设writer已经在类的其他部分被正确初始化并指向了一个有效的写入器
         return writer.getNextReturnedBlock();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将内存段写入到目标位置（可能是磁盘或其他存储介质）
+     *
+     * @param segment 要写入的内存段
+     * @param writePosition 写入时的位置（此方法内部可能不直接使用此参数，因为它取决于具体的写入逻辑）
+     * @throws IOException 如果在写入过程中发生I/O错误
+    */
     private void writeSegment(MemorySegment segment, int writePosition) throws IOException {
+        // 将内存段写入到写入器（可能是磁盘写入器）中
         writer.writeBlock(segment);
+        // 增加已写入的块计数
         numBlocksWritten++;
+        // 更新最新写入段中的字节数（这里假设bytesInLatestSegment是类的一个成员变量）
         bytesInLatestSegment = writePosition;
     }
 }

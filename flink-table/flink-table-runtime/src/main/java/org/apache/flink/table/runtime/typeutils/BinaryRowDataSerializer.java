@@ -360,9 +360,20 @@ public class BinaryRowDataSerializer extends AbstractRowDataSerializer<BinaryRow
             out.writeInt(numFields);
         }
 
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 从输入流中读取快照数据。
+         *
+         * @param readVersion         要读取的快照的版本号
+         * @param in                  包含快照数据的输入流
+         * @param userCodeClassLoader 用户代码类加载器，通常用于反序列化用户自定义的对象
+         * @throws IOException         如果在读取过程中发生I/O错误，则抛出此异常
+        */
         @Override
         public void readSnapshot(int readVersion, DataInputView in, ClassLoader userCodeClassLoader)
                 throws IOException {
+            // 从输入流中读取字段的数量
             this.numFields = in.readInt();
         }
 

@@ -46,6 +46,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * This state backend holds the working state in the underlying delegatedStateBackend, and forwards
  * state changes to State Changelog.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 此状态后端保存底层delegatedStateBackend中的工作状态，并将状态更改转发到state Changelog。
+*/
 @Internal
 public class ChangelogStateBackend extends AbstractChangelogStateBackend
         implements ConfigurableStateBackend {

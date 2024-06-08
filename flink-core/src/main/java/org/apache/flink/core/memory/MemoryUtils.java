@@ -117,9 +117,21 @@ public class MemoryUtils {
      * @param customCleanup A custom action to clean up GC
      * @return action to run to release the unsafe memory manually
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个清理器来释放不安全的内存。
+     *
+     * @param address 要释放的不安全内存的地址
+     * @param customCleanup 自定义的GC清理动作
+     * @return 一个Runnable对象，手动运行该对象将释放不安全内存并执行自定义清理动作
+    */
     static Runnable createMemoryCleaner(long address, Runnable customCleanup) {
+        // 返回一个lambda表达式定义的Runnable对象
         return () -> {
+            // 调用releaseUnsafe方法来释放指定的不安全内存地址
             releaseUnsafe(address);
+            // 执行传入的自定义清理动作
             customCleanup.run();
         };
     }
@@ -135,15 +147,36 @@ public class MemoryUtils {
      * @param size size of the unsafe memory to wrap
      * @return a {@link ByteBuffer} which is a view of the given unsafe memory
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 使用ByteBuffer包装非安全的原生内存。
+     *
+     * @param address 要包装的非安全内存的地址
+     * @param size 要包装的非安全内存的大小
+     * @return 一个ByteBuffer，它是给定非安全内存的视图
+    */
     static ByteBuffer wrapUnsafeMemoryWithByteBuffer(long address, int size) {
         //noinspection OverlyBroadCatchBlock
         try {
+            /**
+             * 调用UNSAFE类的allocateInstance方法来创建一个DIRECT_BYTE_BUFFER_CLASS的实例
+             * DIRECT_BYTE_BUFFER_CLASS =  java.nio.DirectByteBuffer
+             */
             ByteBuffer buffer = (ByteBuffer) UNSAFE.allocateInstance(DIRECT_BYTE_BUFFER_CLASS);
+            // 使用UNSAFE类将给定的内存地址设置到ByteBuffer实例的address字段中
+            // BUFFER_ADDRESS_FIELD_OFFSET是address字段在ByteBuffer实例中的偏移量
             UNSAFE.putLong(buffer, BUFFER_ADDRESS_FIELD_OFFSET, address);
+            // 同样，使用UNSAFE类将给定的内存大小设置到ByteBuffer实例的capacity字段中
+            // BUFFER_CAPACITY_FIELD_OFFSET是capacity在ByteBuffer实例中的偏移量
             UNSAFE.putInt(buffer, BUFFER_CAPACITY_FIELD_OFFSET, size);
+            // 调用ByteBuffer的clear方法来设置其position为0，limit为capacity
+            // 这样ByteBuffer就准备好了，可以被用来访问之前包装的原生内存
             buffer.clear();
+            // 返回包装好的ByteBuffer
             return buffer;
         } catch (Throwable t) {
+            // 如果在包装过程中发生任何异常，则抛出一个Error，并带上原始异常作为原因
             throw new Error("Failed to wrap unsafe off-heap memory with ByteBuffer", t);
         }
     }

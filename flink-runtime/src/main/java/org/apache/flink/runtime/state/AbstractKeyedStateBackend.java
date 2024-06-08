@@ -340,31 +340,45 @@ public abstract class AbstractKeyedStateBackend<K>
     }
 
     /** @see KeyedStateBackend */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建KeyedState
+    */
     @Override
     @SuppressWarnings("unchecked")
     public <N, S extends State, V> S getOrCreateKeyedState(
             final TypeSerializer<N> namespaceSerializer, StateDescriptor<S, V> stateDescriptor)
             throws Exception {
+        // 检查命名空间序列化器是否为null
         checkNotNull(namespaceSerializer, "Namespace serializer");
+        // 检查键序列化器
         checkNotNull(
                 keySerializer,
                 "State key serializer has not been configured in the config. "
                         + "This operation cannot use partitioned state.");
-
+        // 尝试从缓存中获取与状态描述符名称关联的内部键值状态
         InternalKvState<K, ?, ?> kvState = keyValueStatesByName.get(stateDescriptor.getName());
+        // 如果缓存中没有找到状态
         if (kvState == null) {
+            // 如果状态描述符的序列化器尚未初始化
             if (!stateDescriptor.isSerializerInitialized()) {
+                // 使用执行配置来初始化状态描述符的序列化器（如果尚未设置）
                 stateDescriptor.initializeSerializerUnlessSet(executionConfig);
             }
+            // 创建一个具有TTL（如果启用）和延迟跟踪（如果启用）的内部键值状态
             kvState =
                     LatencyTrackingStateFactory.createStateAndWrapWithLatencyTrackingIfEnabled(
                             TtlStateFactory.createStateAndWrapWithTtlIfEnabled(
                                     namespaceSerializer, stateDescriptor, this, ttlTimeProvider),
                             stateDescriptor,
                             latencyTrackingStateConfig);
+            // 将新创建的状态添加到缓存中
             keyValueStatesByName.put(stateDescriptor.getName(), kvState);
+            // 如果状态可以被查询，则发布它
             publishQueryableStateIfEnabled(stateDescriptor, kvState);
         }
+        // 将内部键值状态强制转换为指定的状态类型并返回
         return (S) kvState;
     }
 
@@ -386,6 +400,23 @@ public abstract class AbstractKeyedStateBackend<K>
      *
      * @see KeyedStateBackend
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从给定的命名空间中获取或创建分区状态。
+     * 注意：此方法目前为了更新命名空间而执行了大量的状态缓存/检索工作。
+     * 为了优化，命名空间应该被延迟地从KeyedStateBackend中检索，或者直接在状态上设置。
+     *
+     * @param namespace 命名空间，用于区分不同的状态分区
+     * @param namespaceSerializer 命名空间的序列化器
+     * @param stateDescriptor 状态的描述符
+     * @param <N> 命名空间的类型
+     * @param <S> 状态的类型，必须是State的子类
+     * @return 与给定命名空间和状态描述符匹配的状态对象
+     * @throws Exception 如果在获取或创建状态过程中发生异常
+     *
+     * @see KeyedStateBackend 用于存储和检索与键关联的状态的组件
+    */
     @SuppressWarnings("unchecked")
     @Override
     public <N, S extends State> S getPartitionedState(
@@ -393,27 +424,32 @@ public abstract class AbstractKeyedStateBackend<K>
             final TypeSerializer<N> namespaceSerializer,
             final StateDescriptor<S, ?> stateDescriptor)
             throws Exception {
-
+        // 检查命名空间是否为null
         checkNotNull(namespace, "Namespace");
-
+        // 如果上一个请求的状态描述符名称与当前请求的状态描述符名称相同
+        // 则直接更新当前状态的命名空间并返回上一个状态
         if (lastName != null && lastName.equals(stateDescriptor.getName())) {
             lastState.setCurrentNamespace(namespace);
             return (S) lastState;
         }
-
+        // 尝试从缓存中根据状态描述符名称获取之前的状态
         InternalKvState<K, ?, ?> previous = keyValueStatesByName.get(stateDescriptor.getName());
         if (previous != null) {
+            // 如果找到，更新为当前状态并设置命名空间
             lastState = previous;
             lastState.setCurrentNamespace(namespace);
             lastName = stateDescriptor.getName();
+            // 返回状态，因为无需再次创建
             return (S) previous;
         }
-
+        // 如果缓存中没有找到状态，则创建新的状态
         final S state = getOrCreateKeyedState(namespaceSerializer, stateDescriptor);
+        // 假设getOrCreateKeyedState返回的是InternalKvState的实例
         final InternalKvState<K, N, ?> kvState = (InternalKvState<K, N, ?>) state;
-
+        // 更新最近请求的状态名称和状态对象
         lastName = stateDescriptor.getName();
         lastState = kvState;
+        // 设置命名空间并返回新创建的状态
         kvState.setCurrentNamespace(namespace);
 
         return state;

@@ -1147,8 +1147,8 @@ public class Task
         // InputGates must be initialized after the partitions, since during InputGate#setup
         // we are requesting partitions
         /**
-         * 遍历输入门数组，对每个输入门进行设置或初始化。
-         * 我们调用InputGate的setup方法来准备每个输入门。
+         * 遍历InputGate数组，对每个输入门进行设置或初始化。
+         * 我们调用InputGate的setup方法来准备每个InputGate。
          */
         for (InputGate gate : inputGates) {
             /** 设置每个InputGate*/

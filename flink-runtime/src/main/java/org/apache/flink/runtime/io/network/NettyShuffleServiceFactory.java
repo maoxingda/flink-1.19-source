@@ -234,7 +234,6 @@ public class NettyShuffleServiceFactory
         // contention, for example, too long IO or waiting time leading to starvation or timeout
         // 为批处理shuffle创建一个独立的IO执行器池，以避免直接复用TaskManager的IO执行器池可能导致的执行竞争等副作用
         // 例如过长的IO操作或等待时间导致资源饥饿或超时
-        // 注意：此段代码在原始文本中被截断了，但这里我们假设它将创建一个ScheduledExecutorService
         ScheduledExecutorService batchShuffleReadIOExecutor =
                 Executors.newScheduledThreadPool(
                         Math.max(

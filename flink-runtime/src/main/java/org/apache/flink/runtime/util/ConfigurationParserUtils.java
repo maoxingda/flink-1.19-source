@@ -105,6 +105,12 @@ public class ConfigurationParserUtils {
      * @param configuration configuration object
      * @return size of memory segment
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * taskmanager.memory.segment-size
+     * 计算每个Segment大小默认是32K=32768
+    */
     public static int getPageSize(Configuration configuration) {
         final int pageSize =
                 checkedDownCast(

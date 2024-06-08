@@ -114,26 +114,39 @@ public class StreamOperatorStateHandler {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化OperatorState
+    */
     public void initializeOperatorState(CheckpointedStreamOperator streamOperator)
             throws Exception {
+        // 获取raw原始的基于键的状态输入流
         CloseableIterable<KeyGroupStatePartitionStreamProvider> keyedStateInputs =
                 context.rawKeyedStateInputs();
+        // 获取raw原始的操作符状态输入流
         CloseableIterable<StatePartitionStreamProvider> operatorStateInputs =
                 context.rawOperatorStateInputs();
 
         try {
+            // 尝试获取已恢复的checkpoint ID
             OptionalLong checkpointId = context.getRestoredCheckpointId();
+            // 创建一个状态初始化上下文，用于操作符状态的初始化
             StateInitializationContext initializationContext =
                     new StateInitializationContextImpl(
+                            // 如果已恢复的checkpoint ID存在，则使用它；否则使用null
                             checkpointId.isPresent() ? checkpointId.getAsLong() : null,
-                            operatorStateBackend, // access to operator state backend
-                            keyedStateStore, // access to keyed state backend
-                            keyedStateInputs, // access to keyed state stream
-                            operatorStateInputs); // access to operator state stream
-
+                            operatorStateBackend, // 访问操作符状态后端   access to operator state backend
+                            keyedStateStore, // 访问基于键的状态后端 access to keyed state backend
+                            keyedStateInputs, // 访问基于键的状态流  access to keyed state stream
+                            operatorStateInputs); //  访问操作符状态流   access to operator state stream
+            // 调用操作符的initializeState方法，以进行状态初始化
             streamOperator.initializeState(initializationContext);
         } finally {
+            // 无论是否出现异常，都确保关闭从可关闭资源注册表中注册的状态输入流
+            // 关闭原始的操作符状态输入流
             closeFromRegistry(operatorStateInputs, closeableRegistry);
+            // 关闭原始的基于键的状态输入流
             closeFromRegistry(keyedStateInputs, closeableRegistry);
         }
     }

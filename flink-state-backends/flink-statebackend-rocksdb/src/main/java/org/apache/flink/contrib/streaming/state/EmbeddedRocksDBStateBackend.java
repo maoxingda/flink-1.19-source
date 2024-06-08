@@ -114,8 +114,15 @@ public class EmbeddedRocksDBStateBackend extends AbstractManagedMemoryStateBacke
     /**
      * Base paths for RocksDB directory, as configured. Null if not yet set, in which case the
      * configuration values will be used. The configuration defaults to the TaskManager's temp
+     *
      * directories.
+     *
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * RocksDB 目录的基础路径，按照配置设置。如果尚未设置，则为空，此时将使用配置值。配置的默认值是 TaskManager 的临时目录。
+    */
     @Nullable private File[] localRocksDbDirectories;
 
     /** The pre-configured option settings. */

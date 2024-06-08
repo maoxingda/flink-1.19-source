@@ -539,11 +539,25 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化状态的方法，通常用于在流处理任务（如Flink任务）启动时恢复或设置任务的状态。
+     *
+     * @param context 状态初始化上下文，包含了初始化状态所需的所有信息，如状态后端、检查点等。
+     * @throws Exception 如果在初始化状态过程中遇到错误，则会抛出异常。
+    */
     @Override
     public void initializeState(StateInitializationContext context) throws Exception {
+        // 调用父类的initializeState方法，进行任何必要的默认状态初始化或准备工作。
         super.initializeState(context);
+        // 从OperatorStateStore中获取名为SPLITS_STATE_DESC的ListState对象，用于存储和恢复字节数组列表的状态。
+        // SPLITS_STATE_DESC通常是一个状态描述符，用于标识状态的类型和名称。
         final ListState<byte[]> rawState =
                 context.getOperatorStateStore().getListState(SPLITS_STATE_DESC);
+        // 使用获取到的rawState和splitSerializer（一个序列化器，用于将分裂（splits）数据序列化和反序列化为字节数组）
+        // 创建一个SimpleVersionedListState对象，该对象封装了rawState并提供了一些额外的功能，如版本控制。
+        // readerState用于后续读取状态信息，它现在与SPLITS_STATE_DESC对应的状态绑定在一起。
         readerState = new SimpleVersionedListState<>(rawState, splitSerializer);
     }
 

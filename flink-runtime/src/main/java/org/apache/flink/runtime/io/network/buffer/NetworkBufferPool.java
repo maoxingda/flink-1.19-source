@@ -187,7 +187,6 @@ public class NetworkBufferPool
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
      * 请求池化的内存段
-     *
      * 此方法会同步访问可用内存段列表，并调用内部方法来请求内存段。
     */
     @Nullable
@@ -529,7 +528,11 @@ public class NetworkBufferPool
     // ------------------------------------------------------------------------
     // BufferPoolFactory
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 方法重载调用internalCreateBufferPool
+    */
     @Override
     public BufferPool createBufferPool(int numRequiredBuffers, int maxUsedBuffers)
             throws IOException {
@@ -553,6 +556,17 @@ public class NetworkBufferPool
                 maxOverdraftBuffersPerGate);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个新的BufferPool对象
+     * @param numRequiredBuffers,        所需的缓冲区数量
+     * @param maxUsedBuffers,            最大使用的缓冲区数量
+     * @param numSubpartitions,          子分区的数量
+     * @param maxBuffersPerChannel,      每个通道的最大缓冲区数量
+     * @param maxOverdraftBuffersPerGate 每个门限的最大透支缓冲区数量
+     * @param
+    */
     private BufferPool internalCreateBufferPool(
             int numRequiredBuffers,
             int maxUsedBuffers,
@@ -563,14 +577,20 @@ public class NetworkBufferPool
 
         // It is necessary to use a separate lock from the one used for buffer
         // requests to ensure deadlock freedom for failure cases.
+        // 使用与缓冲区请求不同的锁，以确保在失败情况下避免死锁
+        // 使用factoryLock作为同步锁
         synchronized (factoryLock) {
             if (isDestroyed) {
+                // 如果网络缓冲区池已经被销毁，则抛出异常
                 throw new IllegalStateException("Network buffer pool has already been destroyed.");
             }
 
             // Ensure that the number of required buffers can be satisfied.
             // With dynamic memory management this should become obsolete.
+            // 确保所需的缓冲区数量可以得到满足
+            // 注意：随着动态内存管理的使用，此检查可能会变得不再必要
             if (numTotalRequiredBuffers + numRequiredBuffers > totalNumberOfMemorySegments) {
+                // 如果所需的总缓冲区数量超过可用的内存段数量，则抛出异常
                 throw new IOException(
                         String.format(
                                 "Insufficient number of network buffers: "
@@ -579,11 +599,12 @@ public class NetworkBufferPool
                                 totalNumberOfMemorySegments - numTotalRequiredBuffers,
                                 getConfigDescription()));
             }
-
+            // 更新所需的总缓冲区数量
             this.numTotalRequiredBuffers += numRequiredBuffers;
 
             // We are good to go, create a new buffer pool and redistribute
             // non-fixed size buffers.
+            // 创建新的本地缓冲区池
             LocalBufferPool localBufferPool =
                     new LocalBufferPool(
                             this,
@@ -592,15 +613,16 @@ public class NetworkBufferPool
                             numSubpartitions,
                             maxBuffersPerChannel,
                             maxOverdraftBuffersPerGate);
-
+            // 将新创建的本地缓冲区池添加到所有缓冲区池的列表中
             allBufferPools.add(localBufferPool);
 
+            // 如果所需的缓冲区数量小于最大使用的缓冲区数量，则将其添加到可调整大小的缓冲区池列表中
             if (numRequiredBuffers < maxUsedBuffers) {
                 resizableBufferPools.add(localBufferPool);
             }
-
+            // 重新计算非固定大小的缓冲区
             redistributeBuffers();
-
+            // 返回新创建的本地缓冲区池
             return localBufferPool;
         }
     }
@@ -688,7 +710,7 @@ public class NetworkBufferPool
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     *
+     * 重新计算非固定大小的缓冲区
     */
     // Must be called from synchronized block
     private void redistributeBuffers() {

@@ -199,6 +199,15 @@ public class HeapKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
                 stateName, byteOrderedElementSerializer, allowFutureMetadataUpdates);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册StateTable
+     * @param namespaceSerializer 命名空间序列化器
+     * @param stateDesc 状态描述符
+     * @param snapshotTransformFactory 状态快照转换工厂
+     * @param allowFutureMetadataUpdates 是否允许未来的元数据更新
+    */
     private <N, V> StateTable<K, N, V> tryRegisterStateTable(
             TypeSerializer<N> namespaceSerializer,
             StateDescriptor<?, V> stateDesc,
@@ -206,27 +215,32 @@ public class HeapKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
             boolean allowFutureMetadataUpdates)
             throws StateMigrationException {
 
+        // 尝试从已注册的状态表中获取指定名称的状态表（此处进行了类型强制转换）
         @SuppressWarnings("unchecked")
         StateTable<K, N, V> stateTable =
                 (StateTable<K, N, V>) registeredKVStates.get(stateDesc.getName());
-
+        // 获取状态描述符中定义的状态值序列化器
         TypeSerializer<V> newStateSerializer = stateDesc.getSerializer();
 
         if (stateTable != null) {
+            // 获取已恢复的状态表的元信息
             RegisteredKeyValueStateBackendMetaInfo<N, V> restoredKvMetaInfo =
                     stateTable.getMetaInfo();
-
+            // 更新状态表的快照转换工厂
             restoredKvMetaInfo.updateSnapshotTransformFactory(snapshotTransformFactory);
 
             // fetch current serializer now because if it is incompatible, we can't access
             // it anymore to improve the error message
+            // 现在获取当前命名空间序列化器，因为如果它与旧的序列化器不兼容，我们可能无法再次访问它
+            // 以此来改进错误消息
             TypeSerializer<N> previousNamespaceSerializer =
                     restoredKvMetaInfo.getNamespaceSerializer();
-
+            // 检查新的命名空间序列化器与旧的序列化器是否兼容
             TypeSerializerSchemaCompatibility<N> namespaceCompatibility =
                     restoredKvMetaInfo.updateNamespaceSerializer(namespaceSerializer);
             if (namespaceCompatibility.isCompatibleAfterMigration()
                     || namespaceCompatibility.isIncompatible()) {
+                // 如果在迁移后兼容或完全不兼容，则抛出异常
                 throw new StateMigrationException(
                         "For heap backends, the new namespace serializer ("
                                 + namespaceSerializer
@@ -234,17 +248,19 @@ public class HeapKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
                                 + previousNamespaceSerializer
                                 + ").");
             }
-
+            // 检查状态表的元信息是否与状态描述符匹配
             restoredKvMetaInfo.checkStateMetaInfo(stateDesc);
 
             // fetch current serializer now because if it is incompatible, we can't access
             // it anymore to improve the error message
+            // 获取之前的状态值序列化器
             TypeSerializer<V> previousStateSerializer = restoredKvMetaInfo.getStateSerializer();
-
+            // 检查新的状态序列化器与旧的序列化器是否兼容
             TypeSerializerSchemaCompatibility<V> stateCompatibility =
                     restoredKvMetaInfo.updateStateSerializer(newStateSerializer);
 
             if (stateCompatibility.isIncompatible()) {
+                // 如果不兼容，则抛出异常
                 throw new StateMigrationException(
                         "For heap backends, the new state serializer ("
                                 + newStateSerializer
@@ -252,14 +268,15 @@ public class HeapKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
                                 + previousStateSerializer
                                 + ").");
             }
-
+            // 根据allowFutureMetadataUpdates的值更新元信息的序列化器升级状态
             restoredKvMetaInfo =
                     allowFutureMetadataUpdates
                             ? restoredKvMetaInfo.withSerializerUpgradesAllowed()
                             : restoredKvMetaInfo;
-
+            // 更新状态表的元信息
             stateTable.setMetaInfo(restoredKvMetaInfo);
         } else {
+            // 如果StateTable不存在，则创建一个新的RegisteredKeyValueStateBackendMetaInfo
             RegisteredKeyValueStateBackendMetaInfo<N, V> newMetaInfo =
                     new RegisteredKeyValueStateBackendMetaInfo<>(
                             stateDesc.getType(),
@@ -267,16 +284,17 @@ public class HeapKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
                             namespaceSerializer,
                             newStateSerializer,
                             snapshotTransformFactory);
-
+            // 根据allowFutureMetadataUpdates的值更新新元信息的序列化器升级状态
             newMetaInfo =
                     allowFutureMetadataUpdates
                             ? newMetaInfo.withSerializerUpgradesAllowed()
                             : newMetaInfo;
-
+            // 使用新的元信息创建一个新的StateTable
             stateTable = stateTableFactory.newStateTable(keyContext, newMetaInfo, keySerializer);
+            // 将新的StateTable注册到registeredKVStates中
             registeredKVStates.put(stateDesc.getName(), stateTable);
         }
-
+        // 返回已存在或新创建的StateTable
         return stateTable;
     }
 
@@ -304,6 +322,11 @@ public class HeapKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
         return table.getKeysAndNamespaces();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 调用内部方法createOrUpdateInternalState创建State
+    */
     @Override
     @Nonnull
     public <N, SV, SEV, S extends State, IS extends S> IS createOrUpdateInternalState(
@@ -315,6 +338,23 @@ public class HeapKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
                 namespaceSerializer, stateDesc, snapshotTransformFactory, false);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据给定的参数创建或更新内部状态。
+     *
+     * @param namespaceSerializer 命名空间的序列化器，不能为null
+     * @param stateDesc 状态描述符，定义了状态的名称、类型等属性，不能为null
+     * @param snapshotTransformFactory 状态快照转换工厂，用于生成状态快照的转换逻辑，不能为null
+     * @param allowFutureMetadataUpdates 是否允许未来的元数据更新
+     * @param <N> 命名空间的类型
+     * @param <SV> 状态值的类型
+     * @param <SEV> 状态快照值的类型
+     * @param <S> 状态对象的基类
+     * @param <IS> 具体的状态对象类型，继承自S
+     * @return 更新或创建的状态对象
+     * @throws Exception 如果在创建或更新状态过程中发生异常
+    */
     @Override
     @Nonnull
     public <N, SV, SEV, S extends State, IS extends S> IS createOrUpdateInternalState(
@@ -323,6 +363,7 @@ public class HeapKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
             @Nonnull StateSnapshotTransformFactory<SEV> snapshotTransformFactory,
             boolean allowFutureMetadataUpdates)
             throws Exception {
+        // 尝试注册状态表，并获取状态表实例
         StateTable<K, N, SV> stateTable =
                 tryRegisterStateTable(
                         namespaceSerializer,
@@ -330,24 +371,34 @@ public class HeapKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
                         getStateSnapshotTransformFactory(stateDesc, snapshotTransformFactory),
                         allowFutureMetadataUpdates);
 
+        // 从已创建的状态映射中获取指定名称的状态对象（此处进行了类型强制转换）
         @SuppressWarnings("unchecked")
         IS createdState = (IS) createdKVStates.get(stateDesc.getName());
+        // 如果状态对象为空（即尚未创建）
         if (createdState == null) {
+            // 从状态类型映射中获取状态创建工厂
             StateCreateFactory stateCreateFactory = STATE_CREATE_FACTORIES.get(stateDesc.getType());
+            // 如果找不到对应的创建工厂，则抛出异常
             if (stateCreateFactory == null) {
                 throw new FlinkRuntimeException(stateNotSupportedMessage(stateDesc));
             }
+            // 使用状态描述符、状态表和键序列化器创建状态对象
             createdState =
                     stateCreateFactory.createState(stateDesc, stateTable, getKeySerializer());
         } else {
+            // 如果状态对象已存在（需要更新）
+            // 从状态类型映射中获取状态更新工厂
             StateUpdateFactory stateUpdateFactory = STATE_UPDATE_FACTORIES.get(stateDesc.getType());
+            // 如果找不到对应的更新工厂，则抛出异常
             if (stateUpdateFactory == null) {
                 throw new FlinkRuntimeException(stateNotSupportedMessage(stateDesc));
             }
+            // 使用状态描述符、状态表和当前状态对象更新状态
             createdState = stateUpdateFactory.updateState(stateDesc, stateTable, createdState);
         }
-
+        // 将更新或创建的状态对象放入已创建的状态映射中
         createdKVStates.put(stateDesc.getName(), createdState);
+        // 返回更新或创建的状态对象
         return createdState;
     }
 

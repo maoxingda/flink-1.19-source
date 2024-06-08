@@ -90,39 +90,52 @@ public class HeapKeyedStateBackendBuilder<K> extends AbstractKeyedStateBackendBu
         this.asynchronousSnapshots = asynchronousSnapshots;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 构建HeapKeyedStateBackend
+    */
     @Override
     public HeapKeyedStateBackend<K> build() throws BackendBuildingException {
         // Map of registered Key/Value states
+        // 注册的键值状态的映射（键对应其状态表）
+        // 映射关系，保存了已注册的Key/Value状态
         Map<String, StateTable<K, ?, ?>> registeredKVStates = new HashMap<>();
         // Map of registered priority queue set states
+        // 注册的优先级队列集合状态的映射
+        // 映射关系，保存了已注册的优先级队列集合状态
         Map<String, HeapPriorityQueueSnapshotRestoreWrapper<?>> registeredPQStates =
                 new HashMap<>();
+        // 后端使用的可关闭资源注册表
         CloseableRegistry cancelStreamRegistryForBackend = new CloseableRegistry();
+        // 初始化快照策略，该策略将用于生成和恢复状态的快照
         HeapSnapshotStrategy<K> snapshotStrategy =
                 initSnapshotStrategy(registeredKVStates, registeredPQStates);
+        // 创建一个内部键上下文，用于管理键的分组和范围
         InternalKeyContext<K> keyContext =
                 new InternalKeyContextImpl<>(keyGroupRange, numberOfKeyGroups);
-
+        // 创建状态表的工厂类，用于创建状态表
         final StateTableFactory<K> stateTableFactory = CopyOnWriteStateTable::new;
-
+        // 从检查点或其他存储中恢复已注册的状态
         restoreState(registeredKVStates, registeredPQStates, keyContext, stateTableFactory);
+        // 创建一个HeapKeyedStateBackend实例，并传入所有必要的参数
         return new HeapKeyedStateBackend<>(
-                kvStateRegistry,
-                keySerializerProvider.currentSchemaSerializer(),
-                userCodeClassLoader,
-                executionConfig,
-                ttlTimeProvider,
-                latencyTrackingStateConfig,
-                cancelStreamRegistryForBackend,
-                keyGroupCompressionDecorator,
-                registeredKVStates,
-                registeredPQStates,
-                localRecoveryConfig,
-                priorityQueueSetFactory,
-                snapshotStrategy,
-                asynchronousSnapshots ? ASYNCHRONOUS : SYNCHRONOUS,
-                stateTableFactory,
-                keyContext);
+                kvStateRegistry, // 键值状态注册表
+                keySerializerProvider.currentSchemaSerializer(),// 当前模式的键序列化器
+                userCodeClassLoader,// 用户代码类加载器
+                executionConfig,// 执行配置
+                ttlTimeProvider, // TTL时间提供者
+                latencyTrackingStateConfig,// 延迟跟踪状态配置
+                cancelStreamRegistryForBackend,// 后端使用的可关闭资源注册表
+                keyGroupCompressionDecorator,// 键组压缩装饰器
+                registeredKVStates,// 已注册的键值状态
+                registeredPQStates,// 已注册的优先级队列集合状态
+                localRecoveryConfig,// 本地恢复配置
+                priorityQueueSetFactory,// 优先级队列集合工厂
+                snapshotStrategy,// 快照策略
+                asynchronousSnapshots ? ASYNCHRONOUS : SYNCHRONOUS, // 是否使用异步快照的标志
+                stateTableFactory,// 状态表工厂
+                keyContext);// 键上下文
     }
 
     private void restoreState(

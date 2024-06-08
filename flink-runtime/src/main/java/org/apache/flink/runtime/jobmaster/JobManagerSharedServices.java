@@ -175,14 +175,19 @@ public class JobManagerSharedServices {
         final ExecutorService ioExecutor =
                 Executors.newFixedThreadPool(
                         jobManagerIoPoolSize, new ExecutorThreadFactory("jobmanager-io"));
-
+        /** 根据配置 致命错误的处理程序FatalErrorHandler 创建ShuffleMasterContext*/
         final ShuffleMasterContext shuffleMasterContext =
                 new ShuffleMasterContextImpl(config, fatalErrorHandler);
+        /**
+         *1.通过java spi 加载ShuffleServiceFactory
+         *2.调用 createShuffleMaster创建ShuffleMaster
+         */
         final ShuffleMaster<?> shuffleMaster =
                 ShuffleServiceLoader.loadShuffleServiceFactory(config)
                         .createShuffleMaster(shuffleMasterContext);
+        /** 启动shuffleMaster 空的实现*/
         shuffleMaster.start();
-
+        /** 构造出来JobManagerSharedServices方便后面使用*/
         return new JobManagerSharedServices(
                 futureExecutor, ioExecutor, libraryCacheManager, shuffleMaster, blobServer);
     }

@@ -258,33 +258,43 @@ public class RemoteInputChannel extends InputChannel {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *从已消耗的子分区返回下一个缓冲区，如果没有数据可返回，则返回{@code Optional.empty（）}。
+    */
     @Override
     public Optional<BufferAndAvailability> getNextBuffer() throws IOException {
+        // 检查分区请求队列是否已初始化
         checkPartitionRequestQueueInitialized();
-
+        // 定义变量来保存即将返回的序列缓冲区和它的数据类型
         final SequenceBuffer next;
         final DataType nextDataType;
-
+        // 使用同步块来确保线程安全地访问receivedBuffers队列
         synchronized (receivedBuffers) {
+            // 从receivedBuffers队列中取出下一个序列缓冲区
             next = receivedBuffers.poll();
-
+            // 如果取出了序列缓冲区，则从总队列大小中减去该缓冲区的大小
             if (next != null) {
                 totalQueueSizeInBytes -= next.buffer.getSize();
             }
+            // 尝试查看队列中的下一个元素（不取出），并获取其数据类型
+            // 如果队列为空，则数据类型设为NONE
             nextDataType =
                     receivedBuffers.peek() != null
                             ? receivedBuffers.peek().buffer.getDataType()
                             : DataType.NONE;
         }
-
+        // 如果取出的序列缓冲区为空（即队列中没有更多数据）
         if (next == null) {
             if (isReleased.get()) {
                 throw new CancelTaskException(
                         "Queried for a buffer after channel has been released.");
             }
+            // 如果没有更多数据，返回空的Optional对象
             return Optional.empty();
         }
-
+        // 记录输入通道获取缓冲区的跟踪日志
         NetworkActionsLogger.traceInput(
                 "RemoteInputChannel#getNextBuffer",
                 next.buffer,
@@ -292,8 +302,11 @@ public class RemoteInputChannel extends InputChannel {
                 channelInfo,
                 channelStatePersister,
                 next.sequenceNumber);
+        // 更新接收的字节数和缓冲区数量统计信息
         numBytesIn.inc(next.buffer.getSize());
         numBuffersIn.inc();
+        // 创建一个新的BufferAndAvailability对象，包含序列缓冲区的缓冲区、数据类型、可用性（此处设为0）和序列号
+        // 并将其包装在Optional对象中返回
         return Optional.of(
                 new BufferAndAvailability(next.buffer, nextDataType, 0, next.sequenceNumber));
     }
@@ -613,24 +626,40 @@ public class RemoteInputChannel extends InputChannel {
      * Handles the input buffer. This method is taking over the ownership of the buffer and is fully
      * responsible for cleaning it up both on the happy path and in case of an error.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 当从远程输入通道接收到一个缓冲区时调用此方法。
+     *
+     * @param sequenceNumber 缓冲区的序列号
+     * @param backlog        积压量，表示发送者等待处理的消息数量
+     * @throws IOException   如果在处理过程中发生I/O错误
+    */
     public void onBuffer(Buffer buffer, int sequenceNumber, int backlog, int subpartitionId)
             throws IOException {
+        // 定义一个标志，用于表示是否成功处理空缓冲区
         boolean recycleBuffer = true;
 
         try {
+            // 检查传入的序列号是否与期望的序列号相匹配
             if (expectedSequenceNumber != sequenceNumber) {
+                // 如果不匹配，抛出异常并记录错误
                 onError(new BufferReorderingException(expectedSequenceNumber, sequenceNumber));
                 return;
             }
-
+            // 如果缓冲区的数据类型会阻塞上游操作
             if (buffer.getDataType().isBlockingUpstream()) {
+                // 调用阻塞上游的处理逻辑
                 onBlockingUpstream();
                 checkArgument(backlog == 0, "Illegal number of backlog: %s, should be 0.", backlog);
             }
-
+            // 定义一个变量，用于记录接收到的缓冲区是否为空
             final boolean wasEmpty;
+            // 定义一个变量，用于记录是否为第一个优先级事件
             boolean firstPriorityEvent = false;
+            // 同步块，确保线程安全
             synchronized (receivedBuffers) {
+                // 记录输入日志，包括缓冲区信息、任务名、通道信息等
                 NetworkActionsLogger.traceInput(
                         "RemoteInputChannel#onBuffer",
                         buffer,
@@ -641,51 +670,74 @@ public class RemoteInputChannel extends InputChannel {
                 // Similar to notifyBufferAvailable(), make sure that we never add a buffer
                 // after releaseAllResources() released all buffers from receivedBuffers
                 // (see above for details).
+                // 确保在调用releaseAllResources()释放所有资源后，不再添加缓冲区
                 if (isReleased.get()) {
                     return;
                 }
-
+                // 检查receivedBuffers是否为空
                 wasEmpty = receivedBuffers.isEmpty();
-
+                // 创建一个SequenceBuffer对象，包含缓冲区、序列号和子分区ID
                 SequenceBuffer sequenceBuffer =
                         new SequenceBuffer(buffer, sequenceNumber, subpartitionId);
+                // 获取缓冲区的数据类型
                 DataType dataType = buffer.getDataType();
+                // 如果数据类型具有优先级
                 if (dataType.hasPriority()) {
+                    // 添加到优先级缓冲区队列
                     firstPriorityEvent = addPriorityBuffer(sequenceBuffer);
+                    // 因为是优先级事件，所以不需要回收缓冲区
                     recycleBuffer = false;
                 } else {
+                    // 将缓冲区添加到接收到的缓冲区队列
                     receivedBuffers.add(sequenceBuffer);
+                    // 因为是普通事件，所以不需要回收缓冲区
                     recycleBuffer = false;
+                    // 如果数据类型需要requiresAnnouncement
                     if (dataType.requiresAnnouncement()) {
+                        // 其标记为优先级事件
                         firstPriorityEvent = addPriorityBuffer(announce(sequenceBuffer));
                     }
                 }
+                // 更新缓冲区队列的总大小（以字节为单位）
                 totalQueueSizeInBytes += buffer.getSize();
+                // 检查这个缓冲区中是否包含了一个屏障
                 final OptionalLong barrierId =
                         channelStatePersister.checkForBarrier(sequenceBuffer.buffer);
+                // 如果找到了屏障，并且它的ID大于上一个屏障的ID
                 if (barrierId.isPresent() && barrierId.getAsLong() > lastBarrierId) {
                     // checkpoint was not yet started by task thread,
                     // so remember the numbers of buffers to spill for the time when
                     // it will be started
+                    // 如果任务线程还没有开始处理这个检查点（checkpoint），
+                    // 那么记住需要溢出的缓冲区数量，以便在检查点开始时处理
                     lastBarrierId = barrierId.getAsLong();
                     lastBarrierSequenceNumber = sequenceBuffer.sequenceNumber;
                 }
+                // 持久化这个缓冲区（保存到磁盘或其他存储介质）
                 channelStatePersister.maybePersist(buffer);
+                // 更新预期的序列号（可能是用于跟踪或同步）
                 ++expectedSequenceNumber;
             }
-
+            // 如果这是一个优先级事件
             if (firstPriorityEvent) {
+                // 通知优先级事件（可能是调用某个监听器或回调方法）
                 notifyPriorityEvent(sequenceNumber);
             }
+            // 如果之前队列是空的（可能是之前没有任何数据或消息）
             if (wasEmpty) {
+                // 通知通道现在非空（可能是触发某些消费者开始处理数据）
                 notifyChannelNonEmpty();
             }
-
+             // 如果backlog是非负数
             if (backlog >= 0) {
+                // 处理发送方的backlog（可能是调整发送速率、通知其他组件或进行其他相关操作）
                 onSenderBacklog(backlog);
             }
+            // 无论之前的代码是否抛出异常，都会执行finally块中的代码
         } finally {
+            // 如果需要回收缓冲区
             if (recycleBuffer) {
+                // 回收缓冲区（释放内存或其他资源）
                 buffer.recycleBuffer();
             }
         }

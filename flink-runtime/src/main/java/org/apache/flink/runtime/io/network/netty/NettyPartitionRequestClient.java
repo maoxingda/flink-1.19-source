@@ -106,6 +106,17 @@ public class NettyPartitionRequestClient implements PartitionRequestClient {
      * <p>The request goes to the remote producer, for which this partition request client instance
      * has been created.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 请求ResultPartition的子分区。
+     *
+     * @param partitionId 结果分区的ID
+     * @param subpartitionIndexSet 子分区索引集合
+     * @param inputChannel 远程输入通道
+     * @param delayMs 延迟毫秒数
+     * @throws IOException 如果发生I/O错误
+    */
     @Override
     public void requestSubpartition(
             final ResultPartitionID partitionId,
@@ -113,28 +124,31 @@ public class NettyPartitionRequestClient implements PartitionRequestClient {
             final RemoteInputChannel inputChannel,
             int delayMs)
             throws IOException {
-
+        // 检查当前对象是否已关闭
         checkNotClosed();
-
+        // 日志记录，调试级别，记录请求的详细信息
         LOG.debug(
                 "Requesting subpartition {} of partition {} with {} ms delay.",
                 subpartitionIndexSet,
                 partitionId,
                 delayMs);
-
+        //调用clientHandler.addInputChannel(inputChannel)方法，将当前的InputChannel添加到NetworkClientHandler中。
         clientHandler.addInputChannel(inputChannel);
-
+        // 创建一个PartitionRequest对象，该对象包含分区ID、子分区索引集、输入通道的ID和初始信用额度
         final PartitionRequest request =
                 new PartitionRequest(
                         partitionId,
                         subpartitionIndexSet,
                         inputChannel.getInputChannelId(),
                         inputChannel.getInitialCredit());
-
+        // 创建一个ChannelFutureListener监听器，当请求完成（成功或失败）时触发
         final ChannelFutureListener listener =
                 future -> {
+                    // 如果请求失败，则从clientHandler中移除该InputChannel
                     if (!future.isSuccess()) {
                         clientHandler.removeInputChannel(inputChannel);
+                        // 在InputChannel上报告错误，并创建一个LocalTransportException异常
+                        // 该异常描述了向特定连接ID发送分区请求失败的情况
                         inputChannel.onError(
                                 new LocalTransportException(
                                         String.format(
@@ -146,6 +160,7 @@ public class NettyPartitionRequestClient implements PartitionRequestClient {
                                                 connectionId.getConnectionIndex()),
                                         future.channel().localAddress(),
                                         future.cause()));
+                        //发送错误异常
                         sendToChannel(
                                 new ConnectionErrorMessage(
                                         future.cause() == null
@@ -154,12 +169,19 @@ public class NettyPartitionRequestClient implements PartitionRequestClient {
                                                 : future.cause()));
                     }
                 };
-
+        // 判断是否立即发送请求，或者需要延迟发送
         if (delayMs == 0) {
+            // 如果 delayMs 为 0，表示需要立即发送请求
+            // 使用 tcpChannel 发送请求并立即刷新到网络
             ChannelFuture f = tcpChannel.writeAndFlush(request);
+            // 给发送操作添加一个监听器，用于处理发送成功或失败等事件
             f.addListener(listener);
         } else {
+            // 如果 delayMs 不为 0，表示需要延迟发送请求
+            // 创建一个 ChannelFuture 数组，用于在延迟执行的任务中存储发送的结果
             final ChannelFuture[] f = new ChannelFuture[1];
+            // 使用 tcpChannel 所在的 EventLoop 来调度一个延迟任务
+            // 当延迟时间到达后，执行 lambda 表达式中的代码
             tcpChannel
                     .eventLoop()
                     .schedule(
@@ -213,8 +235,15 @@ public class NettyPartitionRequestClient implements PartitionRequestClient {
                                 });
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 发送信用额度信息
+    */
     @Override
     public void notifyCreditAvailable(RemoteInputChannel inputChannel) {
+        // 创建一个新的 AddCreditMessage 对象，并将传入的 inputChannel 作为参数传递给它。
+        // AddCreditMessage 可能是一个自定义的消息类型，用于通知接收方现在有更多的信用额度可以使用。
         sendToChannel(new AddCreditMessage(inputChannel));
     }
 
@@ -239,6 +268,11 @@ public class NettyPartitionRequestClient implements PartitionRequestClient {
         sendToChannel(new AcknowledgeAllRecordsProcessedMessage(inputChannel));
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 触发ChannelPipeline中的UserEvent事件
+    */
     private void sendToChannel(Object message) {
         tcpChannel.eventLoop().execute(() -> tcpChannel.pipeline().fireUserEventTriggered(message));
     }

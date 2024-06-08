@@ -229,33 +229,46 @@ public abstract class AsynchronousFileIOChannel<T, R extends IORequest>
             }
         }
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 请求添加到队列中
+    */
     protected final void addRequest(R request) throws IOException {
         // check the error state of this channel
+        // 检查此通道的错误状态
+        // 如果通道处于错误状态，则后续操作可能会失败
         checkErroneous();
 
         // write the current buffer and get the next one
+        // 增加待返回请求的计数器，表明我们有一个新的请求被添加
         this.requestsNotReturned.incrementAndGet();
 
+        // 检查通道是否已关闭或请求队列是否已关闭
+        // 如果在增加计数器之后发现通道或队列已关闭，
+        // 则减少计数器，并且不将请求转发到队列
         if (this.closed || this.requestQueue.isClosed()) {
             // if we found ourselves closed after the counter increment,
             // decrement the counter again and do not forward the request
+            // 如果在增加计数器后发现自己处于关闭状态，
+            // 再次减少计数器，并且不将请求添加到队列中
             this.requestsNotReturned.decrementAndGet();
 
+            // 获取所有请求处理完成的监听器（如果有的话）
             final NotificationListener listener;
 
             synchronized (listenerLock) {
                 listener = allRequestsProcessedListener;
                 allRequestsProcessedListener = null;
             }
-
+            // 如果存在监听器，则通知所有请求已处理完成
             if (listener != null) {
                 listener.onNotification();
             }
 
             throw new IOException("I/O channel already closed. Could not fulfill: " + request);
         }
-
+        // 将请求添加到请求队列中，等待后续处理
         this.requestQueue.add(request);
     }
 
@@ -344,10 +357,19 @@ final class SegmentWriteRequest implements WriteRequest {
         this.segment = segment;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试将数据写入文件通道
+    */
     @Override
     public void write() throws IOException {
         try {
+            // 使用 processAsByteBuffer 方法将 segment 中的数据转换为 ByteBuffer
+            // 并传递给一个 consumer 进行处理。这里，consumer 实际上是将 ByteBuffer 写入到文件通道中。
             this.segment.processAsByteBuffer(
+                    // 使用 uncheckedConsumer 封装一个 lambda 表达式，使其不再抛出 checked exception
+                    // lambda 表达式中，将 buffer 写入到 this.channel.fileChannel 对应的文件中
                     FunctionUtils.uncheckedConsumer(
                             (buffer) ->
                                     FileUtils.writeCompletely(this.channel.fileChannel, buffer)));

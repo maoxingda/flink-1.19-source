@@ -301,6 +301,11 @@ public class SingleInputGate extends IndexedInputGate {
         return inputChannelsWithData;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * SingleInputGate初始化InputChannel
+    */
     @Override
     public void setup() throws IOException {
 
@@ -331,18 +336,29 @@ public class SingleInputGate extends IndexedInputGate {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 请求Partitions
+    */
     @Override
     public void requestPartitions() {
+        // 使用同步块，确保在多线程环境下对共享资源的访问是线程安全的
         synchronized (requestLock) {
+            // 检查是否已经请求过分区
             if (!requestedPartitionsFlag) {
+                // 检查是否已经关闭
                 if (closeFuture.isDone()) {
+                    // 如果已经关闭，则抛出异常
                     throw new IllegalStateException("Already released.");
                 }
 
+                // 合理性检查：确保当前总的输入通道数与预设的输入通道数一致
                 // Sanity checks
                 long numInputChannels =
                         inputChannels.values().stream().mapToLong(x -> x.values().size()).sum();
                 if (numberOfInputChannels != numInputChannels) {
+                    // 如果不一致，则抛出异常
                     throw new IllegalStateException(
                             String.format(
                                     "Bug in input gate setup logic: mismatch between "
@@ -350,11 +366,12 @@ public class SingleInputGate extends IndexedInputGate {
                                             + "channels [%s].",
                                     numInputChannels, numberOfInputChannels));
                 }
-
+                // 转换恢复中的输入通道
                 convertRecoveredInputChannels();
+                // 内部请求分区的方法
                 internalRequestPartitions();
             }
-
+            // 标记已经请求过分区
             requestedPartitionsFlag = true;
             // Start the reader only when all InputChannels have been converted to either
             // LocalInputChannel or RemoteInputChannel, as this will prevent RecoveredInputChannels
@@ -392,12 +409,21 @@ public class SingleInputGate extends IndexedInputGate {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 每个输入通道请求子分区
+    */
     private void internalRequestPartitions() {
+        // 遍历所有的输入通道
         for (InputChannel inputChannel : inputChannels()) {
             try {
+                // 向每个输入通道请求子分区
                 inputChannel.requestSubpartitions();
             } catch (Throwable t) {
+                //抛出异常
                 inputChannel.setError(t);
+                //返回
                 return;
             }
         }
@@ -562,6 +588,11 @@ public class SingleInputGate extends IndexedInputGate {
         this.bufferPool = checkNotNull(bufferPool);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 设置Channel
+    */
     /** Assign the exclusive buffers to all remote input channels directly for credit-based mode. */
     @VisibleForTesting
     public void setupChannels() throws IOException {
@@ -805,67 +836,107 @@ public class SingleInputGate extends IndexedInputGate {
         return getNextBufferOrEvent(true);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 调用getNextBufferOrEvent读取BufferOrEvent
+    */
     @Override
     public Optional<BufferOrEvent> pollNext() throws IOException, InterruptedException {
         return getNextBufferOrEvent(false);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从输入流中获取下一个Buffer或Event，根据blocking参数决定是否为阻塞模式。
+     *
+     * @param blocking 是否为阻塞模式，true为阻塞模式，false为非阻塞模式
+     * @return 包含下一个Buffer或Event的Optional对象，如果没有则返回Optional.empty()
+     * @throws IOException 如果在读取过程中发生I/O错误
+     * @throws InterruptedException 如果线程在等待时被中断
+    */
     private Optional<BufferOrEvent> getNextBufferOrEvent(boolean blocking)
             throws IOException, InterruptedException {
+        // 如果已经收到了所有分区结束的事件，则返回空的Optional对象
         if (hasReceivedAllEndOfPartitionEvents) {
             return Optional.empty();
         }
-
+        // 如果closeFuture已经完成（表示InputGate已经关闭），则抛出异常
         if (closeFuture.isDone()) {
             throw new CancelTaskException("Input gate is already closed.");
         }
+        // 等待并获取下一个数据，根据blocking参数决定是否阻塞
         Optional<InputWithData<InputChannel, Buffer>> next = waitAndGetNextData(blocking);
+        // 如果没有获取到数据，则暂停吞吐量计算并返回空的Optional对象
         if (!next.isPresent()) {
             throughputCalculator.pauseMeasurement();
             return Optional.empty();
         }
-
+        // 恢复吞吐量计算
         throughputCalculator.resumeMeasurement();
 
         InputWithData<InputChannel, Buffer> inputWithData = next.get();
+        // 将输入数据转换为BufferOrEvent对象
         final BufferOrEvent bufferOrEvent =
                 transformToBufferOrEvent(
                         inputWithData.data,
                         inputWithData.moreAvailable,
                         inputWithData.input,
                         inputWithData.morePriorityEvents);
+        // 更新吞吐量计算的输入数据大小
         throughputCalculator.incomingDataSize(bufferOrEvent.getSize());
+        // 返回包含BufferOrEvent的Optional对象
         return Optional.of(bufferOrEvent);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 等待并获取下一个输入数据。
+     *
+     * @param blocking 是否为阻塞模式，true为阻塞模式，false为非阻塞模式
+     * @return 包含下一个输入数据的Optional对象，如果没有则返回Optional.empty()
+     * @throws IOException 如果在读取过程中发生I/O错误
+     * @throws InterruptedException 如果线程在等待时被中断
+    */
     private Optional<InputWithData<InputChannel, Buffer>> waitAndGetNextData(boolean blocking)
             throws IOException, InterruptedException {
         while (true) {
+            // 使用synchronized关键字确保对inputChannelsWithData的访问是线程安全的
             synchronized (inputChannelsWithData) {
+                // 尝试从输入通道中获取一个可用的通道
                 Optional<InputChannel> inputChannelOpt = getChannel(blocking);
                 if (!inputChannelOpt.isPresent()) {
+                    // 如果没有可用的输入通道，则返回空的Optional对象
                     return Optional.empty();
                 }
-
+                // 获取到可用的输入通道
                 final InputChannel inputChannel = inputChannelOpt.get();
+                // 从输入通道中读取一个Buffer，可能是恢复的数据或正常数据
                 Optional<Buffer> buffer = readRecoveredOrNormalBuffer(inputChannel);
                 if (!buffer.isPresent()) {
+                    // 如果没有读取到Buffer，则检查不可用性（可能是通道已关闭或数据已读取完）
                     checkUnavailability();
                     continue;
                 }
-
+                // 获取输入通道已消费的子分区索引集的大小
                 int numSubpartitions = inputChannel.getConsumedSubpartitionIndexSet().size();
                 if (numSubpartitions > 1) {
+                    // 如果当前通道有多个子分区的数据
                     switch (buffer.get().getDataType()) {
                         case END_OF_DATA:
+                            // 如果读取到的是“数据结束”类型的Buffer
                             endOfDatas[inputChannel.getChannelIndex()]++;
+                            // 如果该通道接收到的“数据结束”事件数小于子分区数，则回收Buffer并继续循环
                             if (endOfDatas[inputChannel.getChannelIndex()] < numSubpartitions) {
                                 buffer.get().recycleBuffer();
                                 continue;
                             }
                             break;
                         case END_OF_PARTITION:
+                            // 如果读取到的是“分区结束”类型的Buffer
                             endOfPartitions[inputChannel.getChannelIndex()]++;
+                            // 如果该通道接收到的“分区结束”事件数小于子分区数，则回收Buffer并继续循环
                             if (endOfPartitions[inputChannel.getChannelIndex()]
                                     < numSubpartitions) {
                                 buffer.get().recycleBuffer();
@@ -873,10 +944,11 @@ public class SingleInputGate extends IndexedInputGate {
                             }
                             break;
                         default:
+                            // 其他类型的数据，直接结束
                             break;
                     }
                 }
-
+                // 检查是否还有优先级事件等待处理
                 final boolean morePriorityEvents =
                         inputChannelsWithData.getNumPriorityElements() > 0;
                 if (buffer.get().getDataType().hasPriority()) {
@@ -885,6 +957,7 @@ public class SingleInputGate extends IndexedInputGate {
                     }
                 }
                 checkUnavailability();
+                //需要实际构建InputWithData对象
                 return Optional.of(
                         new InputWithData<>(
                                 inputChannel,
@@ -895,50 +968,76 @@ public class SingleInputGate extends IndexedInputGate {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 读取缓存数据
+    */
     private Optional<Buffer> readRecoveredOrNormalBuffer(InputChannel inputChannel)
             throws IOException, InterruptedException {
         // Firstly, read the buffers from the recovered channel
+        // 尝试首先从恢复通道读取缓存 输入通道从以前未对齐的检查点快照读取恢复的状态 checkpoint
         if (inputChannel instanceof RecoveredInputChannel && !inputChannel.isReleased()) {
+            // 如果输入通道是RecoveredInputChannel的实例且未被释放
+            // 读取缓存
             Optional<Buffer> buffer = readBufferFromInputChannel(inputChannel);
+            // 如果恢复通道的状态消费Future还未完成（即还有数据可读）
             if (!((RecoveredInputChannel) inputChannel).getStateConsumedFuture().isDone()) {
+                // 则直接返回读取到的缓存（可能还有后续数据等待读取）
                 return buffer;
             }
         }
 
         //  After the recovered buffers are read, read the normal buffers
+        // 读取完恢复通道中的缓存后，读取正常缓存
         return enabledTieredStorage()
+                // 从分层存储中读取缓存
                 ? readBufferFromTieredStore(inputChannel)
-                : readBufferFromInputChannel(inputChannel);
+                : readBufferFromInputChannel(inputChannel); // 否则，直接从输入通道中读取缓存
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通过Channel读取数据
+    */
     private Optional<Buffer> readBufferFromInputChannel(InputChannel inputChannel)
             throws IOException, InterruptedException {
+        // 尝试从输入通道中获取下一个缓存和可用性信息
         Optional<BufferAndAvailability> bufferAndAvailabilityOpt = inputChannel.getNextBuffer();
+        // 如果没有可用的缓存和可用性信息，则返回空的Optional对象
         if (!bufferAndAvailabilityOpt.isPresent()) {
             return Optional.empty();
         }
+        // 获取缓存和可用性信息
         final BufferAndAvailability bufferAndAvailability = bufferAndAvailabilityOpt.get();
+        // 如果还有更多可用的缓存，将输入通道重新放入队列的末尾
         if (bufferAndAvailability.moreAvailable()) {
             // enqueue the inputChannel at the end to avoid starvation
             queueChannelUnsafe(inputChannel, bufferAndAvailability.morePriorityEvents());
         }
+        // 如果缓存具有优先级，则更新最后处理的优先级序列号
         if (bufferAndAvailability.hasPriority()) {
             lastPrioritySequenceNumber[inputChannel.getChannelIndex()] =
                     bufferAndAvailability.getSequenceNumber();
         }
-
+        // 获取缓存本身
         Buffer buffer = bufferAndAvailability.buffer();
+        // 如果缓存的数据类型是恢复元数据
         if (buffer.getDataType() == Buffer.DataType.RECOVERY_METADATA) {
+            // 从缓存的可读ByteBuffer中反序列化恢复元数据
             RecoveryMetadata recoveryMetadata =
                     (RecoveryMetadata)
                             EventSerializer.fromSerializedEvent(
                                     buffer.getNioBufferReadable(), getClass().getClassLoader());
+            // 更新层级存储中最后缓存的状态映射，包括是否是部分记录以及恢复元数据的最终子分区ID
             lastBufferStatusMapInTieredStore.put(
                     inputChannel.getChannelIndex(),
                     Tuple2.of(
                             buffer.getDataType().isPartialRecord(),
                             recoveryMetadata.getFinalBufferSubpartitionId()));
         }
+        // 返回包含缓存的Optional对象
         return Optional.of(bufferAndAvailability.buffer());
     }
 

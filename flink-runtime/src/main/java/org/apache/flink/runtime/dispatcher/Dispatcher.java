@@ -279,7 +279,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
         this.jobManagerMetricGroup = dispatcherServices.getJobManagerMetricGroup();
         this.metricServiceQueryAddress = dispatcherServices.getMetricQueryServiceAddress();
         this.ioExecutor = dispatcherServices.getIoExecutor();
-
+        /** 创建JobManagerSharedServices 共享服务方便后面直接获取，比如ShuffleMaster*/
         this.jobManagerSharedServices =
                 JobManagerSharedServices.fromConfiguration(
                         configuration, blobServer, fatalErrorHandler);

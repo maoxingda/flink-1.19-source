@@ -93,7 +93,20 @@ public class FsCheckpointStorageAccess extends AbstractFsCheckpointStorageAccess
                 fileSizeThreshold,
                 writeBufferSize);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * FsCheckpointStorageAccess 的构造函数，用于初始化基于文件系统的检查点存储访问。
+     *
+     * @param fs 文件系统实例，用于访问存储检查点的文件系统
+     * @param checkpointBaseDirectory 检查点的基本目录，所有检查点数据都将存储在此目录或其子目录下
+     * @param defaultSavepointDirectory 默认的保存点目录（可以为null），如果未指定保存点目录，则可能使用该目录
+     * @param createCheckpointSubDirs 是否为每个作业在基本目录下创建子目录来存储检查点数据
+     * @param jobId 作业的JobID，用于在文件系统上组织检查点数据
+     * @param fileSizeThreshold 触发单个检查点文件分片的文件大小阈值（以字节为单位）
+     * @param writeBufferSize 写入文件时的缓冲区大小（以字节为单位）
+     * @throws IOException 如果在初始化过程中发生I/O错误
+    */
     public FsCheckpointStorageAccess(
             FileSystem fs,
             Path checkpointBaseDirectory,
@@ -103,21 +116,32 @@ public class FsCheckpointStorageAccess extends AbstractFsCheckpointStorageAccess
             int fileSizeThreshold,
             int writeBufferSize)
             throws IOException {
-
+        // 调用父类的构造函数，初始化与JobID和默认保存点目录相关的状态
+        //设置目录
         super(jobId, defaultSavepointDirectory);
-
+        // 检查fileSizeThreshold参数是否大于等于0
+        // 因为文件大小阈值必须是非负的
         checkArgument(fileSizeThreshold >= 0);
+        // 检查writeBufferSize参数是否大于等于0
+        // 因为写入缓冲区大小也必须是非负的
         checkArgument(writeBufferSize >= 0);
-
+        // 检查fs参数是否非空，文件系统是访问存储的关键
         this.fileSystem = checkNotNull(fs);
+        // 根据createCheckpointSubDirs参数决定检查点目录的创建方式
+        // 如果为true，则在基本目录下为jobId创建一个子目录
+        // 如果为false，则直接使用传入的checkpointBaseDirectory作为检查点目录
         this.checkpointsDirectory =
                 createCheckpointSubDirs
                         ? getCheckpointDirectoryForJob(checkpointBaseDirectory, jobId)
                         : checkpointBaseDirectory;
+        // 设置共享状态的目录，这是所有任务共享的检查点数据目录
         this.sharedStateDirectory = new Path(checkpointsDirectory, CHECKPOINT_SHARED_STATE_DIR);
+        // 设置任务拥有的状态目录，这是每个任务独有的检查点数据目录
         this.taskOwnedStateDirectory =
                 new Path(checkpointsDirectory, CHECKPOINT_TASK_OWNED_STATE_DIR);
+        // 设置文件大小阈值
         this.fileSizeThreshold = fileSizeThreshold;
+        // 设置写入缓冲区大小
         this.writeBufferSize = writeBufferSize;
     }
 

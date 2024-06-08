@@ -44,6 +44,11 @@ public final class MemorySegmentFactory {
      * @param buffer The heap memory region.
      * @return A new memory segment that targets the given heap memory region.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个以给定堆内存区域为目标的新内存段
+    */
     public static MemorySegment wrap(byte[] buffer) {
         return new MemorySegment(buffer, null);
     }
@@ -84,6 +89,11 @@ public final class MemorySegmentFactory {
      * @param size The size of the memory segment to allocate.
      * @return A new memory segment, backed by unpooled heap memory.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 分配一些堆外内存，并创建一个代表该内存的新内存段
+    */
     public static MemorySegment allocateUnpooledSegment(int size) {
         return allocateUnpooledSegment(size, null);
     }
@@ -98,6 +108,11 @@ public final class MemorySegmentFactory {
      * @param owner The owner to associate with the memory segment.
      * @return A new memory segment, backed by unpooled heap memory.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 分配一些堆外内存，并创建一个代表该内存的新内存段
+    */
     public static MemorySegment allocateUnpooledSegment(int size, Object owner) {
         return new MemorySegment(new byte[size], owner);
     }
@@ -109,6 +124,11 @@ public final class MemorySegmentFactory {
      * @param size The size of the off-heap memory segment to allocate.
      * @return A new memory segment, backed by unpooled off-heap memory.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 分配一些堆外内存，并创建一个表示该内存的新内存段。
+    */
     public static MemorySegment allocateUnpooledOffHeapMemory(int size) {
         return allocateUnpooledOffHeapMemory(size, null);
     }
@@ -183,11 +203,30 @@ public final class MemorySegmentFactory {
      * @param customCleanupAction A custom action to run upon calling GC cleaner.
      * @return A new memory segment, backed by off-heap unsafe memory.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为非堆外不安全的内存分配空间，并创建一个新的内存段来表示这段内存。
+     *
+     * <p>创建这个内存段时，会安排在其Java包装对象即将被垃圾回收时释放其内存的操作，
+     * 这与 {@link java.nio.DirectByteBuffer#DirectByteBuffer(int)} 类似。但区别在于，
+     * 这种内存分配不受JVM启动参数 -XX:MaxDirectMemorySize 的限制。
+     *
+     * @param size 要分配的非堆外不安全内存段的大小。
+     * @param owner 与非堆外不安全内存段关联的所有者对象。
+     * @param customCleanupAction 在调用GC清理器时运行的自定义清理动作。
+     * @return 一个新的内存段，由非堆外不安全内存支持。
+    */
     public static MemorySegment allocateOffHeapUnsafeMemory(
             int size, Object owner, Runnable customCleanupAction) {
+        // 使用非安全方式分配指定大小的内存，并返回其内存地址
         long address = MemoryUtils.allocateUnsafe(size);
+        // 使用上一步获得的内存地址和大小，将其封装为一个ByteBuffer对象
         ByteBuffer offHeapBuffer = MemoryUtils.wrapUnsafeMemoryWithByteBuffer(address, size);
+        // 创建一个清理器，当GC回收时，会根据提供的地址和自定义清理动作来释放内存
         Runnable cleaner = MemoryUtils.createMemoryCleaner(address, customCleanupAction);
+        // 创建一个新的MemorySegment对象，该对象由offHeapBuffer支持，
+        // 并关联给定的owner、指定该内存段不是可映射的，以及分配清理器
         return new MemorySegment(offHeapBuffer, owner, false, cleaner);
     }
 

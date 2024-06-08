@@ -90,6 +90,11 @@ public abstract class AbstractUdfStreamOperator<OUT, F extends Function>
                 context, getOperatorStateBackend(), userFunction);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @Override
     public void initializeState(StateInitializationContext context) throws Exception {
         super.initializeState(context);

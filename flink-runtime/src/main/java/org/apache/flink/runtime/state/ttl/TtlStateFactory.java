@@ -50,8 +50,35 @@ import java.util.stream.Stream;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 这个状态工厂类用于包装由后端生成的状态对象，并添加TTL（Time To Live，生存时间）逻辑。
+ * 它使得状态对象在达到指定的TTL时间后自动过期。
+*/
 /** This state factory wraps state objects, produced by backends, with TTL logic. */
 public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
+
+   /**
+    * @授课老师(微信): yi_locus
+    * email: 156184212@qq.com
+    * 静态方法，用于根据是否启用TTL来创建或更新状态对象。
+    * 如果启用了TTL，则使用TtlStateFactory来创建状态并包装TTL逻辑；
+    * 否则，直接调用后端的createOrUpdateInternalState方法来创建或更新状态。
+    *
+    * @param namespaceSerializer 命名空间序列化器
+    * @param stateDesc 状态描述符
+    * @param stateBackend 带有键的状态后端
+    * @param timeProvider TTL时间提供者
+    * @param <K> 键的类型
+    * @param <N> 命名空间的类型
+    * @param <SV> 状态值的类型
+    * @param <TTLSV> 带有TTL的状态值的类型（此类型可能用于内部处理TTL逻辑）
+    * @param <S> 状态对象的基类
+    * @param <IS> 具体的状态对象类型，继承自S
+    * @return 带有TTL逻辑（如果启用）的状态对象
+    * @throws Exception 如果创建或更新状态时发生错误
+   */
     public static <K, N, SV, TTLSV, S extends State, IS extends S>
             IS createStateAndWrapWithTtlIfEnabled(
                     TypeSerializer<N> namespaceSerializer,
@@ -59,14 +86,18 @@ public class TtlStateFactory<K, N, SV, TTLSV, S extends State, IS extends S> {
                     KeyedStateBackend<K> stateBackend,
                     TtlTimeProvider timeProvider)
                     throws Exception {
+        // 检查参数是否为空
         Preconditions.checkNotNull(namespaceSerializer);
         Preconditions.checkNotNull(stateDesc);
         Preconditions.checkNotNull(stateBackend);
         Preconditions.checkNotNull(timeProvider);
+        // 检查是否启用了TTL
         return stateDesc.getTtlConfig().isEnabled()
+                // 如果启用了TTL，则创建TtlStateFactory实例并调用其createState方法来创建状态
                 ? new TtlStateFactory<K, N, SV, TTLSV, S, IS>(
                                 namespaceSerializer, stateDesc, stateBackend, timeProvider)
                         .createState()
+                // 如果没有启用TTL，则直接调用后端的createOrUpdateInternalState方法来创建或更新状态
                 : stateBackend.createOrUpdateInternalState(namespaceSerializer, stateDesc);
     }
 

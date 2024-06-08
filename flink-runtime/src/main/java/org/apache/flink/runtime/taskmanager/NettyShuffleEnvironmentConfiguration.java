@@ -476,12 +476,19 @@ public class NettyShuffleEnvironmentConfiguration {
 
     /**
      * Calculates the number of network buffers based on configuration and jvm heap size.
-     *
+     * 根据配置和jvm堆大小计算网络缓冲区的数量。
      * @param configuration configuration object
      * @param networkMemorySize the size of memory reserved for shuffle environment
      * @param pageSize size of memory segment
      * @return the number of network buffers
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * networkMemorySize=taskmanager.memory.network.min: 128m
+     * 根据MemorySegment大小计算出MemorySegmeng数量
+     *
+    */
     private static int calculateNumberOfNetworkBuffers(
             Configuration configuration, MemorySize networkMemorySize, int pageSize) {
 

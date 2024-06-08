@@ -1364,6 +1364,7 @@ public class StreamingJobGraphGenerator {
         for (int i = 0; i < vertex.getStatePartitioners().length; i++) {
             config.setStatePartitioner(i, vertex.getStatePartitioners()[i]);
         }
+        //设置statekeyser
         config.setStateKeySerializer(vertex.getStateKeySerializer());
 
         Class<? extends TaskInvokable> vertexClass = vertex.getJobVertexClass();

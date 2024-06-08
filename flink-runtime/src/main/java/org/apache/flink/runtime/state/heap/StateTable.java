@@ -163,7 +163,18 @@ public abstract class StateTable<K, N, S>
      * @param namespace the namespace. Not null.
      * @param state the state. Can be null.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将当前活动的键（key）和给定的命名空间（namespace）组合作为键，将指定的状态（state）映射到该键上。
+     * 如果给定的状态为null，则行为取决于底层实现（可能删除或忽略该映射）。
+     *
+     * @param namespace 命名空间。不能为null。
+     * @param state 状态。可以为null。
+     * @throws IllegalArgumentException 如果namespace为null
+    */
     public void put(N namespace, S state) {
+        // 调用重载的put方法，将当前活动的键、当前活动的键组索引、给定的命名空间和状态作为参数传入
         put(keyContext.getCurrentKey(), keyContext.getCurrentKeyGroupIndex(), namespace, state);
     }
 
@@ -336,8 +347,16 @@ public abstract class StateTable<K, N, S>
 
     // Snapshot / Restore -------------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的键（key）、键组索引（keyGroup）、命名空间（namespace）和状态（state）组合起来，
+     * 将状态映射到由键和命名空间组成的复合键上。
+    */
     public void put(K key, int keyGroup, N namespace, S state) {
+        // 检查键和命名空间的前置条件
         checkKeyNamespacePreconditions(key, namespace);
+        // 调用获取键组索引映射表的方法，并将状态添加到映射表中
         getMapForKeyGroup(keyGroup).put(key, namespace, state);
     }
 

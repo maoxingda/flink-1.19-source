@@ -90,6 +90,17 @@ public class BackendRestorerProcedure<T extends Closeable & Disposable, S extend
      * @return the created (and restored) state backend.
      * @throws Exception if the backend could not be created or restored.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个新的状态后端，并从提供的一组状态快照备选方案中恢复它。
+     * @param restoreOptions 恢复选项的列表，每个选项包含一组状态
+     * @param stats 状态对象大小统计收集器
+     * @param <T> 返回的状态对象的类型
+     * @param <S> 状态对象的元素类型
+     * @return 创建并恢复后的状态对象
+     * @throws Exception 如果在创建或恢复过程中发生异常
+    */
     @Nonnull
     public T createAndRestore(
             @Nonnull List<? extends Collection<S>> restoreOptions,
@@ -97,24 +108,27 @@ public class BackendRestorerProcedure<T extends Closeable & Disposable, S extend
             throws Exception {
 
         if (restoreOptions.isEmpty()) {
+            // 如果恢复选项列表为空，则设置一个只包含一个空集合的列表
             restoreOptions = Collections.singletonList(Collections.emptyList());
         }
-
+        // 当前尝试的恢复选项的索引
         int alternativeIdx = 0;
-
+        // 用于收集可能发生的异常
         Exception collectedException = null;
 
         while (alternativeIdx < restoreOptions.size()) {
-
+            // 获取当前恢复选项中的状态集合
             Collection<S> restoreState = restoreOptions.get(alternativeIdx);
-
+            // 索引自增，以便下次循环尝试下一个恢复选项
             ++alternativeIdx;
 
             // IMPORTANT: please be careful when modifying the log statements because they are used
             // for validation in
             // the automatic end-to-end tests. Those tests might fail if they are not aligned with
             // the log message!
+
             if (restoreState.isEmpty()) {
+                // 如果状态集合为空，则记录调试日志，表示正在使用空状态创建对象
                 LOG.debug("Creating {} with empty state.", logDescription);
             } else {
                 if (LOG.isTraceEnabled()) {
@@ -134,12 +148,16 @@ public class BackendRestorerProcedure<T extends Closeable & Disposable, S extend
             }
 
             try {
+                // 尝试创建并恢复状态对象
+                //这段代码就会调用lamdb表达是
                 T successfullyRestored = attemptCreateAndRestore(restoreState);
                 // Obtain and report stats for the state objects used in our successful restore
+                // 对成功恢复中使用的状态对象获取并报告统计信息
                 restoreState.forEach(handle -> handle.collectSizeStats(stats));
+                // 返回成功恢复的状态对象
                 return successfullyRestored;
             } catch (Exception ex) {
-
+                // 收集并记录异常，如果已有收集到的异常，则保留第一个或更重要的异常
                 collectedException = ExceptionUtils.firstOrSuppressed(ex, collectedException);
 
                 if (backendCloseableRegistry.isClosed()) {
@@ -157,7 +175,7 @@ public class BackendRestorerProcedure<T extends Closeable & Disposable, S extend
                         ex);
             }
         }
-
+        //抛出异常
         throw new FlinkException(
                 "Could not restore "
                         + logDescription
@@ -166,26 +184,34 @@ public class BackendRestorerProcedure<T extends Closeable & Disposable, S extend
                         + " provided restore options.",
                 collectedException);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建并恢复
+    */
     private T attemptCreateAndRestore(Collection<S> restoreState) throws Exception {
 
         // create a new backend with necessary initialization.
+        // 使用提供的初始化信息创建一个新的后端实例
         final T backendInstance = instanceSupplier.apply(restoreState);
 
         try {
             // register the backend with the registry to participate in task lifecycle w.r.t.
             // cancellation.
+            // 将后端实例注册到注册表中，以便参与任务生命周期的管理，特别是在任务取消时
             backendCloseableRegistry.registerCloseable(backendInstance);
+            // 如果注册成功，返回创建的后端实例
             return backendInstance;
         } catch (Exception ex) {
             // dispose the backend, e.g. to release native resources, if failed to register it into
             // registry.
             try {
+                // 如果注册失败（比如因为资源不足等原因），则尝试释放后端实例占用的资源（如本地资源）
                 backendInstance.dispose();
             } catch (Exception disposeEx) {
                 ex = ExceptionUtils.firstOrSuppressed(disposeEx, ex);
             }
-
+            //抛出异常
             throw ex;
         }
     }

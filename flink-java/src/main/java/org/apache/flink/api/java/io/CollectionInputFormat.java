@@ -86,38 +86,67 @@ public class CollectionInputFormat<T> extends GenericInputFormat<T> implements N
 
     // --------------------------------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将当前对象的状态写入 ObjectOutputStream 中。
+     *
+     * @param out 用于写入对象的 ObjectOutputStream 对象
+     * @throws IOException 如果在写入过程中发生 I/O 错误
+    */
     private void writeObject(ObjectOutputStream out) throws IOException {
+        // 调用默认的对象序列化方法，用于序列化对象的非静态和非瞬态字段
         out.defaultWriteObject();
-
+        // 获取 dataSet 的大小
         final int size = dataSet.size();
+        // 将 dataSet 的大小写入输出流
         out.writeInt(size);
-
+        // 如果 dataSet 的大小大于 0
         if (size > 0) {
+            // 创建一个 DataOutputView 的包装器，用于将 ObjectOutputStream 转换为 DataOutputView 接口
             DataOutputViewStreamWrapper wrapper = new DataOutputViewStreamWrapper(out);
+            // 遍历 dataSet 中的每个元素
             for (T element : dataSet) {
+                // 使用 serializer 将元素序列化为字节，并写入 wrapper（即输出流）
                 serializer.serialize(element, wrapper);
             }
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从 ObjectInputStream 中读取对象的状态。
+     *
+     * @param in 用于读取对象的 ObjectInputStream 对象
+     * @throws IOException 如果在读取过程中发生 I/O 错误
+     * @throws ClassNotFoundException 如果在读取过程中找不到类定义
+    */
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        // 调用默认的对象反序列化方法，用于反序列化对象的非静态和非瞬态字段
         in.defaultReadObject();
-
+        // 读取并获取集合的长度
         int collectionLength = in.readInt();
+        // 创建一个新的 ArrayList，并为其指定初始容量（即集合长度）
         List<T> list = new ArrayList<T>(collectionLength);
-
+        // 如果集合长度大于 0
         if (collectionLength > 0) {
             try {
+                // 创建一个 DataInputView 的包装器，用于将 ObjectInputStream 转换为 DataInputView 接口
                 DataInputViewStreamWrapper wrapper = new DataInputViewStreamWrapper(in);
+                // 遍历集合中的每个元素
                 for (int i = 0; i < collectionLength; i++) {
+                    // 使用 serializer 反序列化元素
                     T element = serializer.deserialize(wrapper);
+                    // 将反序列化后的元素添加到列表中
                     list.add(element);
                 }
             } catch (Throwable t) {
+                // 如果在反序列化元素时发生异常，则抛出 IOException 并带上原始异常信息
                 throw new IOException("Error while deserializing element from collection", t);
             }
         }
-
+        // 将反序列化后的列表赋值给 dataSet 成员变量
         dataSet = list;
     }
 

@@ -276,35 +276,40 @@ public abstract class AbstractStreamOperator<OUT>
     @Override
     public final void initializeState(StreamTaskStateInitializer streamTaskStateManager)
             throws Exception {
-
+        // 获取状态键的序列化器
         final TypeSerializer<?> keySerializer =
                 config.getStateKeySerializer(getUserCodeClassloader());
-
+        // 获取包含此操作的StreamTask对象，并进行非空检查
         final StreamTask<?, ?> containingTask = Preconditions.checkNotNull(getContainingTask());
+        // 获取可关闭资源的注册器，并进行非空检查
         final CloseableRegistry streamTaskCloseableRegistry =
                 Preconditions.checkNotNull(containingTask.getCancelables());
-
+        // 创建一个StreamOperatorStateContext对象，它包含了StateBackend所需的所有上下文信息
         final StreamOperatorStateContext context =
                 streamTaskStateManager.streamOperatorStateContext(
-                        getOperatorID(),
-                        getClass().getSimpleName(),
-                        getProcessingTimeService(),
-                        this,
-                        keySerializer,
-                        streamTaskCloseableRegistry,
-                        metrics,
+                        getOperatorID(), // 操作符的ID
+                        getClass().getSimpleName(),// 操作符的简单类名
+                        getProcessingTimeService(),// 处理时间服务
+                        this,// 当前操作符的实例
+                        keySerializer, // 状态键的序列化器
+                        streamTaskCloseableRegistry,// 可关闭资源的注册器
+                        metrics,// 相关的度量指标
+                        // 获取用于状态后端的托管内存比例
                         config.getManagedMemoryFractionOperatorUseCaseOfSlot(
                                 ManagedMemoryUseCase.STATE_BACKEND,
                                 runtimeContext.getJobConfiguration(),
                                 runtimeContext.getTaskManagerRuntimeInfo().getConfiguration(),
                                 runtimeContext.getUserCodeClassLoader()),
                         isUsingCustomRawKeyedState());
-
+        // 创建一个StreamOperatorStateHandler对象，用于管理操作符的状态
         stateHandler =
                 new StreamOperatorStateHandler(
                         context, getExecutionConfig(), streamTaskCloseableRegistry);
+        // 获取内部时间服务管理器
         timeServiceManager = context.internalTimerServiceManager();
+        // 初始化操作符的状态
         stateHandler.initializeOperatorState(this);
+        // 设置KeyedStateStore到运行时上下文中，如果stateHandler没有则返回null
         runtimeContext.setKeyedStateStore(stateHandler.getKeyedStateStore().orElse(null));
     }
 

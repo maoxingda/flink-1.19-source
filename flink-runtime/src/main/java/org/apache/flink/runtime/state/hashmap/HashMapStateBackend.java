@@ -73,6 +73,11 @@ public class HashMapStateBackend extends AbstractStateBackend implements Configu
         latencyTrackingConfigBuilder = original.latencyTrackingConfigBuilder.configure(config);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 配置并返回一个HashMapStateBackend对象。
+    */
     @Override
     public HashMapStateBackend configure(ReadableConfig config, ClassLoader classLoader)
             throws IllegalConfigurationException {

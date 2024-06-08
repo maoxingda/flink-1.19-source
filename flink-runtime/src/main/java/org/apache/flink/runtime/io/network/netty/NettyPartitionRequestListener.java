@@ -86,9 +86,21 @@ public class NettyPartitionRequestListener implements PartitionRequestListener {
         return reader.getReceiverId();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 当结果分区被创建时，通知读取器（reader）相关的子分区已经创建。
+     *
+     * @param partition 被创建的结果分区
+     * @throws IOException 如果在通知过程中发生I/O错误
+     * @throws NullPointerException 如果传入的partition为null
+    */
     @Override
     public void notifyPartitionCreated(ResultPartition partition) throws IOException {
+        // 确保传入的partition不为null
         checkNotNull(partition);
+        // 通知读取器（reader）相关的子分区已经创建
+        // 传入创建的结果分区和子分区索引集合
         reader.notifySubpartitionsCreated(partition, subpartitionIndexSet);
     }
 

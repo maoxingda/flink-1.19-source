@@ -110,11 +110,25 @@ public class StreamSortOperator extends TableStreamOperator<RowData>
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化状态的方法，通常用于在流处理任务（如Flink任务）启动时恢复或设置任务的状态。
+     *
+     * @param context 状态初始化上下文，包含了初始化状态所需的所有信息，如状态后端、检查点等。
+     * @throws Exception 如果在初始化状态过程中遇到错误，则会抛出异常。
+    */
     @Override
     public void initializeState(StateInitializationContext context) throws Exception {
+        // 调用父类的initializeState方法，进行任何必要的默认状态初始化或准备工作。
         super.initializeState(context);
+        // 创建一个TupleTypeInfo，它表示一个Tuple2类型的元组，其中第一个元素是RowData类型，第二个元素是Long类型。
+        // 这里的inputRowType应该是之前定义好的RowData的类型信息。
         TupleTypeInfo<Tuple2<RowData, Long>> tupleType =
                 new TupleTypeInfo<>(inputRowType, Types.LONG);
+        // 使用OperatorStateStore获取一个ListState实例，用于存储和恢复一个元组列表的状态。
+        // ListStateDescriptor用于定义ListState的名称和类型信息。
+        // "localBufferState"是这个ListState的名称，tupleType定义了元组中元素的类型。
         this.bufferState =
                 context.getOperatorStateStore()
                         .getListState(new ListStateDescriptor<>("localBufferState", tupleType));

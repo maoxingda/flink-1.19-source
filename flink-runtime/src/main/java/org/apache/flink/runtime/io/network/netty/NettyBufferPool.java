@@ -74,30 +74,36 @@ public class NettyBufferPool extends PooledByteBufAllocator {
      * @param numberOfArenas Number of arenas (recommended: 2 * number of task slots)
      */
     public NettyBufferPool(int numberOfArenas) {
+        // 初始化Netty缓冲区池，使用直接内存而非堆内存
         super(
-                PREFER_DIRECT,
+                PREFER_DIRECT, // 首选直接内存，不使用堆内存
                 // No heap arenas, please.
-                0,
+                0,// 直接内存区域的数量，此处为0表示内部计算
                 // Number of direct arenas. Each arena allocates a chunk of 4 MB, i.e.
                 // we allocate numDirectArenas * 4 MB of direct memory. This can grow
                 // to multiple chunks per arena during runtime, but this should only
                 // happen with a large amount of connections per task manager. We
                 // control the memory allocations with low/high watermarks when writing
                 // to the TCP channels. Chunks are allocated lazily.
-                numberOfArenas,
-                PAGE_SIZE,
-                MAX_ORDER);
-
+                // 每个区域分配4MB的直接内存，总计分配的直接内存量为 numDirectArenas * 4 MB
+                // 在运行时，每个区域可能会根据连接数量增长为多个块，但这种情况仅在大量连接时才发生
+                // 我们在写入TCP通道时使用低/高水位线来控制内存分配，块是惰性分配的
+                numberOfArenas,// 直接内存区域的数量
+                PAGE_SIZE,// 页面大小，用于内存块分配
+                MAX_ORDER);// 最大顺序，决定内存块的大小（PAGE_SIZE << MAX_ORDER）
+        // 检查直接内存区域的数量是否至少为1
         checkArgument(numberOfArenas >= 1, "Number of arenas");
         this.numberOfArenas = numberOfArenas;
 
         // Arenas allocate chunks of pageSize << maxOrder bytes. With these
         // defaults, this results in chunks of 4 MB.
-
+        // Arenas 分配的是 pageSize << maxOrder 字节的块。默认配置下，这会产生4MB的块
         this.chunkSize = PAGE_SIZE << MAX_ORDER;
 
         Object[] allocDirectArenas = null;
         try {
+            // 尝试通过反射获取 PooledByteBufAllocator 中的 "directArenas" 字段
+            // 这可能用于获取内存统计信息，但在这里未直接使用
             Field directArenasField = PooledByteBufAllocator.class.getDeclaredField("directArenas");
             directArenasField.setAccessible(true);
 
@@ -105,6 +111,7 @@ public class NettyBufferPool extends PooledByteBufAllocator {
         } catch (Exception ignored) {
             LOG.warn("Memory statistics not available");
         } finally {
+            // 无论如何都设置 this.directArenas
             this.directArenas = allocDirectArenas;
         }
     }

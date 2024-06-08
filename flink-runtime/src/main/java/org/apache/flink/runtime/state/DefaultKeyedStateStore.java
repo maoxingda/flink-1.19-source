@@ -52,13 +52,29 @@ public class DefaultKeyedStateStore implements KeyedStateStore {
         this.serializerFactory = Preconditions.checkNotNull(serializerFactory);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据给定的ValueStateDescriptor获取一个ValueState对象。
+     * ValueState用于存储与特定键关联的值。
+     *
+     * @param stateProperties 用于描述ValueState属性的ValueStateDescriptor对象
+     * @param <T>           ValueState中存储的值的类型
+     * @return              与给定stateProperties匹配的ValueState对象
+     * @throws RuntimeException 如果在获取状态过程中发生错误
+    */
     @Override
     public <T> ValueState<T> getState(ValueStateDescriptor<T> stateProperties) {
+        // 确保stateProperties不为null，如果为null则抛出NullPointerException
         requireNonNull(stateProperties, "The state properties must not be null");
         try {
+            // 初始化序列化器，如果尚未设置，则使用给定的serializerFactory进行初始化
+            // 这确保了ValueState中的值可以被正确地序列化和反序列化
             stateProperties.initializeSerializerUnlessSet(serializerFactory);
+            // 调用getPartitionedState方法获取与给定stateProperties匹配的ValueState对象
             return getPartitionedState(stateProperties);
         } catch (Exception e) {
+            //抛出异常
             throw new RuntimeException("Error while getting state", e);
         }
     }
@@ -110,6 +126,11 @@ public class DefaultKeyedStateStore implements KeyedStateStore {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 调用keyedStateBackend.getPartitionedState获取状态对象
+    */
     protected <S extends State> S getPartitionedState(StateDescriptor<S, ?> stateDescriptor)
             throws Exception {
         return keyedStateBackend.getPartitionedState(

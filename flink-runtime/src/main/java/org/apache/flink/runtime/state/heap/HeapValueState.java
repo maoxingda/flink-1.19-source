@@ -78,14 +78,23 @@ class HeapValueState<K, N, V> extends AbstractHeapState<K, N, V>
         return result;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 更新当前命名空间下的值。
+     *
+     * @param value 要更新的值，如果为null，则清除当前命名空间下的值
+    */
     @Override
     public void update(V value) {
-
+        // 如果传入的值是null
         if (value == null) {
+            // 则清除当前命名空间下的所有值
             clear();
+            // 方法结束，返回不执行后续操作
             return;
         }
-
+        // 否则，将传入的值与当前命名空间关联起来，存储在stateTable中
         stateTable.put(currentNamespace, value);
     }
 

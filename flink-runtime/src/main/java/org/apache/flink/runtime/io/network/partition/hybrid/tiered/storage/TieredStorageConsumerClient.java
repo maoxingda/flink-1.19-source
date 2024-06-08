@@ -35,6 +35,11 @@ import java.util.Map;
 import java.util.Optional;
 
 /** {@link TieredStorageConsumerClient} is used to read buffer from tiered store. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于从分层存储读取缓冲区
+*/
 public class TieredStorageConsumerClient {
 
     private final List<TierFactory> tierFactories;

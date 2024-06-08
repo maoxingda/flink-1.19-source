@@ -301,21 +301,26 @@ public class DefaultExecutionGraphBuilder {
              */
             final SerializedValue<StateBackend> serializedAppConfigured =
                     snapshotSettings.getDefaultStateBackend();
-            /** 如果*/
+            // 检查 serializedAppConfigured 是否为空
             if (serializedAppConfigured == null) {
+                // 如果为空，则设置 applicationConfiguredBackend 为 null
                 applicationConfiguredBackend = null;
             } else {
                 try {
+                    // 否则，尝试使用 classLoader 反序列化 serializedAppConfigured
                     applicationConfiguredBackend =
                             serializedAppConfigured.deserializeValue(classLoader);
                 } catch (IOException | ClassNotFoundException e) {
+                    //抛出异常
                     throw new JobExecutionException(
                             jobId, "Could not deserialize application-defined state backend.", e);
                 }
             }
-
+            // 定义一个 StateBackend 类型的变量 rootBackend
             final StateBackend rootBackend;
             try {
+                // 尝试从 applicationConfiguredBackend、jobGraph 的配置、jobManagerConfig、classLoader 和日志中
+                // 加载或配置 StateBackend，如果都没有指定，则使用默认配置
                 rootBackend =
                         StateBackendLoader.fromApplicationOrConfigOrDefault(
                                 applicationConfiguredBackend,
@@ -324,31 +329,41 @@ public class DefaultExecutionGraphBuilder {
                                 classLoader,
                                 log);
             } catch (IllegalConfigurationException | IOException | DynamicCodeLoadingException e) {
+                // 如果在加载或配置 StateBackend 的过程中发生异常
+                // 则抛出一个 JobExecutionException 异常，并带有详细的错误信息和原始异常 e
                 throw new JobExecutionException(
                         jobId, "Could not instantiate configured state backend", e);
             }
 
             // load the checkpoint storage from the application settings
+            // 从应用程序设置中加载检查点存储
+           // 定义一个 CheckpointStorage 类型的变量 applicationConfiguredStorage
             final CheckpointStorage applicationConfiguredStorage;
+            // 获取默认的 CheckpointStorage 的序列化值
             final SerializedValue<CheckpointStorage> serializedAppConfiguredStorage =
                     snapshotSettings.getDefaultCheckpointStorage();
 
             if (serializedAppConfiguredStorage == null) {
+                // 如果 serializedAppConfiguredStorage 为空，则设置 applicationConfiguredStorage 为 null
                 applicationConfiguredStorage = null;
             } else {
                 try {
+                    // 尝试从 serializedAppConfiguredStorage 反序列化应用程序定义的检查点存储
                     applicationConfiguredStorage =
                             serializedAppConfiguredStorage.deserializeValue(classLoader);
                 } catch (IOException | ClassNotFoundException e) {
+                    //抛出异常
                     throw new JobExecutionException(
                             jobId,
                             "Could not deserialize application-defined checkpoint storage.",
                             e);
                 }
             }
-
+            // 定义一个 CheckpointStorage 类型的变量 rootStorage
             final CheckpointStorage rootStorage;
             try {
+                // 尝试从 applicationConfiguredStorage、rootBackend、jobGraph 的配置、jobManagerConfig、classLoader 和日志中
+                // 加载或配置 CheckpointStorage
                 rootStorage =
                         CheckpointStorageLoader.load(
                                 applicationConfiguredStorage,
@@ -358,56 +373,67 @@ public class DefaultExecutionGraphBuilder {
                                 classLoader,
                                 log);
             } catch (IllegalConfigurationException | DynamicCodeLoadingException e) {
+                //抛出异常
                 throw new JobExecutionException(
                         jobId, "Could not instantiate configured checkpoint storage", e);
             }
 
             // instantiate the user-defined checkpoint hooks
-
+            // 从快照设置中获取用户定义的MasterTriggerRestoreHook的序列化工厂数组
             final SerializedValue<MasterTriggerRestoreHook.Factory[]> serializedHooks =
                     snapshotSettings.getMasterHooks();
+            // 用于存储反序列化后的MasterTriggerRestoreHook对象的列表
             final List<MasterTriggerRestoreHook<?>> hooks;
-
+            // 检查serializedHooks是否为空
             if (serializedHooks == null) {
+                // 如果为空，则hooks列表为一个空的列表
                 hooks = Collections.emptyList();
             } else {
+                // 如果serializedHooks不为空，则尝试反序列化它
                 final MasterTriggerRestoreHook.Factory[] hookFactories;
                 try {
+                    // 使用给定的类加载器反序列化serializedHooks
                     hookFactories = serializedHooks.deserializeValue(classLoader);
                 } catch (IOException | ClassNotFoundException e) {
+                    // 如果在反序列化过程中发生异常，则抛出JobExecutionException异常
                     throw new JobExecutionException(
                             jobId, "Could not instantiate user-defined checkpoint hooks", e);
                 }
-
+                // 保存当前线程的上下文类加载器，以便稍后恢复
                 final Thread thread = Thread.currentThread();
                 final ClassLoader originalClassLoader = thread.getContextClassLoader();
+                // 临时设置当前线程的上下文类加载器为指定的类加载器
                 thread.setContextClassLoader(classLoader);
 
                 try {
+                    // 创建一个新的ArrayList来存储MasterTriggerRestoreHook对象
                     hooks = new ArrayList<>(hookFactories.length);
+                    // 遍历反序列化后的钩子工厂数组
                     for (MasterTriggerRestoreHook.Factory factory : hookFactories) {
+                        // 使用工厂创建钩子，并使用wrapHook方法包装，然后添加到hooks列表中
                         hooks.add(MasterHooks.wrapHook(factory.create(), classLoader));
                     }
                 } finally {
+                    // 恢复线程的原始上下文类加载器
                     thread.setContextClassLoader(originalClassLoader);
                 }
             }
-
+            // 从快照设置中获取检查点协调器的配置
             final CheckpointCoordinatorConfiguration chkConfig =
                     snapshotSettings.getCheckpointCoordinatorConfiguration();
-
+            // 启用作业图的检查点机制
             executionGraph.enableCheckpointing(
                     chkConfig,
                     hooks,
-                    checkpointIdCounter,
-                    completedCheckpointStore,
-                    rootBackend,
-                    rootStorage,
-                    checkpointStatsTrackerFactory.get(),
+                    checkpointIdCounter,// 检查点ID计数器
+                    completedCheckpointStore,// 已完成检查点的存储
+                    rootBackend,// 后端存储
+                    rootStorage,// 检查点存储
+                    checkpointStatsTrackerFactory.get(),// 检查点统计追踪器工厂
                     checkpointsCleaner,
-                    jobManagerConfig.get(STATE_CHANGE_LOG_STORAGE));
+                    jobManagerConfig.get(STATE_CHANGE_LOG_STORAGE)); // 状态更改日志存储配置
         }
-
+        // 返回配置好的executionGraph
         return executionGraph;
     }
 

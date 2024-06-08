@@ -47,6 +47,11 @@ import static org.apache.flink.util.Preconditions.checkState;
  * <p>It also keeps track of available buffers and notifies the outbound handler about
  * non-emptiness, similar to the {@link LocalInputChannel}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 在新的基于网络信用的模式中使用的子分区视图的简单包装器。
+*/
 class CreditBasedSequenceNumberingViewReader
         implements BufferAvailabilityListener, NetworkSequenceViewReader {
 
@@ -91,57 +96,92 @@ class CreditBasedSequenceNumberingViewReader
         this.subpartitionId = -1;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * @param partitionProvider 提供ResultPartition的提供者
+     * @param resultPartitionId 要请求的ResultPartition的唯一标识符
+     * @param subpartitionIndexSet 要请求的ResultSubpartition的索引集合
+    */
     @Override
     public void requestSubpartitionViewOrRegisterListener(
             ResultPartitionProvider partitionProvider,
             ResultPartitionID resultPartitionId,
             ResultSubpartitionIndexSet subpartitionIndexSet)
             throws IOException {
+        // 使用同步锁来确保同时只有一个线程可以执行此操作
         synchronized (requestLock) {
+            // 检查是否已经请求了SubpartitionView，如果已经请求过则抛出异常
             checkState(subpartitionView == null, "Subpartitions already requested");
+            // 检查是否已经创建了PartitionRequestListener，如果已经创建过则抛出异常
             checkState(
                     partitionRequestListener == null, "Partition request listener already created");
+            // 创建一个新的NettyPartitionRequestListener对象，它将作为Partition的请求监听器
+            // 并将接收到的Partition请求转发给ResultPartitionManager
             partitionRequestListener =
                     new NettyPartitionRequestListener(
                             partitionProvider, this, subpartitionIndexSet, resultPartitionId);
             // The partition provider will create subpartitionView if resultPartition is
             // registered, otherwise it will register a listener of partition request to the result
             // partition manager.
+            // 调用partitionProvider的createSubpartitionViewOrRegisterListener方法
+            // 如果ResultPartition已注册，则它将创建并返回ResultSubpartitionView；
+            // 否则，它将向ResultPartitionManager注册partitionRequestListener以监听Partition请求
             Optional<ResultSubpartitionView> subpartitionViewOptional =
                     partitionProvider.createSubpartitionViewOrRegisterListener(
                             resultPartitionId,
                             subpartitionIndexSet,
                             this,
                             partitionRequestListener);
+            // 如果返回了ResultSubpartitionView，则设置到当前实例的subpartitionView字段
             if (subpartitionViewOptional.isPresent()) {
                 this.subpartitionView = subpartitionViewOptional.get();
+                // 如果只需要一个子分区，则获取该子分区的索引并设置到subpartitionId字段
                 if (subpartitionIndexSet.size() == 1) {
                     subpartitionId = subpartitionIndexSet.values().iterator().next();
                 }
             } else {
                 // If the subpartitionView is not exist, it means that the requested partition is
                 // not registered.
+                // 如果没有返回ResultSubpartitionView，则表示请求的分区尚未注册
+                // 此时不需要进行任何操作，直接返回即可
                 return;
             }
         }
-
+        // 通知其他可能等待此SubpartitionView的组件，数据已经可用
         notifyDataAvailable(subpartitionView);
+        // 通知请求队列，一个新的读取器（可能是本实例）已经被创建
+        // 这可以允许队列进行一些优化，比如停止不必要的等待或其他操作  
         requestQueue.notifyReaderCreated(this);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 当子分区被创建时，通知当前实例相关的子分区视图已经准备就绪。
+     *
+     * @param partition 相关的结果分区
+     * @param subpartitionIndexSet 子分区索引集合
+     * @throws IOException 如果在创建子分区视图或通知过程中发生I/O错误
+     * @throws IllegalStateException 如果子分区视图已经存在
+    */
     @Override
     public void notifySubpartitionsCreated(
             ResultPartition partition, ResultSubpartitionIndexSet subpartitionIndexSet)
             throws IOException {
+        // 使用requestLock作为锁，确保线程安全
         synchronized (requestLock) {
+            // 检查是否已经存在子分区视图，如果存在则抛出异常
             checkState(subpartitionView == null, "Subpartitions already requested");
+            // 调用结果分区的createSubpartitionView方法来创建子分区视图
             subpartitionView = partition.createSubpartitionView(subpartitionIndexSet, this);
+            // 如果子分区索引集合只包含一个元素，则获取该子分区的ID
             if (subpartitionIndexSet.size() == 1) {
                 subpartitionId = subpartitionIndexSet.values().iterator().next();
             }
         }
-
+        // 通知数据已经可用
         notifyDataAvailable(subpartitionView);
+        // 通知请求队列当前读取器已经创建，以便进行后续的请求处理
         requestQueue.notifyReaderCreated(this);
     }
 
@@ -250,19 +290,35 @@ class CreditBasedSequenceNumberingViewReader
         return subpartitionView.peekNextBufferSubpartitionId();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从子分区视图中获取下一个可用的缓冲区及其相关信息。
+     *
+     * @return 包含缓冲区、数据类型、积压缓冲区数量和序列号的BufferAndAvailability对象，
+     *         如果没有可用的缓冲区则返回null。
+     * @throws IOException 如果在获取缓冲区过程中发生I/O错误
+     * @throws IllegalStateException 如果没有足够的信用额度（credits）来接收缓冲区
+    */
     @Nullable
     @Override
     public BufferAndAvailability getNextBuffer() throws IOException {
+        // 从子分区视图中获取下一个缓冲区及其积压缓冲区数量
         BufferAndBacklog next = subpartitionView.getNextBuffer();
         if (next != null) {
+            // 如果下一个缓冲区是一个真正的缓冲区（而不是元数据或其他），并且当前可用的信用额度减一后小于0
             if (next.buffer().isBuffer() && --numCreditsAvailable < 0) {
+                // 抛出异常，因为没有足够的信用额度来接收更多的缓冲区
                 throw new IllegalStateException("no credit available");
             }
-
+            // 获取下一个缓冲区的数据类型
             final Buffer.DataType nextDataType = getNextDataType(next);
+            // 创建一个新的BufferAndAvailability对象，包含缓冲区、数据类型、积压缓冲区数量和序列号
+            // 然后返回这个对象
             return new BufferAndAvailability(
                     next.buffer(), nextDataType, next.buffersInBacklog(), next.getSequenceNumber());
         } else {
+            // 如果没有可用的缓冲区，则返回null
             return null;
         }
     }
@@ -290,6 +346,16 @@ class CreditBasedSequenceNumberingViewReader
         subpartitionView.releaseAllResources();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通知特定视图数据可用。
+     *
+     * 当有数据可以被特定视图 {@link ResultSubpartitionView} 读取时，调用此方法以通知其数据已经可用。
+     * 通知是通过 {@link RequestQueue} 进行的，告诉请求队列该视图的数据已经准备就绪。
+     *
+     * @param view 通知数据可用的特定视图
+    */
     @Override
     public void notifyDataAvailable(ResultSubpartitionView view) {
         requestQueue.notifyReaderNonEmpty(this);

@@ -68,25 +68,33 @@ class PartitionRequestServerHandler extends SimpleChannelInboundHandler<NettyMes
     public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
         super.channelUnregistered(ctx);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理NettyMessage
+     * @param ctx ChannelHandler环境
+     * msg 具体消息
+    */
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, NettyMessage msg) throws Exception {
         try {
+            //获取msg的Class
             Class<?> msgClazz = msg.getClass();
 
             // ----------------------------------------------------------------
             // Intermediate result partition requests
             // ----------------------------------------------------------------
+            //如果消息类型是PartitionRequest
             if (msgClazz == PartitionRequest.class) {
                 PartitionRequest request = (PartitionRequest) msg;
 
                 LOG.debug("Read channel on {}: {}.", ctx.channel().localAddress(), request);
-
+                // 创建一个基于信用的序列号读取器
                 NetworkSequenceViewReader reader;
                 reader =
                         new CreditBasedSequenceNumberingViewReader(
                                 request.receiverId, request.credit, outboundQueue);
-
+                // 根据请求的请求分区ID和队列索引集请求子分区视图或注册监听器
                 reader.requestSubpartitionViewOrRegisterListener(
                         partitionProvider, request.partitionId, request.queueIndexSet);
 
@@ -94,47 +102,59 @@ class PartitionRequestServerHandler extends SimpleChannelInboundHandler<NettyMes
             // ----------------------------------------------------------------
             // Task events
             // ----------------------------------------------------------------
+            //任务事件
             else if (msgClazz == TaskEventRequest.class) {
                 TaskEventRequest request = (TaskEventRequest) msg;
 
+                // 发布任务事件，如果发布失败则发送错误响应
                 if (!taskEventPublisher.publish(request.partitionId, request.event)) {
                     respondWithError(
                             ctx,
                             new IllegalArgumentException("Task event receiver not found."),
                             request.receiverId);
                 }
+                // 如果消息类型是 CancelPartitionRequest，则执行取消分区的操作
             } else if (msgClazz == CancelPartitionRequest.class) {
                 CancelPartitionRequest request = (CancelPartitionRequest) msg;
-
+                // 调用 outboundQueue 的 cancel 方法，传入接收者ID以取消分区
                 outboundQueue.cancel(request.receiverId);
+                // 如果消息类型是 CloseRequest，则关闭 outboundQueue
             } else if (msgClazz == CloseRequest.class) {
+                // 调用 outboundQueue 的 close 方法，关闭队列
                 outboundQueue.close();
+                // 如果消息类型是 AddCredit，则向 outboundQueue 添加信用额度或恢复消费
             } else if (msgClazz == AddCredit.class) {
                 AddCredit request = (AddCredit) msg;
 
                 outboundQueue.addCreditOrResumeConsumption(
                         request.receiverId, reader -> reader.addCredit(request.credit));
             } else if (msgClazz == ResumeConsumption.class) {
+                // 如果消息类型是 ResumeConsumption，则恢复 outboundQueue 的消费
                 ResumeConsumption request = (ResumeConsumption) msg;
 
                 outboundQueue.addCreditOrResumeConsumption(
                         request.receiverId, NetworkSequenceViewReader::resumeConsumption);
             } else if (msgClazz == AckAllUserRecordsProcessed.class) {
+                // 如果消息类型是 AckAllUserRecordsProcessed，则确认所有用户记录已处理
                 AckAllUserRecordsProcessed request = (AckAllUserRecordsProcessed) msg;
 
                 outboundQueue.acknowledgeAllRecordsProcessed(request.receiverId);
             } else if (msgClazz == NewBufferSize.class) {
+                // 如果消息类型是 NewBufferSize，则通知新的缓冲区大小
                 NewBufferSize request = (NewBufferSize) msg;
 
                 outboundQueue.notifyNewBufferSize(request.receiverId, request.bufferSize);
             } else if (msgClazz == SegmentId.class) {
+                // 如果消息类型是 SegmentId，则通知所需的分段ID
                 SegmentId request = (SegmentId) msg;
                 outboundQueue.notifyRequiredSegmentId(
                         request.receiverId, request.subpartitionId, request.segmentId);
             } else {
+                // 如果接收到未知类型的消息，则记录警告日志
                 LOG.warn("Received unexpected client request: {}", msg);
             }
         } catch (Throwable t) {
+            // 捕获所有异常，并回复错误给客户端
             respondWithError(ctx, t);
         }
     }

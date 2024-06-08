@@ -238,18 +238,34 @@ public abstract class BufferWritingResultPartition extends ResultPartition {
         hardBackPressuredTimeMsPerSecond = metrics.getHardBackPressuredTimePerSecond();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据给定的子分区索引和缓冲区可用性监听器，创建一个ResultSubpartitionView对象。
+     * 这个视图对象表示一个结果子分区的读取视图。
+     *
+     * @param subpartitionIndex 子分区的索引
+     * @param availabilityListener 缓冲区可用性监听器
+     * @return ResultSubpartitionView对象，表示结果子分区的读取视图
+     * @throws IOException 如果在创建子分区视图时发生I/O错误
+     * @throws IndexOutOfBoundsException 如果提供的子分区索引超出范围
+     * @throws IllegalStateException 如果该分区已经被释放
+    */
     @Override
     protected ResultSubpartitionView createSubpartitionView(
             int subpartitionIndex, BufferAvailabilityListener availabilityListener)
             throws IOException {
+        // 检查子分区索引是否在合法范围内
         checkElementIndex(subpartitionIndex, numSubpartitions, "Subpartition not found.");
+        // 检查该分区是否已经被释放
         checkState(!isReleased(), "Partition released.");
-
+        // 从数组中根据索引获取ResultSubpartition对象
         ResultSubpartition subpartition = subpartitions[subpartitionIndex];
+        // 调用ResultSubpartition对象的createReadView方法来创建读取视图
         ResultSubpartitionView readView = subpartition.createReadView(availabilityListener);
 
         LOG.debug("Created {}", readView);
-
+        // 返回创建的读取视图
         return readView;
     }
 

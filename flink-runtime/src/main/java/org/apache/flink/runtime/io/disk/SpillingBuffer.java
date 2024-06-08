@@ -60,36 +60,59 @@ public class SpillingBuffer extends AbstractPagedOutputView {
         this.ioManager = ioManager;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取下一个内存段或磁盘上的块
+     *
+     * @param current 当前正在使用的内存段
+     * @param positionInCurrent 当前内存段中的位置（此参数在此方法中可能未使用）
+     * @return 下一个可用的内存段或磁盘上的块
+     * @throws IOException 如果在写入或获取内存段时发生I/O错误
+    */
     @Override
     protected MemorySegment nextSegment(MemorySegment current, int positionInCurrent)
             throws IOException {
         // check if we are still in memory
+        // 检查是否仍在内存中处理
         if (this.writer == null) {
+            // 将当前内存段添加到已满的段列表中
             this.fullSegments.add(current);
-
+            // 从内存源中获取下一个内存段
             final MemorySegment nextSeg = this.memorySource.nextSegment();
             if (nextSeg != null) {
+                // 如果存在下一个内存段，则返回它
                 return nextSeg;
             } else {
                 // out of memory, need to spill: create a writer
+                // 内存不足，需要溢出到磁盘：创建一个写入器
                 this.writer =
                         this.ioManager.createBlockChannelWriter(this.ioManager.createChannel());
 
                 // add all segments to the writer
+                // 将所有已满的段添加到写入器中
                 this.blockCount = this.fullSegments.size();
                 this.numMemorySegmentsInWriter = this.blockCount;
                 for (int i = 0; i < this.fullSegments.size(); i++) {
                     this.writer.writeBlock(this.fullSegments.get(i));
                 }
+                // 清空已满的段列表
                 this.fullSegments.clear();
+                // 从写入器中获取第一个返回的块
                 final MemorySegment seg = this.writer.getNextReturnedBlock();
+                // 更新写入器中的内存段数量
                 this.numMemorySegmentsInWriter--;
+                // 返回该块
                 return seg;
             }
         } else {
             // spilling
+            // 正在溢出到磁盘
+            // 将当前内存段写入到磁盘的写入器中
             this.writer.writeBlock(current);
+            // 更新总的块计数
             this.blockCount++;
+            // 从写入器中获取下一个返回的块
             return this.writer.getNextReturnedBlock();
         }
     }

@@ -2,6 +2,9 @@ package com.source.demo;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.contrib.streaming.state.PredefinedOptions;
+import org.apache.flink.contrib.streaming.state.RocksDBStateBackend;
+import org.apache.flink.runtime.state.StateBackend;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
@@ -26,11 +29,18 @@ public class SocketWordCountStreamGraph {
         env.registerCachedFile("./a_conf/a.txt","cache");
 
         /** 设置检查点的时间间隔 */
-        //env.enableCheckpointing(30000000);
+        env.enableCheckpointing(30000);
         /** 设置检查点路径*/
         //env.getCheckpointConfig().setCheckpointStorage("file:///H:/chk");
+        // 状态后端设置
+        // 设置存储文件位置为 file:///Users/flink/checkpoints
+        RocksDBStateBackend rocksDBStateBackend = new RocksDBStateBackend(
+                "file:///H:/chkcheckpoints", true);
+        rocksDBStateBackend.setPredefinedOptions(PredefinedOptions.SPINNING_DISK_OPTIMIZED_HIGH_MEM);
+        env.setStateBackend(rocksDBStateBackend);
         env.setParallelism(2);
         env.setMaxParallelism(2);
+
         /** 读取socket数据 */
         DataStreamSource<String> fileStream =   env.socketTextStream("127.0.0.1",9999);
         /** 将数据转成小写 */

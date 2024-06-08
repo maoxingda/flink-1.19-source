@@ -40,14 +40,28 @@ public class AsynchronousBufferFileWriter extends AsynchronousFileIOChannel<Buff
      * @param buffer the buffer to be written (will be recycled when done)
      * @throws IOException thrown if adding the write operation fails
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 异步写入给定的数据块。
+     *
+     * <p>此方法将给定的缓冲区（buffer）中的数据异步地写入到目标位置，并在写入完成后回收该缓冲区。</p>
+     *
+     * @param buffer 要写入的数据块（在写入完成后将被回收）
+     * @throws IOException 如果添加写入操作失败，则抛出IOException
+    */
     @Override
     public void writeBlock(Buffer buffer) throws IOException {
         try {
             // if successfully added, the buffer will be recycled after the write operation
+            // 尝试将写入请求添加到队列或执行器中
+            // 如果成功添加，写入操作将在后台异步执行，并在完成后自动回收buffer
             addRequest(new BufferWriteRequest(this, buffer));
         } catch (Throwable e) {
             // if not added, we need to recycle here
+            // 如果写入请求未能成功添加（可能是队列已满、执行器拒绝等），则在这里手动回收缓冲区
             buffer.recycleBuffer();
+            // 这样做是为了保持方法签名的异常类型一致性，并向外传递错误信息
             ExceptionUtils.rethrowIOException(e);
         }
     }

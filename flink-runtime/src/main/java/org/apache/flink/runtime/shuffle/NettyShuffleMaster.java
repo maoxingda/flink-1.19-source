@@ -92,27 +92,38 @@ public class NettyShuffleMaster implements ShuffleMaster<NettyShuffleDescriptor>
                         NettyShuffleEnvironmentOptions.NETWORK_EXTRA_BUFFERS_PER_GATE.key()));
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 注册分区到生产者，并返回一个包含Netty Shuffle描述符的CompletableFuture。
+     *
+     * @param jobID 作业ID，用于标识特定的作业
+     * @param partitionDescriptor 分区描述符，包含分区的详细信息
+     * @param producerDescriptor 生产者描述符，包含生产者的相关信息
+     * @return 一个包含Netty Shuffle描述符的CompletableFuture，该描述符描述了如何通过网络与生产者进行通信
+    */
     @Override
     public CompletableFuture<NettyShuffleDescriptor> registerPartitionWithProducer(
             JobID jobID,
             PartitionDescriptor partitionDescriptor,
             ProducerDescriptor producerDescriptor) {
-
+        // 根据分区ID和生产者的执行ID创建结果分区的唯一ID
         ResultPartitionID resultPartitionID =
                 new ResultPartitionID(
                         partitionDescriptor.getPartitionId(),
                         producerDescriptor.getProducerExecutionId());
-
+        // 创建一个Netty Shuffle描述符，该描述符包含生产者的位置信息、连接信息和结果分区的ID
         NettyShuffleDescriptor shuffleDeploymentDescriptor =
                 new NettyShuffleDescriptor(
                         producerDescriptor.getProducerLocation(),
                         createConnectionInfo(
                                 producerDescriptor, partitionDescriptor.getConnectionIndex()),
                         resultPartitionID);
-
+        // 如果存在分层内部Shuffle管理器，则向其中添加该分区
         if (tieredInternalShuffleMaster != null) {
             tieredInternalShuffleMaster.addPartition(resultPartitionID);
         }
+        // 返回一个已经完成的CompletableFuture，其中包含了Netty Shuffle描述符
         return CompletableFuture.completedFuture(shuffleDeploymentDescriptor);
     }
 

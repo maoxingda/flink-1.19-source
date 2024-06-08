@@ -27,6 +27,11 @@ import org.apache.flink.runtime.state.StateBackendFactory;
 @PublicEvolving
 public class HashMapStateBackendFactory implements StateBackendFactory<HashMapStateBackend> {
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建HashMapStateBackend并调用configure方法
+    */
     @Override
     public HashMapStateBackend createFromConfig(ReadableConfig config, ClassLoader classLoader)
             throws IllegalConfigurationException {

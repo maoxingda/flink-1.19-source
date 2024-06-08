@@ -311,11 +311,19 @@ public class CopyOnWriteStateMap<K, N, S> extends StateMap<K, N, S> {
         return false;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的键（key）、命名空间（namespace）和值（value）组合起来，
+     * 将值映射到由键和命名空间组成的复合键上。
+    */
     @Override
     public void put(K key, N namespace, S value) {
+        // 尝试在内部状态映射表中创建或获取一个StateMapEntry对象
         final StateMapEntry<K, N, S> e = putEntry(key, namespace);
-
+        // 更新StateMapEntry对象的值
         e.state = value;
+        // 更新StateMapEntry对象的状态版本
         e.stateVersion = stateMapVersion;
     }
 

@@ -146,6 +146,20 @@ public class ResultPartitionFactory {
                 desc.isNumberOfPartitionConsumerUndefined());
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建ResultPartition
+     * @param taskNameWithSubtaskAndId 任务名称，包含子任务和ID
+     * @param partitionIndex 分区索引
+     * @param id  ResultPartition 的 ID
+     * @param type  ResultPartition 的 type
+     * @param numberOfSubpartitions 子分区的数量
+     * @param maxParallelism 最大并行度
+     * @param isBroadcast 是否广播
+     * @param bufferPoolFactory 缓冲区池的工厂方法，可能抛出 IOException
+     * @param isNumberOfPartitionConsumerUndefined 是否未定义分区消费者的数量
+    */
     @VisibleForTesting
     public ResultPartition create(
             String taskNameWithSubtaskAndId,
@@ -157,14 +171,18 @@ public class ResultPartitionFactory {
             boolean isBroadcast,
             SupplierWithException<BufferPool, IOException> bufferPoolFactory,
             boolean isNumberOfPartitionConsumerUndefined) {
+        // 缓冲区压缩器，初始化为 null
         BufferCompressor bufferCompressor = null;
+        // 如果当前 ResultPartition 类型支持压缩，并且启用了批处理shuffle的压缩
         if (type.supportCompression() && batchShuffleCompressionEnabled) {
+            // 创建一个新的 BufferCompressor 对象
             bufferCompressor = new BufferCompressor(networkBufferSize, compressionCodec);
         }
-
+        // 初始化 ResultSubpartition 数组
         ResultSubpartition[] subpartitions = new ResultSubpartition[numberOfSubpartitions];
-
+        // 最终创建的 ResultPartition 对象
         final ResultPartition partition;
+        // 如果是 PIPELINED、PIPELINED_BOUNDED 或 PIPELINED_APPROXIMATE 类型的 ResultPartition
         if (type == ResultPartitionType.PIPELINED
                 || type == ResultPartitionType.PIPELINED_BOUNDED
                 || type == ResultPartitionType.PIPELINED_APPROXIMATE) {
@@ -179,23 +197,28 @@ public class ResultPartitionFactory {
                             partitionManager,
                             bufferCompressor,
                             bufferPoolFactory);
-
+            // 为每个子分区初始化具体的对象
             for (int i = 0; i < subpartitions.length; i++) {
+                // 如果是 PIPELINED_APPROXIMATE 类型，则创建 PipelinedApproximateSubpartition 对象
                 if (type == ResultPartitionType.PIPELINED_APPROXIMATE) {
                     subpartitions[i] =
                             new PipelinedApproximateSubpartition(
                                     i, configuredNetworkBuffersPerChannel, pipelinedPartition);
                 } else {
+                    // 否则，创建 PipelinedSubpartition 对象
                     subpartitions[i] =
                             new PipelinedSubpartition(
                                     i, configuredNetworkBuffersPerChannel, pipelinedPartition);
                 }
             }
-
+            // 将创建的 PipelinedResultPartition 对象赋值给 partition
             partition = pipelinedPartition;
+            // 判断结果分区的类型，根据类型创建不同的分区实例
         } else if (type == ResultPartitionType.BLOCKING
                 || type == ResultPartitionType.BLOCKING_PERSISTENT) {
+            // 如果子分区的数量大于或等于sortShuffleMinParallelism，则使用排序合并分区
             if (numberOfSubpartitions >= sortShuffleMinParallelism) {
+                // 创建一个排序合并结果分区
                 partition =
                         new SortMergeResultPartition(
                                 taskNameWithSubtaskAndId,
@@ -210,6 +233,7 @@ public class ResultPartitionFactory {
                                 channelManager.createChannel().getPath(),
                                 bufferCompressor,
                                 bufferPoolFactory);
+                // 否则，使用有界阻塞分区
             } else {
                 final BoundedBlockingResultPartition blockingPartition =
                         new BoundedBlockingResultPartition(
@@ -222,7 +246,7 @@ public class ResultPartitionFactory {
                                 partitionManager,
                                 bufferCompressor,
                                 bufferPoolFactory);
-
+                // 初始化有界阻塞分区
                 initializeBoundedBlockingPartitions(
                         subpartitions,
                         blockingPartition,
@@ -235,6 +259,7 @@ public class ResultPartitionFactory {
             }
         } else if (type == ResultPartitionType.HYBRID_FULL
                 || type == ResultPartitionType.HYBRID_SELECTIVE) {
+            // 如果存在分层存储，则使用分层结果分区
             if (tieredStorage.isPresent()) {
                 partition =
                         tieredStorage
@@ -255,6 +280,7 @@ public class ResultPartitionFactory {
                                         batchShuffleReadIOExecutor,
                                         isNumberOfPartitionConsumerUndefined);
             } else {
+                // 否则，使用混合结果分区
                 partition =
                         new HsResultPartition(
                                 taskNameWithSubtaskAndId,
@@ -274,13 +300,14 @@ public class ResultPartitionFactory {
                                 bufferPoolFactory);
             }
         } else {
+            // 如果结果分区类型未知，则抛出异常
             throw new IllegalArgumentException("Unrecognized ResultPartitionType: " + type);
         }
 
         partition.isNumberOfPartitionConsumerUndefined(isNumberOfPartitionConsumerUndefined);
 
         LOG.debug("{}: Initialized {}", taskNameWithSubtaskAndId, this);
-
+        //返回Partition
         return partition;
     }
 

@@ -145,17 +145,34 @@ public class CheckpointedInputGate implements PullingAsyncDataInput<BufferOrEven
         return inputGate.getAvailableFuture();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从（InputGate）中获取下一个Buffer或事件。
+     *
+     * 此方法尝试从关联的（InputGate）中检索下一个可用的Buffer或事件。
+     * 如果没有可用的Buffer或事件，则调用handleEmptyBuffer()进行处理。
+     * 如果检索到的是事件，则调用handleEvent()进行处理。
+     * 如果检索到的是Buffer，则更新已处理的字节数（尽管这可能是一个近似值）。
+     *
+     * @return 下一个可用的Buffer或事件的Optional封装，如果没有则为空Optional
+     * @throws IOException 如果在读取过程中发生I/O错误
+     * @throws InterruptedException 如果当前线程在等待、睡眠或其他占用状态时被中断
+    */
     @Override
     public Optional<BufferOrEvent> pollNext() throws IOException, InterruptedException {
+        //调用InputGate获取Buffer或者Event
         Optional<BufferOrEvent> next = inputGate.pollNext();
 
         if (!next.isPresent()) {
+            // 如果没有可用的Buffer或事件，则调用handleEmptyBuffer()进行处理
             return handleEmptyBuffer();
         }
 
         BufferOrEvent bufferOrEvent = next.get();
-
+        //处理Event事件
         if (bufferOrEvent.isEvent()) {
+            // 如果检索到的是事件，则调用handleEvent()进行处理
             return handleEvent(bufferOrEvent);
         } else if (bufferOrEvent.isBuffer()) {
             /**
@@ -169,8 +186,13 @@ public class CheckpointedInputGate implements PullingAsyncDataInput<BufferOrEven
              * However the current is on average accurate and it might be just good enough (at least
              * for the time being).
              */
+            // 如果检索到的是Buffer，则更新已处理的字节数
+            // 注意：这里的处理可能是一个近似值，因为它忽略了在记录反序列化器中累积的缓冲区和字节
+            // 理论上，这应该在StreamTaskNetworkInput级别进行计算，因为在那里可以访问记录反序列化器
+            // 然而，当前的方法在平均上可能是准确的，并且可能已经足够好了（至少目前如此）
             barrierHandler.addProcessedBytes(bufferOrEvent.getBuffer().getSize());
         }
+        // 如果检索到的是Buffer并且没有特定处理（除了更新已处理字节数），则直接返回该Buffer或事件
         return next;
     }
 

@@ -159,39 +159,73 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将StreamElement类型的值序列化为DataOutputView目标流。
+     *
+     * @param value 要序列化的StreamElement值
+     * @param target 序列化目标，即DataOutputView对象
+     * @throws IOException 如果在序列化过程中发生I/O错误
+    */
     @Override
     public void serialize(StreamElement value, DataOutputView target) throws IOException {
+        // 判断value是否为Record
         if (value.isRecord()) {
+            // 转换为StreamRecord<T>类型
             StreamRecord<T> record = value.asRecord();
-
+            // 判断Record是否有时间戳
             if (record.hasTimestamp()) {
+                // 写入带有时间戳的Record的标记
                 target.write(TAG_REC_WITH_TIMESTAMP);
+                // 写入Record的时间戳
                 target.writeLong(record.getTimestamp());
             } else {
+                // 写入没有时间戳的Record的标记
                 target.write(TAG_REC_WITHOUT_TIMESTAMP);
             }
+            // 使用类型序列化器序列化Record的值
             typeSerializer.serialize(record.getValue(), target);
+            // 判断value是否为Watermark
         } else if (value.isWatermark()) {
+            // 判断Watermark是否为InternalWatermark
             if (value instanceof InternalWatermark) {
+                // 写入InternalWatermark的标记
                 target.write(TAG_INTERNAL_WATERMARK);
+                // 写入InternalWatermark的子分区索引
                 target.writeInt(((InternalWatermark) value).getSubpartitionIndex());
             } else {
+                // 写入Watermark的标记
                 target.write(TAG_WATERMARK);
             }
+            // 写入Watermark的时间戳
             target.writeLong(value.asWatermark().getTimestamp());
+            // 判断value是否为WatermarkStatus
         } else if (value.isWatermarkStatus()) {
+            // 写入WatermarkStatus的标记
             target.write(TAG_STREAM_STATUS);
+            // 写入WatermarkStatus的状态
             target.writeInt(value.asWatermarkStatus().getStatus());
+            // 判断value是否为LatencyMarker
         } else if (value.isLatencyMarker()) {
+            // 写入LatencyMarker的标记
             target.write(TAG_LATENCY_MARKER);
+            // 写入LatencyMarker的标记时间
             target.writeLong(value.asLatencyMarker().getMarkedTime());
+            // 写入LatencyMarker的OperatorId的低32位
             target.writeLong(value.asLatencyMarker().getOperatorId().getLowerPart());
+            // 写入LatencyMarker的OperatorId的高32位
             target.writeLong(value.asLatencyMarker().getOperatorId().getUpperPart());
+            // 写入LatencyMarker的子任务索引
             target.writeInt(value.asLatencyMarker().getSubtaskIndex());
+            // 判断value是否为RecordAttributes
         } else if (value.isRecordAttributes()) {
+            // 写入RecordAttributes的标记
             target.write(TAG_RECORD_ATTRIBUTES);
+            // 写入RecordAttributes的backlog状态
             target.writeBoolean(value.asRecordAttributes().isBacklog());
         } else {
+            // 抛出运行时异常
             throw new RuntimeException();
         }
     }

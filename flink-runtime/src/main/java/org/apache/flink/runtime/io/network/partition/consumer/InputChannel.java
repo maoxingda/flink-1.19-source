@@ -171,6 +171,7 @@ public abstract class InputChannel {
      * will always be notified about the exception.
      */
     protected void notifyChannelNonEmpty() {
+        // 调用Channel的notifyNonEmpty方法来通知通道现在有数据
         inputGate.notifyChannelNonEmpty(this);
     }
 
@@ -211,6 +212,11 @@ public abstract class InputChannel {
      * Returns the next buffer from the consumed subpartitions or {@code Optional.empty()} if there
      * is no data to return.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从已消耗的子分区返回下一个缓冲区，如果没有数据可返回，则返回{@code Optional.empty（）}。
+    */
     public abstract Optional<BufferAndAvailability> getNextBuffer()
             throws IOException, InterruptedException;
 

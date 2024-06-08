@@ -68,28 +68,36 @@ class NettyClient {
         this.config = config;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化NettyClient
+    */
     void init(final NettyProtocol protocol, NettyBufferPool nettyBufferPool) throws IOException {
+        // 检查Netty客户端是否已经初始化，如果已经初始化则抛出异常
         checkState(bootstrap == null, "Netty client has already been initialized.");
-
+        // 保存传入的NettyProtocol
         this.protocol = protocol;
-
+        // 记录初始化开始的时间点
         final long start = System.nanoTime();
 
+        // 创建一个新的Bootstrap实例，它是Netty客户端的启动辅助类
         bootstrap = new Bootstrap();
 
         // --------------------------------------------------------------------
         // Transport-specific configuration
         // --------------------------------------------------------------------
-
+        // 根据配置选择特定的传输方式并进行初始化
         switch (config.getTransportType()) {
+            // 使用NIO方式进行初始化
             case NIO:
                 initNioBootstrap();
                 break;
-
+            // 使用EPOLL方式进行初始化（通常用于Linux系统）
             case EPOLL:
                 initEpollBootstrap();
                 break;
-
+            // 自动选择传输方式
             case AUTO:
                 if (Epoll.isAvailable()) {
                     initEpollBootstrap();
@@ -103,31 +111,38 @@ class NettyClient {
         // --------------------------------------------------------------------
         // Configuration
         // --------------------------------------------------------------------
-
+        // 通用配置
+        // 启用TCP_NODELAY选项，即禁用Nagle算法，加快小包数据的发送速度
         bootstrap.option(ChannelOption.TCP_NODELAY, true);
+        // 启用SO_KEEPALIVE选项，即启用TCP的保活机制
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
-
+        // 设置新连接的超时时间（毫秒）
         // Timeout for new connections
         bootstrap.option(
                 ChannelOption.CONNECT_TIMEOUT_MILLIS,
                 config.getClientConnectTimeoutSeconds() * 1000);
 
         // Pooled allocator for Netty's ByteBuf instances
+        // 设置Netty的ByteBuf实例的分配器为传入的nettyBufferPool
         bootstrap.option(ChannelOption.ALLOCATOR, nettyBufferPool);
 
         // Receive and send buffer size
+        // 接收和发送缓冲区大小
         int receiveAndSendBufferSize = config.getSendAndReceiveBufferSize();
         if (receiveAndSendBufferSize > 0) {
+            // 设置TCP的发送缓冲区大小
             bootstrap.option(ChannelOption.SO_SNDBUF, receiveAndSendBufferSize);
+            // 设置TCP的接收缓冲区大小
             bootstrap.option(ChannelOption.SO_RCVBUF, receiveAndSendBufferSize);
         }
 
         try {
+            // 尝试创建客户端的SSL工厂
             clientSSLFactory = config.createClientSSLEngineFactory();
         } catch (Exception e) {
             throw new IOException("Failed to initialize SSL Context for the Netty client", e);
         }
-
+        // 计算并打印初始化过程所花费的时间（毫秒）
         final long duration = (System.nanoTime() - start) / 1_000_000;
         LOG.info("Successful initialization (took {} ms).", duration);
     }
@@ -154,21 +169,35 @@ class NettyClient {
         LOG.info("Successful shutdown (took {} ms).", duration);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化NioBootstrap方法，用于设置Netty的NIO引导类
+    */
     private void initNioBootstrap() {
         // Add the server port number to the name in order to distinguish
         // multiple clients running on the same host.
+        // 为了区分在相同主机上运行的多个客户端，将服务器端口号添加到名称中
+
         String name =
                 NettyConfig.CLIENT_THREAD_GROUP_NAME + " (" + config.getServerPortRange() + ")";
-
+        // 创建一个NioEventLoopGroup，该组用于处理I/O操作，并指定线程数和线程工厂
+        // NioEventLoopGroup是一个处理I/O操作的多线程事件循环
         NioEventLoopGroup nioGroup =
                 new NioEventLoopGroup(
                         config.getClientNumThreads(), NettyServer.getNamedThreadFactory(name));
+        // 将NioEventLoopGroup设置为Bootstrap的group，并指定使用NioSocketChannel作为Channel类型
+        // Bootstrap是Netty中用于客户端启动的类
         bootstrap.group(nioGroup).channel(NioSocketChannel.class);
-
+        // 如果配置中设置了TCP keepalive的空闲时间，则设置相应的Nio keepalive选项
+        // TCP keepalive用于检测TCP连接是否仍然活跃
         config.getTcpKeepIdleInSeconds()
                 .ifPresent(idle -> setNioKeepaliveOptions(NIO_TCP_KEEPIDLE_KEY, idle));
+        // 如果配置中设置了TCP keepalive的时间间隔，则设置相应的Nio keepalive选项
         config.getTcpKeepInternalInSeconds()
                 .ifPresent(interval -> setNioKeepaliveOptions(NIO_TCP_KEEPINTERVAL_KEY, interval));
+        // 如果配置中设置了TCP keepalive的探测次数，则设置相应的Nio keepalive选项
+        // 当TCP keepalive的探测次数达到这个值时，如果连接仍然不活跃，则会关闭连接
         config.getTcpKeepCount()
                 .ifPresent(count -> setNioKeepaliveOptions(NIO_TCP_KEEPCOUNT_KEY, count));
     }

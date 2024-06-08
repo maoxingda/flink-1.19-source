@@ -327,24 +327,43 @@ public abstract class ResultPartition implements ResultPartitionWriter {
                 partitionId.getPartitionId(), resultPartitionBytes);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据给定的子分区索引集合和缓冲区可用性监听器，创建并返回一个ResultSubpartitionView对象。
+     *
+     * @param indexSet 子分区索引集合
+     * @param availabilityListener 缓冲区可用性监听器
+     * @return ResultSubpartitionView对象，代表结果分区的一个或多个子分区
+     * @throws IOException 如果在创建子分区视图时发生I/O错误
+    */
     @Override
     public ResultSubpartitionView createSubpartitionView(
             ResultSubpartitionIndexSet indexSet, BufferAvailabilityListener availabilityListener)
             throws IOException {
+        // 如果子分区索引集合中只有一个元素
         if (indexSet.size() == 1) {
+            // 调用另一个createSubpartitionView方法来创建单个子分区的视图
             return createSubpartitionView(
                     indexSet.values().iterator().next(), availabilityListener);
         } else {
+            // 如果子分区索引集合中有多个元素，则创建一个联合视图
             UnionResultSubpartitionView unionView =
                     new UnionResultSubpartitionView(availabilityListener, indexSet.size());
             try {
+                // 遍历子分区索引集合
                 for (int i : indexSet.values()) {
+                    // 为每个子分区索引创建视图
                     ResultSubpartitionView view = createSubpartitionView(i, unionView);
+                    // 通知联合视图某个子分区视图已经被创建
                     unionView.notifyViewCreated(i, view);
                 }
+                // 返回创建的联合视图
                 return unionView;
             } catch (Exception e) {
+                // 如果在创建子分区视图过程中发生异常，则释放联合视图的所有资源
                 unionView.releaseAllResources();
+                //抛出异常
                 throw e;
             }
         }

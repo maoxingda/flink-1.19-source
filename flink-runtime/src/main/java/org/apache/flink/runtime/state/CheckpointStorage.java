@@ -91,5 +91,10 @@ public interface CheckpointStorage extends java.io.Serializable {
      * @return A checkpoint storage for the given job.
      * @throws IOException Thrown if the checkpoint storage cannot be initialized.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为给定作业的检查点创建存储。检查点存储用于写入检查点数据和元数据。
+    */
     CheckpointStorageAccess createCheckpointStorage(JobID jobId) throws IOException;
 }

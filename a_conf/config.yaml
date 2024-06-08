@@ -16,6 +16,7 @@ taskmanager.memory.task.heap.size: 512m
 #托管内存
 taskmanager.memory.managed.size: 512m
 #网络内存（Network Memory）
+#用于任务之间数据传输的直接内存（例如网络传输缓冲）。该内存部分为基于 Flink 总内存的受限的等比内存部分。
 taskmanager.memory.network.min: 128m
 taskmanager.memory.network.max: 128m
 #任务堆外内存
@@ -33,7 +34,7 @@ taskmanager.memory.jvm-overhead.max: 128m
 #heartbeat.timeout: 50000
 #heartbeat.interval: 10000
 taskmanager.host: localhost
-taskmanager.memory.process.size: 1728m
+taskmanager.memory.process.size: 4096m
 taskmanager.numberOfTaskSlots: 2
 # The parallelism used for programs that did not specify and other parallelism.
 parallelism.default: 1

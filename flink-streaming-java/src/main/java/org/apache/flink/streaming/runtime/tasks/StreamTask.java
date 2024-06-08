@@ -1694,11 +1694,16 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     // ------------------------------------------------------------------------
     //  State backend
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个 StateBackend 实例。
+    */
     private StateBackend createStateBackend() throws Exception {
+        // 尝试从应用程序配置中获取 StateBackend
         final StateBackend fromApplication =
                 configuration.getStateBackend(getUserCodeClassLoader());
-
+        // 使用 StateBackendLoader 工具类从以下来源之一加载 StateBackend：
         return StateBackendLoader.fromApplicationOrConfigOrDefault(
                 fromApplication,
                 getJobConfiguration(),
@@ -1706,17 +1711,28 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                 getUserCodeClassLoader(),
                 LOG);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个CheckpointStorage实例，用于保存和恢复Flink作业的检查点数据。
+     *
+     * @param backend 使用的StateBackend，它定义了状态的存储方式
+     * @return CheckpointStorage实例，用于检查点的存储
+     * @throws Exception 如果在创建或加载CheckpointStorage时发生错误
+    */
     private CheckpointStorage createCheckpointStorage(StateBackend backend) throws Exception {
+        // 从配置中获取应用程序定义的CheckpointStorage
+        // 它可能是从配置文件中指定的，或者是由用户代码在运行时指定的
         final CheckpointStorage fromApplication =
                 configuration.getCheckpointStorage(getUserCodeClassLoader());
+        // 使用CheckpointStorageLoader加载CheckpointStorage
         return CheckpointStorageLoader.load(
-                fromApplication,
-                backend,
-                getJobConfiguration(),
-                getEnvironment().getTaskManagerInfo().getConfiguration(),
-                getUserCodeClassLoader(),
-                LOG);
+                fromApplication,//应用程序定义的CheckpointStorage
+                backend,//当前使用的StateBackend
+                getJobConfiguration(),//Flink作业的配置
+                getEnvironment().getTaskManagerInfo().getConfiguration(),//TaskManager的配置
+                getUserCodeClassLoader(),//用户代码的类加载器
+                LOG);//日志
     }
 
     /**

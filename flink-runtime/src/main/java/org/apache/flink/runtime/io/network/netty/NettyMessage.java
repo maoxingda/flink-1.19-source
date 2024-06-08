@@ -61,6 +61,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * <p>This class must be public as long as we are using a Netty version prior to 4.0.45. Please
  * check FLINK-7845 for more information.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 通用的接口，用于将消息序列化到Netty的缓冲区空间。
+*/
 public abstract class NettyMessage {
 
     // ------------------------------------------------------------------------
@@ -129,33 +134,56 @@ public abstract class NettyMessage {
      * @return a newly allocated direct buffer with header data written for {@link
      *     NettyMessageEncoder}
      */
+
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 分配ByteBuf对象，用于消息封装
+     *
+     * @param allocator          ByteBufAllocator对象，用于分配ByteBuf
+     * @param id                 消息的ID
+     * @param messageHeaderLength 消息头长度
+     * @param contentLength      消息内容长度，如果未知则为-1
+     * @param allocateForContent 是否为消息内容分配内存
+     * @return 分配好的ByteBuf对象
+     * @throws IllegalArgumentException 如果contentLength大于允许的最大值
+    */
     private static ByteBuf allocateBuffer(
             ByteBufAllocator allocator,
             byte id,
             int messageHeaderLength,
             int contentLength,
             boolean allocateForContent) {
+        // 检查contentLength是否超出允许的最大值
         checkArgument(contentLength <= Integer.MAX_VALUE - FRAME_HEADER_LENGTH);
 
         final ByteBuf buffer;
         if (!allocateForContent) {
+            // 如果不需要为消息内容分配内存，则只分配消息头所需的内存
             buffer = allocator.directBuffer(FRAME_HEADER_LENGTH + messageHeaderLength);
         } else if (contentLength != -1) {
+            // 如果需要为消息内容分配内存且contentLength已知，则分配消息头和消息内容所需的内存
             buffer =
                     allocator.directBuffer(
                             FRAME_HEADER_LENGTH + messageHeaderLength + contentLength);
         } else {
             // content length unknown -> start with the default initial size (rather than
             // FRAME_HEADER_LENGTH only):
+            // 如果需要为消息内容分配内存但contentLength未知，则先分配默认大小的内存
+            // 而不是仅分配FRAME_HEADER_LENGTH
             buffer = allocator.directBuffer();
         }
+        // 写入消息的总长度（可能稍后会更新，例如当contentLength为-1时）
         buffer.writeInt(
                 FRAME_HEADER_LENGTH
                         + messageHeaderLength
                         + contentLength); // may be updated later, e.g. if contentLength == -1
+        // 写入魔法数字（标识消息的开始）
         buffer.writeInt(MAGIC_NUMBER);
+      ///写入id
         buffer.writeByte(id);
 
+        // 返回分配好的ByteBuf对象
         return buffer;
     }
 
@@ -166,12 +194,25 @@ public abstract class NettyMessage {
     @ChannelHandler.Sharable
     static class NettyMessageEncoder extends ChannelOutboundHandlerAdapter {
 
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 定义一个公共的write方法，它接收三个参数：
+         * 1. ChannelHandlerContext：这是Netty中表示Channel处理器上下文的对象，它提供了与Channel、Pipeline和EventExecutor交互的接口。
+         * 2. Object msg：要写入通道的消息对象。这里使用Object作为泛型类型，表示它可以接受任何类型的消息。
+         * 3. ChannelPromise：Netty中的Promise，用于异步操作完成后通知监听者。
+         * 方法声明可能会抛出IOException，表示在写入过程中可能会发生I/O异常
+        */
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
                 throws IOException {
+            // 使用instanceof关键字检查传入的消息对象是否是NettyMessage类型的实例。
+            // NettyMessage可能是自定义的消息类型，用于封装Netty中的消息数据。
             if (msg instanceof NettyMessage) {
+                // 如果消息是NettyMessage类型的实例，则调用它的write方法，并将ChannelHandlerContext、ChannelPromise和ByteBufAllocator（通过ctx.alloc()获取）作为参数传入。
                 ((NettyMessage) msg).write(ctx, promise, ctx.alloc());
             } else {
+                // 如果消息不是NettyMessage类型的实例，则直接调用ChannelHandlerContext的write方法，将原始消息和ChannelPromise作为参数传入。
                 ctx.write(msg, promise);
             }
         }
@@ -418,37 +459,51 @@ public abstract class NettyMessage {
          *     later. The data buffer will be null if the target channel has been released or the
          *     buffer size is 0.
          */
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 读取来自网络的数据并返回一个BufferResponse对象
+        */
         static BufferResponse readFrom(
                 ByteBuf messageHeader, NetworkBufferAllocator bufferAllocator) {
+            // 从消息头中解析出接收者的ID
             InputChannelID receiverId = InputChannelID.fromByteBuf(messageHeader);
+            // 从消息头中读取子分区ID
             int subpartitionId = messageHeader.readInt();
+            // 从消息头中读取序列号
             int sequenceNumber = messageHeader.readInt();
+            // 从消息头中读取积压量（可能是等待处理的消息数量）
             int backlog = messageHeader.readInt();
+            // 从消息头中读取数据类型
             Buffer.DataType dataType = Buffer.DataType.values()[messageHeader.readByte()];
+            // 从消息头中读取是否压缩的标志
             boolean isCompressed = messageHeader.readBoolean();
+            // 从消息头中读取数据的大小
             int size = messageHeader.readInt();
-
+            // 声明一个用于存储数据的Buffer对象
             Buffer dataBuffer;
+            // 如果数据类型是Buffer类型，则分配一个池化的网络缓冲区
             if (dataType.isBuffer()) {
                 dataBuffer = bufferAllocator.allocatePooledNetworkBuffer(receiverId);
                 if (dataBuffer != null) {
                     dataBuffer.setDataType(dataType);
                 }
             } else {
+                // 如果数据类型不是Buffer类型，则分配一个非池化的网络缓冲区，并指定大小和数据类型
                 dataBuffer = bufferAllocator.allocateUnPooledNetworkBuffer(size, dataType);
             }
-
+            // 如果数据大小为0且成功分配了缓冲区，则直接回收空缓冲区，因为我们必须为空数据分配一个缓冲区以释放已经分配的信用
             if (size == 0 && dataBuffer != null) {
                 // recycle the empty buffer directly, we must allocate a buffer for
                 // the empty data to release the credit already allocated for it
                 dataBuffer.recycleBuffer();
                 dataBuffer = null;
             }
-
+            // 如果dataBuffer不为空，则设置其压缩状态
             if (dataBuffer != null) {
                 dataBuffer.setCompressed(isCompressed);
             }
-
+            // 返回一个包含所有必要信息的BufferResponse对象
             return new BufferResponse(
                     dataBuffer,
                     dataType,
@@ -554,30 +609,35 @@ public abstract class NettyMessage {
             this.receiverId = checkNotNull(receiverId);
             this.credit = credit;
         }
-
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 这是一个被重写的 write 方法，用于将数据写入到指定的输出通道
+        */
         @Override
         void write(ChannelOutboundInvoker out, ChannelPromise promise, ByteBufAllocator allocator)
                 throws IOException {
+            // 创建一个 Consumer 对象 consumer，用于处理 ByteBuf 的写入操作
             Consumer<ByteBuf> consumer =
                     (bb) -> {
-                        partitionId.getPartitionId().writeTo(bb);
-                        partitionId.getProducerId().writeTo(bb);
-                        queueIndexSet.writeTo(bb);
-                        receiverId.writeTo(bb);
-                        bb.writeInt(credit);
+                        partitionId.getPartitionId().writeTo(bb);  // 将 partitionId 的 partitionId 写入 ByteBuf
+                        partitionId.getProducerId().writeTo(bb);         // 将 partitionId 的 producerId 写入 ByteBuf
+                        queueIndexSet.writeTo(bb); // 将 queueIndexSet 写入 ByteBuf
+                        receiverId.writeTo(bb);        // 将 receiverId 写入 ByteBuf
+                        bb.writeInt(credit);        // 将 credit 写入 ByteBuf，这里假设 credit 是一个 int 类型的值
                     };
-
+            // 调用 writeToChannel 方法，将数据写入到指定的输出通道
             writeToChannel(
                     out,
                     promise,
                     allocator,
                     consumer,
                     ID,
-                    IntermediateResultPartitionID.getByteBufLength()
-                            + ExecutionAttemptID.getByteBufLength()
-                            + ResultSubpartitionIndexSet.getByteBufLength(queueIndexSet)
-                            + InputChannelID.getByteBufLength()
-                            + Integer.BYTES);
+                    IntermediateResultPartitionID.getByteBufLength() // 中间结果分区 ID 的字节长度
+                            + ExecutionAttemptID.getByteBufLength() // 执行尝试 ID 的字节长度
+                            + ResultSubpartitionIndexSet.getByteBufLength(queueIndexSet)  // 结果子分区索引集的字节长度（基于 queueIndexSet）
+                            + InputChannelID.getByteBufLength()   // 输入通道 ID 的字节长度
+                            + Integer.BYTES);  // credit 的字节长度（一个 int 类型的值）
         }
 
         static PartitionRequest readFrom(ByteBuf buffer) {
@@ -977,7 +1037,19 @@ public abstract class NettyMessage {
     }
 
     // ------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将数据写入通道的方法
+     *
+     * @param out           通道输出调用者，用于将数据写入通道
+     * @param promise       通道承诺，通常用于异步操作中的结果处理
+     * @param allocator     ByteBuf分配器，用于分配ByteBuf实例
+     * @param consumer      消费者，用于处理并填充ByteBuf实例
+     * @param id            字节标识符，可能用于ByteBuf的特定用途或识别
+     * @param length        要写入的数据长度
+     * @throws IOException  如果写入过程中发生I/O错误，则抛出此异常
+    */
     void writeToChannel(
             ChannelOutboundInvoker out,
             ChannelPromise promise,
@@ -989,20 +1061,36 @@ public abstract class NettyMessage {
 
         ByteBuf byteBuf = null;
         try {
+            // 使用指定的allocator、id和length来分配ByteBuf
             byteBuf = allocateBuffer(allocator, id, length);
+            // 调用consumer的accept方法，将byteBuf作为参数传递，用于填充ByteBuf实例
             consumer.accept(byteBuf);
+            // 将ByteBuf写入通道，并关联promise以处理异步结果
             out.write(byteBuf, promise);
         } catch (Throwable t) {
+            //处理异常
             handleException(byteBuf, null, t);
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 异常处理函数，用于在发生异常时释放和回收相关资源
+     *
+     * @param byteBuf  需要释放的ByteBuf对象，可以为null
+     * @param buffer   需要回收的Buffer对象，可以为null
+     * @param t        发生的异常
+     * @throws IOException 如果异常是IOException类型或其子类，则重新抛出
+    */
     void handleException(@Nullable ByteBuf byteBuf, @Nullable Buffer buffer, Throwable t)
             throws IOException {
         if (byteBuf != null) {
+            // 如果ByteBuf不为null，则释放ByteBuf占用的资源
             byteBuf.release();
         }
         if (buffer != null) {
+            // 如果Buffer不为null，则回收Buffer占用的资源
             buffer.recycleBuffer();
         }
         ExceptionUtils.rethrowIOException(t);
