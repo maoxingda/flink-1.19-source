@@ -29,15 +29,15 @@ public class SocketWordCountStreamGraph {
         env.registerCachedFile("./a_conf/a.txt","cache");
 
         /** 设置检查点的时间间隔 */
-        env.enableCheckpointing(30000);
+        //env.enableCheckpointing(30000);
         /** 设置检查点路径*/
         //env.getCheckpointConfig().setCheckpointStorage("file:///H:/chk");
         // 状态后端设置
         // 设置存储文件位置为 file:///Users/flink/checkpoints
-        RocksDBStateBackend rocksDBStateBackend = new RocksDBStateBackend(
+       /* RocksDBStateBackend rocksDBStateBackend = new RocksDBStateBackend(
                 "file:///H:/chkcheckpoints", true);
         rocksDBStateBackend.setPredefinedOptions(PredefinedOptions.SPINNING_DISK_OPTIMIZED_HIGH_MEM);
-        env.setStateBackend(rocksDBStateBackend);
+        env.setStateBackend(rocksDBStateBackend);*/
         env.setParallelism(2);
         env.setMaxParallelism(2);
 

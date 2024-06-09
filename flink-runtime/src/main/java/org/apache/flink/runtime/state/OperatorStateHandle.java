@@ -44,9 +44,12 @@ public interface OperatorStateHandle extends StreamStateHandle {
      * restore.
      */
     enum Mode {
+        //状态句柄中的操作员状态分区被拆分并计算为每个任务一个。
         SPLIT_DISTRIBUTE, // The operator state partitions in the state handle are split and
         // distributed to one task each.
+        //操作员状态分区在恢复时是UNION的，并发送到所有任务
         UNION, // The operator state partitions are UNION-ed upon restoring and sent to all tasks.
+        //状态是从广播流中产生的
         BROADCAST // The operator states are identical, as the state is produced from a broadcast
         // stream.
     }

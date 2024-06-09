@@ -205,8 +205,20 @@ public class DefaultOperatorStateBackend implements OperatorStateBackend {
         return broadcastState;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取一个ListState对象，用于在Flink流处理作业中存储和检索一系列的元素。
+     * 这个ListState对象可以用于在状态后端中存储和操作一组有序的元素。
+     *
+     * @param <S>           元素的类型
+     * @param stateDescriptor 描述状态如何被序列化和反序列化的状态描述符
+     * @return 返回一个ListState对象，用于操作指定类型的元素列表
+     * @throws Exception 当无法获取ListState对象时，抛出异常
+    */
     @Override
     public <S> ListState<S> getListState(ListStateDescriptor<S> stateDescriptor) throws Exception {
+        // 调用重载版本的getListState方法，并指定OperatorStateHandle的模式为SPLIT_DISTRIBUTE
         return getListState(stateDescriptor, OperatorStateHandle.Mode.SPLIT_DISTRIBUTE);
     }
 
@@ -230,74 +242,99 @@ public class DefaultOperatorStateBackend implements OperatorStateBackend {
         return snapshotStrategyRunner.snapshot(
                 checkpointId, timestamp, streamFactory, checkpointOptions);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据给定的状态描述符和状态句柄模式获取一个ListState对象。
+     * 该方法首先检查已访问的状态中是否存在具有相同名称的状态，如果存在则直接返回。
+     * 如果不存在，则会根据状态描述符创建一个新的PartitionableListState对象。
+     *
+     * @param <S>           元素的类型
+     * @param stateDescriptor 描述状态如何被序列化和反序列化的状态描述符
+     * @param mode          OperatorStateHandle的模式，定义了状态在恢复时如何分割和分发
+     * @return 返回一个ListState对象，用于操作指定类型的元素列表
+     * @throws StateMigrationException 如果状态迁移过程中发生错误
+    */
     private <S> ListState<S> getListState(
             ListStateDescriptor<S> stateDescriptor, OperatorStateHandle.Mode mode)
             throws StateMigrationException {
-
+        // 检查状态描述符是否为空
         Preconditions.checkNotNull(stateDescriptor);
+        // 获取状态描述符中的状态名称，并检查是否为空
         String name = Preconditions.checkNotNull(stateDescriptor.getName());
 
+        // 尝试从已访问的状态集合中按名称获取之前的PartitionableListState
         @SuppressWarnings("unchecked")
         PartitionableListState<S> previous =
                 (PartitionableListState<S>) accessedStatesByName.get(name);
         if (previous != null) {
+            // 如果之前的状态存在，则检查状态名称和模式是否匹配
             checkStateNameAndMode(
                     previous.getStateMetaInfo().getName(),
                     name,
                     previous.getStateMetaInfo().getAssignmentMode(),
                     mode);
+            // 如果匹配，则返回之前的状态
             return previous;
         }
 
         // end up here if its the first time access after execution for the
         // provided state name; check compatibility of restored state, if any
         // TODO with eager registration in place, these checks should be moved to restore()
-
+        // 初始化状态描述符的序列化器（如果尚未设置）
         stateDescriptor.initializeSerializerUnlessSet(getExecutionConfig());
+        // 获取状态描述符中的元素序列化器，并检查是否为空
         TypeSerializer<S> partitionStateSerializer =
                 Preconditions.checkNotNull(stateDescriptor.getElementSerializer());
 
+        // 尝试从已注册的状态集合中按名称获取PartitionableListState
         @SuppressWarnings("unchecked")
         PartitionableListState<S> partitionableListState =
                 (PartitionableListState<S>) registeredOperatorStates.get(name);
-
+        // 如果没有为状态名称恢复状态，则简单地创建一个新的状态持有者
         if (null == partitionableListState) {
             // no restored state for the state name; simply create new state holder
-
+            // 创建一个新的PartitionableListState对象，并为其分配一个RegisteredOperatorStateBackendMetaInfo对象
             partitionableListState =
                     new PartitionableListState<>(
                             new RegisteredOperatorStateBackendMetaInfo<>(
                                     name, partitionStateSerializer, mode));
-
+            // 将新创建的PartitionableListState对象添加到已注册的状态集合中
             registeredOperatorStates.put(name, partitionableListState);
         } else {
             // has restored state; check compatibility of new state access
+            // 如果已存在已恢复的状态，则检查新状态访问的兼容性
 
+            // 检查状态名称和模式是否匹配
             checkStateNameAndMode(
                     partitionableListState.getStateMetaInfo().getName(),
                     name,
                     partitionableListState.getStateMetaInfo().getAssignmentMode(),
                     mode);
 
+            // 获取已恢复状态的元信息
             RegisteredOperatorStateBackendMetaInfo<S> restoredPartitionableListStateMetaInfo =
                     partitionableListState.getStateMetaInfo();
 
             // check compatibility to determine if new serializers are incompatible
+            // 创建一个新的序列化器实例以进行比较，因为序列化器实例可能包含状态
             TypeSerializer<S> newPartitionStateSerializer = partitionStateSerializer.duplicate();
 
+            // 检查新序列化器与已恢复状态的序列化器是否兼容
             TypeSerializerSchemaCompatibility<S> stateCompatibility =
                     restoredPartitionableListStateMetaInfo.updatePartitionStateSerializer(
                             newPartitionStateSerializer);
+            // 如果不兼容，则抛出异常
             if (stateCompatibility.isIncompatible()) {
                 throw new StateMigrationException(
                         "The new state typeSerializer for operator state must not be incompatible.");
             }
-
+            // 更新PartitionableListState的状态元信息（如果进行了序列化器的更新）
             partitionableListState.setStateMetaInfo(restoredPartitionableListStateMetaInfo);
         }
-
+        // 将访问的状态添加到已访问的状态集合中
         accessedStatesByName.put(name, partitionableListState);
+        // 返回PartitionableListState对象
         return partitionableListState;
     }
 

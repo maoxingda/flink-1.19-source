@@ -232,7 +232,7 @@ public class NettyShuffleEnvironmentOptions {
      * exclusive network buffers used per downstream incoming channel will be 0, but for each
      * upstream outgoing channel, max(1, configured value) will be used. In other words we ensure
      * that, for performance reasons, at least one buffer is used per outgoing channel regardless of
-     * the configuration.
+     * the configuration.每个出站/入站通道（子分区/输入通道）的网络缓冲区数量。
      */
     @Documentation.Section(Documentation.Sections.ALL_TASK_MANAGER_NETWORK)
     public static final ConfigOption<Integer> NETWORK_BUFFERS_PER_CHANNEL =
@@ -262,7 +262,7 @@ public class NettyShuffleEnvironmentOptions {
 
     /**
      * Number of floating network buffers for each outgoing/incoming gate (result partition/input
-     * gate).
+     * gate).每个出站/入站门（结果分区/输入门）的浮动网络缓冲区数量。
      */
     @Documentation.Section(Documentation.Sections.ALL_TASK_MANAGER_NETWORK)
     public static final ConfigOption<Integer> NETWORK_EXTRA_BUFFERS_PER_GATE =
