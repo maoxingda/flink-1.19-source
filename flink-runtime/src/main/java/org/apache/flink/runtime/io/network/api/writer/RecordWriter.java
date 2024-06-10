@@ -141,10 +141,19 @@ public abstract class RecordWriter<T extends IOReadableWritable> implements Avai
     public void broadcastEvent(AbstractEvent event) throws IOException {
         broadcastEvent(event, false);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的事件广播到目标分区，并在需要时刷新所有输出。
+     *
+     * @param event 要广播的事件对象，必须是AbstractEvent或其子类的实例
+     * @param isPriorityEvent 指示该事件是否为优先事件的布尔值
+     * @throws IOException 如果在广播事件或刷新输出时发生I/O异常，则抛出此异常
+    */
     public void broadcastEvent(AbstractEvent event, boolean isPriorityEvent) throws IOException {
+        // 将事件广播到目标分区
         targetPartition.broadcastEvent(event, isPriorityEvent);
-
+        // 如果设置了flushAlways为true，则刷新所有输出
         if (flushAlways) {
             flushAll();
         }

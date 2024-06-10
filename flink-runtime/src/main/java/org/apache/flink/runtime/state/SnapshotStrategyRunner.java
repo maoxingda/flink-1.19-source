@@ -66,6 +66,19 @@ public final class SnapshotStrategyRunner<T extends StateObject, SR extends Snap
         this.executionType = executionType;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个异步快照任务，该任务将执行快照并返回一个包含快照结果的RunnableFuture对象。
+     *
+     * @param checkpointId 检查点的唯一标识符
+     * @param timestamp 时间戳，表示快照的时间点
+     * @param streamFactory 用于创建检查点流的工厂
+     * @param checkpointOptions 检查点的选项配置
+     * @param <T> 快照结果的类型
+     * @return 一个RunnableFuture对象，表示异步快照任务，其执行结果将是SnapshotResult<T>类型
+     * @throws Exception 如果在准备资源或执行快照时发生异常
+    */
     @Nonnull
     public final RunnableFuture<SnapshotResult<T>> snapshot(
             long checkpointId,
@@ -73,9 +86,13 @@ public final class SnapshotStrategyRunner<T extends StateObject, SR extends Snap
             @Nonnull CheckpointStreamFactory streamFactory,
             @Nonnull CheckpointOptions checkpointOptions)
             throws Exception {
+        // 记录快照开始的时间
         long startTime = System.currentTimeMillis();
+        // 使用快照策略同步准备资源
         SR snapshotResources = snapshotStrategy.syncPrepareResources(checkpointId);
+        // 记录同步准备资源完成的信息
         logCompletedInternal(LOG_SYNC_COMPLETED_TEMPLATE, streamFactory, startTime);
+        // 调用快照策略的异步快照方法，获取一个SnapshotResultSupplier对象
         SnapshotStrategy.SnapshotResultSupplier<T> asyncSnapshot =
                 snapshotStrategy.asyncSnapshot(
                         snapshotResources,
@@ -83,14 +100,17 @@ public final class SnapshotStrategyRunner<T extends StateObject, SR extends Snap
                         timestamp,
                         streamFactory,
                         checkpointOptions);
-
+        // 创建一个FutureTask，它封装了一个Callable任务，该任务会调用SnapshotResultSupplier的get方法
+        // 来获取快照结果，并在完成后释放资源
         FutureTask<SnapshotResult<T>> asyncSnapshotTask =
                 new AsyncSnapshotCallable<SnapshotResult<T>>() {
+                    // 调用SnapshotResultSupplier的get方法获取快照结果
                     @Override
                     protected SnapshotResult<T> callInternal() throws Exception {
                         return asyncSnapshot.get(snapshotCloseableRegistry);
                     }
 
+                    // 释放之前同步准备的快照资源
                     @Override
                     protected void cleanupProvidedResources() {
                         if (snapshotResources != null) {
@@ -98,6 +118,7 @@ public final class SnapshotStrategyRunner<T extends StateObject, SR extends Snap
                         }
                     }
 
+                    // 记录异步快照完成的信息
                     @Override
                     protected void logAsyncSnapshotComplete(long startTime) {
                         logCompletedInternal(
@@ -105,10 +126,11 @@ public final class SnapshotStrategyRunner<T extends StateObject, SR extends Snap
                     }
                 }.toAsyncSnapshotFutureTask(cancelStreamRegistry);
 
+        // 如果执行类型为SYNCHRONOUS，则立即执行快照任务
         if (executionType == SnapshotExecutionType.SYNCHRONOUS) {
             asyncSnapshotTask.run();
         }
-
+        // 返回快照任务的Future，用于等待任务完成并获取快照结果
         return asyncSnapshotTask;
     }
 

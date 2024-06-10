@@ -210,70 +210,113 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
         this.inputs = inputs;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理检查点屏障（CheckpointBarrier）。
+     *
+     * @param barrier 检查点屏障对象
+     * @param channelInfo 输入通道信息
+     * @param isRpcTriggered 是否由RPC触发（远程过程调用）
+     * @throws IOException 如果在处理过程中发生I/O异常
+    */
     @Override
     public void processBarrier(
             CheckpointBarrier barrier, InputChannelInfo channelInfo, boolean isRpcTriggered)
             throws IOException {
+        // 获取检查点屏障的ID
         long barrierId = barrier.getId();
+        // 记录日志，显示从哪个通道接收到了哪个ID的检查点屏障
         LOG.debug("{}: Received barrier from channel {} @ {}.", taskName, channelInfo, barrierId);
 
+        // 如果当前检查点ID大于接收到的屏障ID，或者两者相等但当前没有挂起的检查点
         if (currentCheckpointId > barrierId
                 || (currentCheckpointId == barrierId && !isCheckpointPending())) {
+            // 如果屏障不是非对齐的检查点（unaligned checkpoint）
             if (!barrier.getCheckpointOptions().isUnalignedCheckpoint()) {
+                // 恢复该通道的输入消费
                 inputs[channelInfo.getGateIdx()].resumeConsumption(channelInfo);
             }
+            // 处理完成，直接返回
             return;
         }
-
+        // 检查新的检查点是否合法
         checkNewCheckpoint(barrier);
+        // 断言当前检查点ID应该与屏障ID相等
         checkState(currentCheckpointId == barrierId);
-
+        // 标记检查点已对齐，并转换状态
         markCheckpointAlignedAndTransformState(
                 channelInfo,
                 barrier,
                 state -> state.barrierReceived(context, channelInfo, barrier, !isRpcTriggered));
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 标记检查点已对齐并转换状态。
+     *
+     * @param alignedChannel 对齐的输入通道信息
+     * @param barrier 检查点屏障对象
+     * @param stateTransformer 状态转换函数，用于更新当前状态
+     * @throws IOException 如果在状态转换过程中发生I/O异常
+    */
     protected void markCheckpointAlignedAndTransformState(
             InputChannelInfo alignedChannel,
             CheckpointBarrier barrier,
             FunctionWithException<BarrierHandlerState, BarrierHandlerState, Exception>
                     stateTransformer)
             throws IOException {
-
+        // 将对齐的通道添加到对齐通道列表中
         alignedChannels.add(alignedChannel);
+        // 如果这是第一个对齐的通道
         if (alignedChannels.size() == 1) {
+            // 如果目标通道数量只有一个
             if (targetChannelCount == 1) {
+                // 标记对齐开始和结束（因为只有一个通道，所以开始和结束是同时的）
                 markAlignmentStartAndEnd(barrier.getId(), barrier.getTimestamp());
             } else {
+                // 标记对齐开始
                 markAlignmentStart(barrier.getId(), barrier.getTimestamp());
             }
         }
 
         // we must mark alignment end before calling currentState.barrierReceived which might
         // trigger a checkpoint with unfinished future for alignment duration
+        // 在调用currentState.barrierReceived之前，我们必须先标记对齐结束
+        // 因为这可能会触发一个包含未完成的对齐持续时间的检查点
         if (alignedChannels.size() == targetChannelCount) {
+            // 如果目标通道数量大于1
             if (targetChannelCount > 1) {
+                // 标记对齐结束
                 markAlignmentEnd();
             }
         }
 
         try {
+            // 使用提供的状态转换函数更新当前状态
             currentState = stateTransformer.apply(currentState);
         } catch (CheckpointException e) {
+            // 如果状态转换过程中抛出CheckpointException异常，则内部中止当前检查点
             abortInternal(currentCheckpointId, e);
         } catch (Exception e) {
+            // 如果状态转换过程中抛出其他异常，则将其转换为IOException并重新抛出
             ExceptionUtils.rethrowIOException(e);
         }
-
+        // 如果所有通道都已对齐
         if (alignedChannels.size() == targetChannelCount) {
+            // 清空对齐通道列表
             alignedChannels.clear();
+            // 更新最后取消或完成的检查点ID
             lastCancelledOrCompletedCheckpointId = currentCheckpointId;
+            // 记录日志，表示所有通道都已对齐，用于检查点ID
             LOG.debug(
                     "{}: All the channels are aligned for checkpoint {}.",
                     taskName,
                     currentCheckpointId);
+            // 重置对齐计时器
             resetAlignmentTimer();
+            // 标记所有屏障都已接收完成
             allBarriersReceivedFuture.complete(null);
         }
     }

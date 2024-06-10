@@ -237,12 +237,29 @@ public class RecordWriterOutput<OUT>
         this.numRecordsOut = checkNotNull(numRecordsOut);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的事件广播到记录写入器。
+     *
+     * 如果事件是一个CheckpointBarrier，并且不支持非对齐的检查点，
+     * 则会修改该CheckpointBarrier的选项以指示不支持非对齐检查点，并将isPriorityEvent设置为false。
+     *
+     * @param event 要广播的事件对象，必须是AbstractEvent或其子类的实例
+     * @param isPriorityEvent 指示该事件是否为优先事件的布尔值
+     * @throws IOException 如果在广播事件过程中发生I/O异常，则抛出此异常
+    */
     public void broadcastEvent(AbstractEvent event, boolean isPriorityEvent) throws IOException {
+        // 检查事件是否为CheckpointBarrier，并且不支持非对齐的检查点
         if (event instanceof CheckpointBarrier && !supportsUnalignedCheckpoints) {
+            // 将事件强制转换为CheckpointBarrier
             final CheckpointBarrier barrier = (CheckpointBarrier) event;
+            // 修改CheckpointBarrier的选项以指示不支持非对齐检查点
             event = barrier.withOptions(barrier.getCheckpointOptions().withUnalignedUnsupported());
+            // 将isPriorityEvent设置为false，因为不支持非对齐的检查点
             isPriorityEvent = false;
         }
+        // 将修改后的事件和isPriorityEvent值广播到记录写入器
         recordWriter.broadcastEvent(event, isPriorityEvent);
     }
 

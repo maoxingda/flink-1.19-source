@@ -40,11 +40,16 @@ import static org.apache.flink.util.Preconditions.checkState;
 public class CheckpointOptions implements Serializable {
 
     /** How a checkpoint should be aligned. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 检查点应如何对齐
+    */
     public enum AlignmentType {
         AT_LEAST_ONCE,
-        ALIGNED,
-        UNALIGNED,
-        FORCED_ALIGNED
+        ALIGNED,//对齐
+        UNALIGNED,//非对齐
+        FORCED_ALIGNED//强制对齐
     }
 
     public static final long NO_ALIGNED_CHECKPOINT_TIME_OUT = Long.MAX_VALUE;

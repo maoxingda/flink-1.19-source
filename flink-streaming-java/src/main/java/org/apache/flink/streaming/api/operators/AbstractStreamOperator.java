@@ -364,6 +364,18 @@ public abstract class AbstractStreamOperator<OUT>
         // this is purely for subclasses to override
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 对当前操作符进行状态快照。
+     *
+     * @param checkpointId        检查点的唯一标识符。
+     * @param timestamp           检查点的时间戳。
+     * @param checkpointOptions   检查点选项，包含了关于检查点的配置信息。
+     * @param factory             用于创建检查点流的工厂。
+     * @return                    返回一个OperatorSnapshotFutures对象，用于追踪快照操作的状态和结果。
+     * @throws Exception          如果快照过程中发生异常，则抛出该异常。
+    */
     @Override
     public final OperatorSnapshotFutures snapshotState(
             long checkpointId,
@@ -372,14 +384,14 @@ public abstract class AbstractStreamOperator<OUT>
             CheckpointStreamFactory factory)
             throws Exception {
         return stateHandler.snapshotState(
-                this,
-                Optional.ofNullable(timeServiceManager),
-                getOperatorName(),
-                checkpointId,
-                timestamp,
-                checkpointOptions,
-                factory,
-                isUsingCustomRawKeyedState());
+                this,// 当前操作符实例
+                Optional.ofNullable(timeServiceManager),// 时间服务管理器，如果存在则包装为Optional，否则为null
+                getOperatorName(),// 获取当前操作符的名称
+                checkpointId,// 检查点ID
+                timestamp,// 时间戳
+                checkpointOptions,// 检查点选项
+                factory,// 检查点流工厂
+                isUsingCustomRawKeyedState());// 是否使用了自定义的原始键控状态
     }
 
     /**

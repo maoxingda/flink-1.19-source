@@ -231,6 +231,18 @@ public class DefaultOperatorStateBackend implements OperatorStateBackend {
     // -------------------------------------------------------------------------------------------
     //  Snapshot
     // -------------------------------------------------------------------------------------------
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 执行快照并返回一个RunnableFuture对象，该对象在完成后将包含OperatorStateHandle类型的快照结果。
+     *
+     * @param checkpointId 检查点的唯一标识符，用于标识此次快照操作
+     * @param timestamp 时间戳，表示执行快照操作的时间点
+     * @param streamFactory 检查点流工厂，用于创建检查点流，不能为null
+     * @param checkpointOptions 检查点选项配置，包含执行快照时所需的配置信息，不能为null
+     * @return 一个RunnableFuture对象，代表快照任务，可以在其执行完毕后通过Future的get()方法获取SnapshotResult<OperatorStateHandle>类型的快照结果
+     * @throws Exception 如果在创建快照任务或执行快照时发生异常，将抛出该异常
+    */
     @Nonnull
     @Override
     public RunnableFuture<SnapshotResult<OperatorStateHandle>> snapshot(
@@ -239,6 +251,7 @@ public class DefaultOperatorStateBackend implements OperatorStateBackend {
             @Nonnull CheckpointStreamFactory streamFactory,
             @Nonnull CheckpointOptions checkpointOptions)
             throws Exception {
+        // 调用预先配置好的snapshotStrategyRunner的snapshot方法，执行快照操作
         return snapshotStrategyRunner.snapshot(
                 checkpointId, timestamp, streamFactory, checkpointOptions);
     }

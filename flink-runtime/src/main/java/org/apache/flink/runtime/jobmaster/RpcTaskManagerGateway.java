@@ -103,6 +103,18 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
                 executionAttemptID, checkpointId, latestCompletedCheckpointId, timestamp);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 触发一个指定执行尝试ID、作业ID和检查点选项的检查点。
+     *
+     * @param executionAttemptID 执行尝试的ID，用于标识要触发检查点的特定执行实例
+     * @param jobId 作业的ID，用于标识要触发检查点的作业
+     * @param checkpointId 检查点的ID，用于唯一标识要触发的检查点
+     * @param timestamp 检查点的时间戳，通常用于日志记录和版本控制
+     * @param checkpointOptions 检查点的选项配置，用于定制检查点的行为（如是否同步，是否强制等）
+     * @return 返回一个Future对象，该对象在检查点被触发后将携带一个确认信息(Acknowledge)
+    */
     @Override
     public CompletableFuture<Acknowledge> triggerCheckpoint(
             ExecutionAttemptID executionAttemptID,
@@ -110,6 +122,8 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
             long checkpointId,
             long timestamp,
             CheckpointOptions checkpointOptions) {
+        // 调用任务执行器网关的triggerCheckpoint方法来触发检查点
+        // 传入执行尝试ID、检查点ID、时间戳和检查点选项
         return taskExecutorGateway.triggerCheckpoint(
                 executionAttemptID, checkpointId, timestamp, checkpointOptions);
     }

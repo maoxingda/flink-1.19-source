@@ -190,6 +190,19 @@ public class RegularOperatorChain<OUT, OP extends StreamOperator<OUT>>
         ExceptionUtils.tryRethrowException(previousException);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 捕获并存储流处理中所有未关闭的算子的状态快照。
+     *
+     * @param operatorSnapshotsInProgress 存储算子快照进度的映射
+     * @param checkpointMetaData          检查点元数据
+     * @param checkpointOptions           检查点选项
+     * @param isRunning                   用于检查任务是否仍在运行的提供者
+     * @param channelStateWriteResult     通道状态写入结果
+     * @param storage                     用于存储检查点数据的工厂
+     * @throws Exception 抛出异常（如果发生任何错误）
+    */
     @Override
     public void snapshotState(
             Map<OperatorID, OperatorSnapshotFutures> operatorSnapshotsInProgress,
@@ -199,22 +212,41 @@ public class RegularOperatorChain<OUT, OP extends StreamOperator<OUT>>
             ChannelStateWriter.ChannelStateWriteResult channelStateWriteResult,
             CheckpointStreamFactory storage)
             throws Exception {
+        // 遍历所有算子（包括子任务）
         for (StreamOperatorWrapper<?, ?> operatorWrapper : getAllOperators(true)) {
+            // 如果算子未关闭
             if (!operatorWrapper.isClosed()) {
+                // 将算子的ID和对应的快照未来对象添加到映射中
+                // 快照未来对象是通过调用 buildOperatorSnapshotFutures 方法创建的
                 operatorSnapshotsInProgress.put(
                         operatorWrapper.getStreamOperator().getOperatorID(),
                         buildOperatorSnapshotFutures(
-                                checkpointMetaData,
-                                checkpointOptions,
-                                operatorWrapper.getStreamOperator(),
-                                isRunning,
-                                channelStateWriteResult,
-                                storage));
+                                checkpointMetaData,// 检查点元数据
+                                checkpointOptions,// 检查点选项
+                                operatorWrapper.getStreamOperator(),// 当前的算子对象
+                                isRunning,// 检查任务是否仍在运行的提供者
+                                channelStateWriteResult,// 通道状态写入结果
+                                storage));// 用于存储检查点数据的工厂
             }
         }
+        // 发送确认检查点事件，告知系统已经完成了检查点的捕获
         sendAcknowledgeCheckpointEvent(checkpointMetaData.getCheckpointId());
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为给定的 StreamOperator 构建并返回 OperatorSnapshotFutures 对象，该对象表示算子的快照进度。
+     *
+     * @param checkpointMetaData   检查点元数据，包含了关于检查点的信息。
+     * @param checkpointOptions    检查点选项，用于配置检查点行为。
+     * @param op                   要进行快照的 StreamOperator 对象。
+     * @param isRunning            一个 Supplier，用于检查任务是否仍在运行。
+     * @param channelStateWriteResult 通道状态写入结果，包含了通道状态写入的相关信息。
+     * @param storage              用于存储检查点数据的 CheckpointStreamFactory。
+     * @return OperatorSnapshotFutures 表示算子快照进度的对象。
+     * @throws Exception 如果在构建快照过程中发生任何异常。
+    */
     private OperatorSnapshotFutures buildOperatorSnapshotFutures(
             CheckpointMetaData checkpointMetaData,
             CheckpointOptions checkpointOptions,
@@ -223,14 +255,30 @@ public class RegularOperatorChain<OUT, OP extends StreamOperator<OUT>>
             ChannelStateWriter.ChannelStateWriteResult channelStateWriteResult,
             CheckpointStreamFactory storage)
             throws Exception {
+        // 调用 checkpointStreamOperator 方法为 StreamOperator 创建快照，并返回 OperatorSnapshotFutures 对象
+        // 该对象表示算子的快照进度
         OperatorSnapshotFutures snapshotInProgress =
                 checkpointStreamOperator(
                         op, checkpointMetaData, checkpointOptions, storage, isRunning);
+        // 调用 snapshotChannelStates 方法将 StreamOperator 的通道状态写入快照
         snapshotChannelStates(op, channelStateWriteResult, snapshotInProgress);
-
+        // 返回表示算子快照进度的 OperatorSnapshotFutures 对象
         return snapshotInProgress;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 对给定的 StreamOperator 进行快照操作，并返回 OperatorSnapshotFutures 对象以跟踪快照进度。
+     *
+     * @param op                   要进行快照操作的 StreamOperator 对象。
+     * @param checkpointMetaData   检查点元数据，包含了关于检查点的信息，如检查点ID和时间戳。
+     * @param checkpointOptions    检查点选项，用于配置检查点行为。
+     * @param storageLocation      CheckpointStreamFactory，用于指定检查点数据的存储位置。
+     * @param isRunning            一个 Supplier，用于检查任务是否仍在运行。
+     * @return OperatorSnapshotFutures 表示 StreamOperator 快照进度的对象。
+     * @throws Exception 如果在快照过程中发生任何异常。
+    */
     private static OperatorSnapshotFutures checkpointStreamOperator(
             StreamOperator<?> op,
             CheckpointMetaData checkpointMetaData,
@@ -239,16 +287,21 @@ public class RegularOperatorChain<OUT, OP extends StreamOperator<OUT>>
             Supplier<Boolean> isRunning)
             throws Exception {
         try {
+            // 调用 StreamOperator 的 snapshotState 方法进行快照操作
+            // 并传入检查点ID、时间戳、检查点选项和存储位置
+            // 返回 OperatorSnapshotFutures 对象以跟踪快照进度
             return op.snapshotState(
                     checkpointMetaData.getCheckpointId(),
                     checkpointMetaData.getTimestamp(),
                     checkpointOptions,
                     storageLocation);
         } catch (Exception ex) {
+            // 如果在快照过程中捕获到异常，并且任务仍在运行
+            // 则记录日志信息，包括异常的消息和堆栈跟踪
             if (isRunning.get()) {
                 LOG.info(ex.getMessage(), ex);
             }
-            throw ex;
+            throw ex;//抛出异常
         }
     }
 }

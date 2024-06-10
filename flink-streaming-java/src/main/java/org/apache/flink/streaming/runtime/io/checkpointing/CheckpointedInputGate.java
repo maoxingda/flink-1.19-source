@@ -196,20 +196,40 @@ public class CheckpointedInputGate implements PullingAsyncDataInput<BufferOrEven
         return next;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理传入的BufferOrEvent对象，根据事件类型执行相应的操作。
+     *
+     * @param bufferOrEvent 带有事件和通道信息的BufferOrEvent对象
+     * @return 处理后的BufferOrEvent对象，封装在Optional中
+     * @throws IOException 如果在处理过程中发生I/O异常
+    */
     private Optional<BufferOrEvent> handleEvent(BufferOrEvent bufferOrEvent) throws IOException {
+        // 获取事件的类类型
         Class<? extends AbstractEvent> eventClass = bufferOrEvent.getEvent().getClass();
+        // 检查是否为CheckpointBarrier事件
         if (eventClass == CheckpointBarrier.class) {
+            // 转换为CheckpointBarrier对象并处理
             CheckpointBarrier checkpointBarrier = (CheckpointBarrier) bufferOrEvent.getEvent();
             barrierHandler.processBarrier(checkpointBarrier, bufferOrEvent.getChannelInfo(), false);
+            // 检查是否为CancelCheckpointMarker事件
         } else if (eventClass == CancelCheckpointMarker.class) {
+            // 处理取消检查点屏障
             barrierHandler.processCancellationBarrier(
                     (CancelCheckpointMarker) bufferOrEvent.getEvent(),
                     bufferOrEvent.getChannelInfo());
+            // 检查是否为EndOfData事件
         } else if (eventClass == EndOfData.class) {
+            // 确认所有记录已处理
             inputGate.acknowledgeAllRecordsProcessed(bufferOrEvent.getChannelInfo());
+            // 检查是否为EndOfPartitionEvent事件
         } else if (eventClass == EndOfPartitionEvent.class) {
+            // 处理分区结束事件
             barrierHandler.processEndOfPartition(bufferOrEvent.getChannelInfo());
+            // 检查是否为EventAnnouncement事件
         } else if (eventClass == EventAnnouncement.class) {
+            // 转换为EventAnnouncement对象
             EventAnnouncement eventAnnouncement = (EventAnnouncement) bufferOrEvent.getEvent();
             AbstractEvent announcedEvent = eventAnnouncement.getAnnouncedEvent();
             checkState(
@@ -221,9 +241,12 @@ public class CheckpointedInputGate implements PullingAsyncDataInput<BufferOrEven
                     announcedBarrier,
                     eventAnnouncement.getSequenceNumber(),
                     bufferOrEvent.getChannelInfo());
+            // 检查是否为EndOfChannelStateEvent事件
         } else if (bufferOrEvent.getEvent().getClass() == EndOfChannelStateEvent.class) {
+            // 处理通道状态结束事件
             upstreamRecoveryTracker.handleEndOfRecovery(bufferOrEvent.getChannelInfo());
         }
+        // 默认情况下，返回原始的BufferOrEvent对象
         return Optional.of(bufferOrEvent);
     }
 

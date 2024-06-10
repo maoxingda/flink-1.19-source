@@ -174,6 +174,22 @@ public class StreamOperatorStateHandler {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 对指定的 StreamOperator 进行状态快照。
+     *
+     * @param streamOperator                需要进行状态快照的 StreamOperator 实例。
+     * @param timeServiceManager              时间服务管理器，如果为空则不使用时间服务。
+     * @param operatorName                    StreamOperator 的名称。
+     * @param checkpointId                    检查点的唯一标识符。
+     * @param timestamp                       检查点的时间戳。
+     * @param checkpointOptions               检查点选项，包含了关于检查点的配置信息。
+     * @param factory                         用于创建检查点流的工厂。
+     * @param isUsingCustomRawKeyedState      是否使用了自定义的原始键控状态。
+     * @return                                返回一个 OperatorSnapshotFutures 对象，用于追踪快照操作的状态和结果。
+     * @throws CheckpointException            如果在快照过程中发生异常，则抛出该异常。
+    */
     public OperatorSnapshotFutures snapshotState(
             CheckpointedStreamOperator streamOperator,
             Optional<InternalTimeServiceManager<?>> timeServiceManager,
@@ -184,17 +200,18 @@ public class StreamOperatorStateHandler {
             CheckpointStreamFactory factory,
             boolean isUsingCustomRawKeyedState)
             throws CheckpointException {
+        // 获取键控状态的范围，如果未使用键控状态后端，则使用空范围
         KeyGroupRange keyGroupRange =
                 null != keyedStateBackend
                         ? keyedStateBackend.getKeyGroupRange()
                         : KeyGroupRange.EMPTY_KEY_GROUP_RANGE;
-
+        // 创建一个用于追踪快照操作进度的 OperatorSnapshotFutures 对象
         OperatorSnapshotFutures snapshotInProgress = new OperatorSnapshotFutures();
-
+        // 创建一个状态快照上下文，该上下文包含检查点ID、时间戳、检查点流工厂、键控状态范围和可关闭资源注册表
         StateSnapshotContextSynchronousImpl snapshotContext =
                 new StateSnapshotContextSynchronousImpl(
                         checkpointId, timestamp, factory, keyGroupRange, closeableRegistry);
-
+        // 调用内部方法开始执行状态快照操作
         snapshotState(
                 streamOperator,
                 timeServiceManager,
@@ -206,10 +223,27 @@ public class StreamOperatorStateHandler {
                 snapshotInProgress,
                 snapshotContext,
                 isUsingCustomRawKeyedState);
-
+        // 返回快照操作进度的追踪对象
         return snapshotInProgress;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 对指定的 StreamOperator 进行状态快照。
+     *
+     * @param streamOperator               需要进行状态快照的 StreamOperator 实例。
+     * @param timeServiceManager           时间服务管理器，可选的。如果存在，用于管理时间相关状态的快照。
+     * @param operatorName                 StreamOperator 的名称。
+     * @param checkpointId                 检查点的唯一标识符。
+     * @param timestamp                    检查点的时间戳。
+     * @param checkpointOptions            检查点选项，包含了关于检查点的配置信息。
+     * @param factory                      用于创建检查点流的工厂。
+     * @param snapshotInProgress           用于追踪快照操作进度的 OperatorSnapshotFutures 对象。
+     * @param snapshotContext              状态快照上下文，包含了快照操作所需的信息。
+     * @param isUsingCustomRawKeyedState   是否使用了自定义的原始键控状态。
+     * @throws CheckpointException         如果在快照过程中发生异常，则抛出该异常。
+    */
     @VisibleForTesting
     void snapshotState(
             CheckpointedStreamOperator streamOperator,
@@ -224,58 +258,73 @@ public class StreamOperatorStateHandler {
             boolean isUsingCustomRawKeyedState)
             throws CheckpointException {
         try {
+            // 如果提供了时间服务管理器
             if (timeServiceManager.isPresent()) {
+                // 检查是否提供了键控状态后端，因为时间服务管理器通常与键控状态后端一起使用
                 checkState(
                         keyedStateBackend != null,
                         "keyedStateBackend should be available with timeServiceManager");
+                // 获取时间服务管理器
                 final InternalTimeServiceManager<?> manager = timeServiceManager.get();
 
+                // 检查是否需要为旧版同步计时器快照使用原始键控状态
+                // 如果键控状态后端是 AbstractKeyedStateBackend 的一个实例，并且需要基于检查点类型进行旧版快照
                 boolean requiresLegacyRawKeyedStateSnapshots =
                         keyedStateBackend instanceof AbstractKeyedStateBackend
                                 && ((AbstractKeyedStateBackend<?>) keyedStateBackend)
                                         .requiresLegacySynchronousTimerSnapshots(
                                                 checkpointOptions.getCheckpointType());
-
+                // 如果需要旧版快照并且当前操作员正在使用自定义的原始键控状态，则抛出异常
                 if (requiresLegacyRawKeyedStateSnapshots) {
                     checkState(
                             !isUsingCustomRawKeyedState,
                             "Attempting to snapshot timers to raw keyed state, but this operator has custom raw keyed state to write.");
+                    // 将时间服务管理器的状态快照到原始键控状态
                     manager.snapshotToRawKeyedState(
                             snapshotContext.getRawKeyedOperatorStateOutput(), operatorName);
                 }
             }
+            // 调用 StreamOperator 的 snapshotState 方法进行状态快照
             streamOperator.snapshotState(snapshotContext);
 
+            // 设置状态快照进度追踪中的原始键控状态流Future
             snapshotInProgress.setKeyedStateRawFuture(snapshotContext.getKeyedStateStreamFuture());
+            // 设置状态快照进度追踪中的原始操作员状态流Future
             snapshotInProgress.setOperatorStateRawFuture(
                     snapshotContext.getOperatorStateStreamFuture());
-
+            // 如果operator状态后端不为空
             if (null != operatorStateBackend) {
+                // 设置操作员状态管理的Future，即调用操作员状态后端的snapshot方法进行状态快照
                 snapshotInProgress.setOperatorStateManagedFuture(
                         operatorStateBackend.snapshot(
                                 checkpointId, timestamp, factory, checkpointOptions));
             }
-
+            // 如果键控状态后端不为空
             if (null != keyedStateBackend) {
+                // 判断当前检查点是否为规范的保存点（Savepoint）
                 if (isCanonicalSavepoint(checkpointOptions.getCheckpointType())) {
+                    // 准备规范的保存点快照策略执行器
                     SnapshotStrategyRunner<KeyedStateHandle, ? extends FullSnapshotResources<?>>
                             snapshotRunner =
                                     prepareCanonicalSavepoint(keyedStateBackend, closeableRegistry);
-
+                    // 调用快照策略执行器的snapshot方法，进行规范的保存点快照
                     snapshotInProgress.setKeyedStateManagedFuture(
                             snapshotRunner.snapshot(
                                     checkpointId, timestamp, factory, checkpointOptions));
 
                 } else {
+                    // 直接调用键控状态后端的snapshot方法进行状态快照
                     snapshotInProgress.setKeyedStateManagedFuture(
                             keyedStateBackend.snapshot(
                                     checkpointId, timestamp, factory, checkpointOptions));
                 }
             }
+            // 尝试关闭快照上下文，如果关闭过程中出现异常，则捕获并处理
         } catch (Exception snapshotException) {
             try {
                 snapshotInProgress.cancel();
             } catch (Exception e) {
+                // 如果在关闭上下文时出现了IOException，则捕获该异常
                 snapshotException.addSuppressed(e);
             }
 
@@ -287,10 +336,12 @@ public class StreamOperatorStateHandler {
                             + ".";
 
             try {
+                // 抛出CheckpointException异常，表示检查点失败
                 snapshotContext.closeExceptionally();
             } catch (IOException e) {
                 snapshotException.addSuppressed(e);
             }
+            // CheckpointException是一个自定义异常，用于表示检查点过程中的错误
             throw new CheckpointException(
                     snapshotFailMessage,
                     CheckpointFailureReason.CHECKPOINT_DECLINED,

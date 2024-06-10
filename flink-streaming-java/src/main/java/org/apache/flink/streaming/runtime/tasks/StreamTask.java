@@ -1333,25 +1333,32 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     @Override
     public CompletableFuture<Boolean> triggerCheckpointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
+        // 检查是否支持强制全量快照选项
         checkForcedFullSnapshotSupport(checkpointOptions);
-
+        // 创建一个CompletableFuture来异步地处理检查点触发的结果
         CompletableFuture<Boolean> result = new CompletableFuture<>();
+        // 使用mainMailboxExecutor（通常是一个线程池或任务执行器）异步执行任务
         mainMailboxExecutor.execute(
                 () -> {
                     try {
+                        // 检查所有InputGates是否都已完成（即没有未完成的输入）
                         boolean noUnfinishedInputGates =
                                 Arrays.stream(getEnvironment().getAllInputGates())
                                         .allMatch(InputGate::isFinished);
-
+                        // 如果所有InputGates都已完成
                         if (noUnfinishedInputGates) {
+                            // 在邮箱中异步触发检查点，并设置结果Future为成功完成，并带有返回值
                             result.complete(
                                     triggerCheckpointAsyncInMailbox(
                                             checkpointMetaData, checkpointOptions));
+                            // 如果存在未完成的输入门
                         } else {
+                            // 触发带有未完成通道的检查点，并设置结果Future为成功完成，并带有返回值
                             result.complete(
                                     triggerUnfinishedChannelsCheckpoint(
                                             checkpointMetaData, checkpointOptions));
                         }
+                        // 如果在触发检查点过程中发生异常
                     } catch (Exception ex) {
                         // Report the failure both via the Future result but also to the mailbox
                         result.completeExceptionally(ex);
@@ -1361,14 +1368,27 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                 "checkpoint %s with %s",
                 checkpointMetaData,
                 checkpointOptions);
+        // 返回CompletableFuture，以便调用者可以异步地等待检查点触发的结果
         return result;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 在邮箱中异步触发检查点。
+     *
+     * @param checkpointMetaData 检查点的元数据。
+     * @param checkpointOptions 检查点的选项。
+     * @return 检查点是否成功触发。
+     * @throws Exception 如果在触发检查点过程中发生异常。
+    */
     private boolean triggerCheckpointAsyncInMailbox(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions)
             throws Exception {
+        // 监控当前线程，以防止用户在检查点过程中调用System.exit()
         FlinkSecurityManager.monitorUserSystemExitForCurrentThread();
         try {
+            // 计算检查点启动的延迟时间（纳秒）
             latestAsyncCheckpointStartDelayNanos =
                     1_000_000
                             * Math.max(
@@ -1376,24 +1396,29 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                                     System.currentTimeMillis() - checkpointMetaData.getTimestamp());
 
             // No alignment if we inject a checkpoint
+            // 初始化检查点指标构建器，并设置对齐持续时间为0（因为没有对齐），以及设置检查点启动延迟
             CheckpointMetricsBuilder checkpointMetrics =
                     new CheckpointMetricsBuilder()
                             .setAlignmentDurationNanos(0L)
                             .setBytesProcessedDuringAlignment(0L)
                             .setCheckpointStartDelayNanos(latestAsyncCheckpointStartDelayNanos);
-
+            // 初始化输入的检查点
             subtaskCheckpointCoordinator.initInputsCheckpoint(
                     checkpointMetaData.getCheckpointId(), checkpointOptions);
-
+            // 执行检查点，并获取是否成功
             boolean success =
                     performCheckpoint(checkpointMetaData, checkpointOptions, checkpointMetrics);
+            // 如果检查点未成功，则拒绝该检查点
             if (!success) {
                 declineCheckpoint(checkpointMetaData.getCheckpointId());
             }
+            // 返回检查点是否成功
             return success;
         } catch (Exception e) {
             // propagate exceptions only if the task is still in "running" state
+            // 如果任务仍在“运行”状态，则抛出异常；否则，记录调试信息
             if (isRunning) {
+                // 抛出异常，说明无法为当前操作符执行检查点
                 throw new Exception(
                         "Could not perform checkpoint "
                                 + checkpointMetaData.getCheckpointId()
@@ -1402,15 +1427,20 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                                 + '.',
                         e);
             } else {
+                // 如果任务不在“运行”状态，则记录一个调试级别的日志，并返回false表示检查点失败
+                // 记录调试信息，说明在任务非运行状态下无法执行检查点
                 LOG.debug(
                         "Could not perform checkpoint {} for operator {} while the "
                                 + "invokable was not in state running.",
                         checkpointMetaData.getCheckpointId(),
                         getName(),
                         e);
+                // 返回false表示检查点失败
                 return false;
             }
         } finally {
+            // 无论是否发生异常，都要确保取消对当前线程的System.exit()监控
+            // 释放由FlinkSecurityManager监控的资源
             FlinkSecurityManager.unmonitorUserSystemExitForCurrentThread();
         }
     }
@@ -1486,33 +1516,42 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
         }
         subtaskCheckpointCoordinator.abortCheckpointOnBarrier(checkpointId, cause, operatorChain);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 执行CheckPoint
+     */
     private boolean performCheckpoint(
             CheckpointMetaData checkpointMetaData,
             CheckpointOptions checkpointOptions,
             CheckpointMetricsBuilder checkpointMetrics)
             throws Exception {
-
+        // 获取检查点的类型（如异步、同步等）
         final SnapshotType checkpointType = checkpointOptions.getCheckpointType();
+        // 记录日志，开始特定任务上的检查点
         LOG.debug(
                 "Starting checkpoint {} {} on task {}",
                 checkpointMetaData.getCheckpointId(),
                 checkpointType,
                 getName());
-
+        // 如果任务正在运行
         if (isRunning) {
+            // 使用actionExecutor执行检查点相关操作，如果抛出异常，则会传播到上层
             actionExecutor.runThrowing(
                     () -> {
+                        // 如果检查点类型是同步的
                         if (isSynchronous(checkpointType)) {
+                            // 设置同步保存点ID
                             setSynchronousSavepoint(checkpointMetaData.getCheckpointId());
                         }
-
+                        // 如果启用了包含已完成任务的检查点，并且已经接收到数据末尾的通知，并且finalCheckpointMinId尚未设置
                         if (areCheckpointsWithFinishedTasksEnabled()
                                 && endOfDataReceived
                                 && this.finalCheckpointMinId == null) {
+                            // 设置finalCheckpointMinId为当前检查点的ID
                             this.finalCheckpointMinId = checkpointMetaData.getCheckpointId();
                         }
-
+                        // 调用子任务的检查点协调器进行状态检查点操作
                         subtaskCheckpointCoordinator.checkpointState(
                                 checkpointMetaData,
                                 checkpointOptions,
@@ -1521,9 +1560,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                                 finishedOperators,
                                 this::isRunning);
                     });
-
+            // 如果没有抛出异常，则返回true表示检查点操作成功开始
             return true;
         } else {
+            // 如果任务没有在运行，我们仍然需要通知下游的操作符不要等待来自这个操作符的输入
+            // 我们不能直接在下游操作符链上广播取消检查点的标记，因为操作符链可能还没有被创建
             actionExecutor.runThrowing(
                     () -> {
                         // we cannot perform our checkpoint - let the downstream operators know that
@@ -1533,11 +1574,14 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                         // we cannot broadcast the cancellation markers on the 'operator chain',
                         // because it may not
                         // yet be created
+                        // 创建一个取消检查点的标记，其中包含了当前检查点的ID
+                        // 这个标记会被用来通知下游操作符不再等待该操作符的输入数据
                         final CancelCheckpointMarker message =
                                 new CancelCheckpointMarker(checkpointMetaData.getCheckpointId());
+                        // 调用recordWriter的broadcastEvent方法来广播取消检查点的标记
                         recordWriter.broadcastEvent(message);
                     });
-
+            // 返回false表示由于任务没有在运行，检查点操作未能成功执行
             return false;
         }
     }

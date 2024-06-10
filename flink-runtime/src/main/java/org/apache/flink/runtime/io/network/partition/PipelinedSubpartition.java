@@ -162,6 +162,7 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
     */
     @Override
     public int add(BufferConsumer bufferConsumer, int partialRecordLength) {
+        //调用内部add方法将来BufferConsumer放入队列中
         return add(bufferConsumer, partialRecordLength, false);
     }
 

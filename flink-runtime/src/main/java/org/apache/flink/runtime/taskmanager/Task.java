@@ -1538,44 +1538,69 @@ public class Task
      * @param checkpointTimestamp The timestamp associated with the checkpoint.
      * @param checkpointOptions Options for performing this checkpoint.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 调用可调用对象以触发检查点。
+     *
+     * @param checkpointID 标识检查点的ID。
+     * @param checkpointTimestamp 与检查点关联的时间戳。
+     * @param checkpointOptions 执行此检查点的选项。
+    */
     public void triggerCheckpointBarrier(
             final long checkpointID,
             final long checkpointTimestamp,
             final CheckpointOptions checkpointOptions) {
-
+        // 获取当前任务的可调用对象
         final TaskInvokable invokable = this.invokable;
+        // 创建检查点元数据，包括检查点ID、时间戳以及当前系统时间
         final CheckpointMetaData checkpointMetaData =
                 new CheckpointMetaData(
                         checkpointID, checkpointTimestamp, System.currentTimeMillis());
-
+        // 检查当前任务是否处于运行状态
         if (executionState == ExecutionState.RUNNING) {
+            // 断言可调用对象是否实现了CheckpointableTask接口，即是否支持检查点
             checkState(invokable instanceof CheckpointableTask, "invokable is not checkpointable");
             try {
+                // 调用可调用对象的triggerCheckpointAsync方法异步触发检查点
+                // 此方法返回一个CompletableFuture，表示检查点触发的异步结果
                 ((CheckpointableTask) invokable)
+                         //触发CheckPoint
                         .triggerCheckpointAsync(checkpointMetaData, checkpointOptions)
                         .handle(
+                                // 使用CompletableFuture的handle方法处理触发检查点的结果
                                 (triggerResult, exception) -> {
+                                    // 如果发生异常或触发结果不为真（即触发失败）
                                     if (exception != null || !triggerResult) {
+                                        // 拒绝该检查点，并指定失败原因和异常（如果有）
                                         declineCheckpoint(
                                                 checkpointID,
                                                 CheckpointFailureReason.TASK_FAILURE,
                                                 exception);
+                                        // 返回false表示处理失败
                                         return false;
                                     }
                                     return true;
                                 });
+                // 捕获RejectedExecutionException异常
             } catch (RejectedExecutionException ex) {
                 // This may happen if the mailbox is closed. It means that the task is shutting
                 // down, so we just ignore it.
+                // 如果在尝试提交任务到邮箱时被拒绝，可能是因为邮箱已关闭
+                // 这通常意味着任务正在关闭中，因此我们只需忽略它
                 LOG.debug(
                         "Triggering checkpoint {} for {} ({}) was rejected by the mailbox",
                         checkpointID,
                         taskNameWithSubtask,
                         executionId);
+                // 拒绝该检查点，并指定失败原因为任务关闭
                 declineCheckpoint(
                         checkpointID, CheckpointFailureReason.CHECKPOINT_DECLINED_TASK_CLOSING);
+                // 捕获所有其他类型的Throwable异常
             } catch (Throwable t) {
+                // 如果任务当前处于运行状态
                 if (getExecutionState() == ExecutionState.RUNNING) {
+                    // 触发检查点过程中发生错误，我们将其视为外部失败
                     failExternally(
                             new Exception(
                                     "Error while triggering checkpoint "
@@ -1584,6 +1609,7 @@ public class Task
                                             + taskNameWithSubtask,
                                     t));
                 } else {
+                    // 如果任务不在运行状态，则记录调试日志
                     LOG.debug(
                             "Encountered error while triggering checkpoint {} for "
                                     + "{} ({}) while being not in state running.",
@@ -1593,13 +1619,17 @@ public class Task
                             t);
                 }
             }
+            // 如果任务不在运行状态，则不需要触发检查点
         } else {
+            // 记录调试日志，表示拒绝了非运行状态的任务的检查点请求
             LOG.debug(
                     "Declining checkpoint request for non-running task {} ({}).",
                     taskNameWithSubtask,
                     executionId);
 
             // send back a message that we did not do the checkpoint
+            // 发送消息表明我们没有进行这个检查点
+            // 并指定失败原因为任务未就绪
             declineCheckpoint(
                     checkpointID, CheckpointFailureReason.CHECKPOINT_DECLINED_TASK_NOT_READY);
         }

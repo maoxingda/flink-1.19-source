@@ -1061,31 +1061,48 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
     // Checkpointing RPCs
     // ----------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 触发指定执行尝试ID的检查点。
+     *
+     * @param executionAttemptID 执行尝试的ID，用于标识要触发检查点的任务执行实例
+     * @param checkpointId 检查点的ID，用于唯一标识要触发的检查点
+     * @param checkpointTimestamp 检查点的时间戳，通常用于日志记录和版本控制
+     * @param checkpointOptions 检查点的选项配置，用于定制检查点的行为（如是否同步，是否强制等）
+     * @return 返回一个Future对象，当检查点触发后，将携带一个确认信息(Acknowledge)。
+     * 如果任务不存在，则返回一个异常完成的Future。
+     *
+     */
     @Override
     public CompletableFuture<Acknowledge> triggerCheckpoint(
             ExecutionAttemptID executionAttemptID,
             long checkpointId,
             long checkpointTimestamp,
             CheckpointOptions checkpointOptions) {
+        // 在日志中记录触发检查点的相关信息
         log.debug(
                 "Trigger checkpoint {}@{} for {}.",
                 checkpointId,
                 checkpointTimestamp,
                 executionAttemptID);
-
+        // 从任务槽表中获取与给定执行尝试ID对应的任务
         final Task task = taskSlotTable.getTask(executionAttemptID);
 
         if (task != null) {
+            // 如果任务存在，则触发检查点屏障
             task.triggerCheckpointBarrier(checkpointId, checkpointTimestamp, checkpointOptions);
-
+            // 返回一个包含确认信息的已完成Future
             return CompletableFuture.completedFuture(Acknowledge.get());
         } else {
+            // 如果任务不存在，则记录一条调试日志
             final String message =
                     "TaskManager received a checkpoint request for unknown task "
                             + executionAttemptID
                             + '.';
 
             log.debug(message);
+            // 返回一个包含CheckpointException异常的异常完成的Future
             return FutureUtils.completedExceptionally(
                     new CheckpointException(
                             message, CheckpointFailureReason.TASK_CHECKPOINT_FAILURE));

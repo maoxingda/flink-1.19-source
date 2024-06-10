@@ -933,8 +933,20 @@ public class Execution
      * @param checkpointOptions of the checkpoint to trigger
      * @return Future acknowledge which is returned once the checkpoint has been triggered
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 在此执行的任务上触发一个新的检查点。
+     *
+     * @param checkpointId 要触发的检查点的ID
+     * @param timestamp 要触发的检查点的时间戳
+     * @param checkpointOptions 要触发的检查点的选项配置
+     * @return 返回一个Future对象，当检查点被触发后，将返回一个确认信息(Acknowledge)
+    */
     public CompletableFuture<Acknowledge> triggerCheckpoint(
             long checkpointId, long timestamp, CheckpointOptions checkpointOptions) {
+        // 调用辅助方法来实际触发检查点，并返回一个CompletableFuture对象，
+        // 该对象将在检查点被触发后完成，并携带一个确认信息(Acknowledge)
         return triggerCheckpointHelper(checkpointId, timestamp, checkpointOptions);
     }
 
@@ -951,19 +963,35 @@ public class Execution
         return triggerCheckpointHelper(checkpointId, timestamp, checkpointOptions);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 辅助方法，用于触发检查点。  
+     *
+     * @param checkpointId 要触发的检查点的ID  
+     * @param timestamp 要触发的检查点的时间戳  
+     * @param checkpointOptions 要触发的检查点的选项配置  
+     * @return 返回一个Future对象，当检查点被触发后，将返回一个确认信息(Acknowledge)。
+    */
     private CompletableFuture<Acknowledge> triggerCheckpointHelper(
             long checkpointId, long timestamp, CheckpointOptions checkpointOptions) {
-
+        // 获取当前执行分配的逻辑资源槽
         final LogicalSlot slot = assignedResource;
-
+        // 如果资源槽不为空（即已经分配了资源）
         if (slot != null) {
+            // 从资源槽中获取任务管理器网关
             final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
-
+            // 调用任务管理器网关的triggerCheckpoint方法来触发检查点
+            // 传入当前尝试的ID、作业的ID、检查点ID、时间戳和检查点选项
             return taskManagerGateway.triggerCheckpoint(
                     attemptId, getVertex().getJobId(), checkpointId, timestamp, checkpointOptions);
         }
+        // 如果资源槽为空（即没有分配资源），表示该执行可能已经不再运行
+        // 记录一条调试日志，说明执行没有分配资源槽
         LOG.debug(
                 "The execution has no slot assigned. This indicates that the execution is no longer running.");
+        // 返回一个已经完成的Future，其中包含一个默认的确认信息
+        // 这意味着检查点没有被实际触发，但调用者会得到一个立即完成的Future
         return CompletableFuture.completedFuture(Acknowledge.get());
     }
 

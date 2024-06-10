@@ -201,18 +201,36 @@ public abstract class BufferWritingResultPartition extends ResultPartition {
         // partial buffer, full record
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的事件广播到所有子分区。
+     *
+     * 在广播之前，会检查当前是否处于生产状态，并完成广播和单播缓冲区的构建。
+     *
+     * @param event 要广播的事件对象，必须是AbstractEvent或其子类的实例
+     * @param isPriorityEvent 指示该事件是否为优先事件的布尔值
+     * @throws IOException 如果在序列化事件或将其添加到子分区时发生I/O异常，则抛出此异常
+    */
     @Override
     public void broadcastEvent(AbstractEvent event, boolean isPriorityEvent) throws IOException {
+        // 检查当前是否处于生产状态
         checkInProduceState();
+        // 完成广播缓冲区构建器的构建 关闭broadcastBufferBuilder 设置为null
         finishBroadcastBufferBuilder();
+        //完成单个子类缓冲区的设置unicastBufferBuilders
         finishUnicastBufferBuilders();
-
+        // 使用事件序列化为BufferConsumer，以便将事件写入缓冲区
         try (BufferConsumer eventBufferConsumer =
                 EventSerializer.toBufferConsumer(event, isPriorityEvent)) {
+            // 将事件序列化到缓冲区后，更新总写入字节数（乘以子分区数量）
             totalWrittenBytes += ((long) eventBufferConsumer.getWrittenBytes() * numSubpartitions);
+            // 遍历所有子分区
             for (ResultSubpartition subpartition : subpartitions) {
                 // Retain the buffer so that it can be recycled by each subpartition of
                 // targetPartition
+                // 复制事件缓冲区消费者中的缓冲区（可能是为了避免并发修改）
+                // 并将其添加到子分区中，同时保留缓冲区以便子分区可以回收它
                 subpartition.add(eventBufferConsumer.copy(), 0);
             }
         }

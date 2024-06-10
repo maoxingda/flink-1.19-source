@@ -618,38 +618,64 @@ public class CheckpointCoordinator {
         return triggerCheckpointFromCheckpointThread(properties, null, false);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 触发检查点并返回一个表示检查点完成状态的CompletableFuture对象
+     * @param props 检查点的属性配置
+     * @param externalSavepointLocation 可选的外部保存点位置，如果为空则不使用外部保存点
+     * @param isPeriodic 是否是周期性触发的检查点
+    */
     @VisibleForTesting
     CompletableFuture<CompletedCheckpoint> triggerCheckpoint(
             CheckpointProperties props,
             @Nullable String externalSavepointLocation,
             boolean isPeriodic) {
-
+        // 创建一个包含检查点触发请求所需信息的CheckpointTriggerRequest对象
         CheckpointTriggerRequest request =
                 new CheckpointTriggerRequest(props, externalSavepointLocation, isPeriodic);
+        // 选择要执行的请求，如果找到有效的请求，则执行startTriggeringCheckpoint方法
         chooseRequestToExecute(request).ifPresent(this::startTriggeringCheckpoint);
+        // 返回与CheckpointTriggerRequest关联的CompletableFuture对象
+        // 这个对象将在检查点完成时完成，并携带CompletedCheckpoint对象作为结果
+        // 或者，如果在检查点触发或执行过程中发生异常，则会携带异常完成
         return request.onCompletionPromise;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 真正触发CheckPoint的方法
+    */
     private void startTriggeringCheckpoint(CheckpointTriggerRequest request) {
         try {
+            // 使用同步块来确保全局状态检查是线程安全的
             synchronized (lock) {
+                // 在触发检查点之前，对全局状态进行预检查，检查是否满足触发周期性检查点的条件
                 preCheckGlobalState(request.isPeriodic);
             }
 
             // we will actually trigger this checkpoint!
+            // 检查当前是否正在触发检查点，如果不是，则设置状态为正在触发
+            // 使用Preconditions来确保状态检查，如果不满足条件则抛出异常
             Preconditions.checkState(!isTriggering);
             isTriggering = true;
 
+            // 记录触发检查点的时间戳
             final long timestamp = System.currentTimeMillis();
 
+            // 异步计算检查点计划
+            // 返回一个CompletableFuture，该Future在计划计算完成后将包含CheckpointPlan对象
             CompletableFuture<CheckpointPlan> checkpointPlanFuture =
                     checkpointPlanCalculator.calculateCheckpointPlan();
-
+             // 判断是否需要初始化检查点的基础位置信息
+            // 如果尚未初始化，则进行初始化，并更新状态
             boolean initializeBaseLocations = !baseLocationsForCheckpointInitialized;
             baseLocationsForCheckpointInitialized = true;
 
+            // 创建一个新的CompletableFuture，用于表示主触发操作的完成
             CompletableFuture<Void> masterTriggerCompletionPromise = new CompletableFuture<>();
-
+            // 异步处理checkpointPlanFuture的结果
             final CompletableFuture<PendingCheckpoint> pendingCheckpointCompletableFuture =
                     checkpointPlanFuture
                             .thenApplyAsync(
@@ -658,56 +684,76 @@ public class CheckpointCoordinator {
                                             // this must happen outside the coordinator-wide lock,
                                             // because it communicates with external services
                                             // (in HA mode) and may block for a while.
+                                            // 获取一个新的、递增的检查点ID
                                             long checkpointID =
                                                     checkpointIdCounter.getAndIncrement();
+                                            // 创建一个PendingCheckpoint对象，该对象将用于表示尚未完成的检查点
                                             return new Tuple2<>(plan, checkpointID);
                                         } catch (Throwable e) {
+                                            // 如果在获取检查点ID或创建PendingCheckpoint时发生异常，
                                             throw new CompletionException(e);
                                         }
                                     },
                                     executor)
                             .thenApplyAsync(
+                                    // checkpointInfo是一个Tuple2对象，包含CheckpointPlan和checkpointID
                                     (checkpointInfo) ->
+                                            // 这里调用createPendingCheckpoint方法来完成这个操作
                                             createPendingCheckpoint(
-                                                    timestamp,
-                                                    request.props,
-                                                    checkpointInfo.f0,
-                                                    request.isPeriodic,
-                                                    checkpointInfo.f1,
-                                                    request.getOnCompletionFuture(),
-                                                    masterTriggerCompletionPromise),
+                                                    timestamp,// 触发检查点的时间戳
+                                                    request.props,// 请求的属性
+                                                    checkpointInfo.f0,// CheckpointPlan
+                                                    request.isPeriodic,// 是否是周期性检查点
+                                                    checkpointInfo.f1,// 检查点ID
+                                                    request.getOnCompletionFuture(),// 检查点完成时的回调Future
+                                                    masterTriggerCompletionPromise),// 主触发操作的完成Promise
                                     timer);
 
             final CompletableFuture<?> coordinatorCheckpointsComplete =
                     pendingCheckpointCompletableFuture
+                            // 当pendingCheckpointCompletableFuture完成时，异步地应用给定的函数来初始化检查点位置
                             .thenApplyAsync(
                                     pendingCheckpoint -> {
                                         try {
+                                            // 初始化检查点的存储位置
+                                            // 使用pendingCheckpoint的checkpointID、请求的属性、外部保存点位置等参数
                                             CheckpointStorageLocation checkpointStorageLocation =
                                                     initializeCheckpointLocation(
                                                             pendingCheckpoint.getCheckpointID(),
                                                             request.props,
                                                             request.externalSavepointLocation,
                                                             initializeBaseLocations);
+                                            // 将pendingCheckpoint和checkpointStorageLocation封装成一个Tuple2对象返回
                                             return Tuple2.of(
                                                     pendingCheckpoint, checkpointStorageLocation);
                                         } catch (Throwable e) {
+                                            //抛出异常
                                             throw new CompletionException(e);
                                         }
                                     },
                                     executor)
                             .thenComposeAsync(
+                                    // 从Tuple2中提取PendingCheckpoint
                                     (checkpointInfo) -> {
                                         PendingCheckpoint pendingCheckpoint = checkpointInfo.f0;
+                                        // 如果PendingCheckpoint已经被释放（disposed）
+                                        // 则稍后会处理这个已释放的检查点，跳过协调器状态的快照操作
                                         if (pendingCheckpoint.isDisposed()) {
                                             // The disposed checkpoint will be handled later,
                                             // skip snapshotting the coordinator states.
+                                            // 这里返回null表示没有后续操作需要等待
                                             return null;
                                         }
                                         synchronized (lock) {
+                                            // 设置pendingCheckpoint的目标存储位置为checkpointInfo中的第二个元素（即checkpointStorageLocation）
                                             pendingCheckpoint.setCheckpointTargetLocation(
                                                     checkpointInfo.f1);
                                         }
+                                        // 触发并确认所有协调器的检查点（checkpoint）操作，并返回一个CompletableFuture来表示该操作的完成
+                                        // 参数包括：
+                                        // - coordinatorsToCheckpoint：需要触发检查点的协调器列表
+                                        // - pendingCheckpoint：当前待处理的检查点
+                                        // - timer：可能用于检查点操作的计时器或时间服务
                                         return OperatorCoordinatorCheckpoints
                                                 .triggerAndAcknowledgeAllCoordinatorCheckpointsWithCompletion(
                                                         coordinatorsToCheckpoint,
@@ -720,6 +766,7 @@ public class CheckpointCoordinator {
             // has completed.
             // This is to ensure the tasks are checkpointed after the OperatorCoordinators in case
             // ExternallyInducedSource is used.
+            // 创建一个新的CompletableFuture，它将在coordinatorCheckpointsComplete完成后异步地执行后续操作
             final CompletableFuture<?> masterStatesComplete =
                     coordinatorCheckpointsComplete.thenComposeAsync(
                             ignored -> {
@@ -728,42 +775,59 @@ public class CheckpointCoordinator {
                                 // We use FutureUtils.getWithoutException() to make compiler happy
                                 // with checked
                                 // exceptions in the signature.
+                                // 如果代码执行到这里，说明之前的检查点（pending checkpoint）一定不是null
+                                // 使用FutureUtils.getWithoutException()来避免编译器对检查异常的不满
                                 PendingCheckpoint checkpoint =
                                         FutureUtils.getWithoutException(
                                                 pendingCheckpointCompletableFuture);
                                 if (checkpoint == null || checkpoint.isDisposed()) {
                                     // The disposed checkpoint will be handled later,
                                     // skip snapshotting the master states.
+                                    // 如果检查点已经被处理，则跳过主状态的快照操作
+                                    // 后续会处理已处理的检查点，此处直接返回null
                                     return null;
                                 }
+                                // 对主状态进行快照操作，并返回此操作的CompletableFuture
                                 return snapshotMasterState(checkpoint);
                             },
                             timer);
 
+            // 使用FutureUtils.forward来将多个CompletableFuture的完成情况转发给masterTriggerCompletionPromise
+            // 这样，当masterStatesComplete和coordinatorCheckpointsComplete都完成时，masterTriggerCompletionPromise也会被完成
+            // 这允许外部监听masterTriggerCompletionPromise以得知整个操作何时完成
             FutureUtils.forward(
                     CompletableFuture.allOf(masterStatesComplete, coordinatorCheckpointsComplete),
                     masterTriggerCompletionPromise);
-
+            // 使用FutureUtils.assertNoException来确保masterTriggerCompletionPromise的完成没有异常
+            // 如果有异常，它将直接抛出
             FutureUtils.assertNoException(
+
+                    // 当masterTriggerCompletionPromise完成时，异步处理其结果和可能的异常
                     masterTriggerCompletionPromise
                             .handleAsync(
                                     (ignored, throwable) -> {
+                                        // 获取pendingCheckpointCompletableFuture的结果，即待处理的检查点
                                         final PendingCheckpoint checkpoint =
                                                 FutureUtils.getWithoutException(
                                                         pendingCheckpointCompletableFuture);
-
+                                        // 检查状态，确保待处理的检查点存在或者已经有一个异常发生
                                         Preconditions.checkState(
                                                 checkpoint != null || throwable != null,
                                                 "Either the pending checkpoint needs to be created or an error must have occurred.");
 
                                         if (throwable != null) {
                                             // the initialization might not be finished yet
+                                            // 如果有异常发生
+                                            // 如果检查点还未被创建（可能初始化未完成）
                                             if (checkpoint == null) {
+                                                // 使用请求和异常调用onTriggerFailure方法
                                                 onTriggerFailure(request, throwable);
                                             } else {
+                                                // 使用检查点和异常调用onTriggerFailure方法
                                                 onTriggerFailure(checkpoint, throwable);
                                             }
                                         } else {
+                                            // 如果没有异常，则触发检查点请求
                                             triggerCheckpointRequest(
                                                     request, timestamp, checkpoint);
                                         }
@@ -771,8 +835,10 @@ public class CheckpointCoordinator {
                                     },
                                     timer)
                             .exceptionally(
+                                    //异常处理 抛出异常
                                     error -> {
                                         if (!isShutdown()) {
+                                            //抛出异常
                                             throw new CompletionException(error);
                                         } else if (findThrowable(
                                                         error, RejectedExecutionException.class)
@@ -784,28 +850,43 @@ public class CheckpointCoordinator {
                                         return null;
                                     }));
         } catch (Throwable throwable) {
+            //异常处理
             onTriggerFailure(request, throwable);
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 触发检查点请求的方法
+     *
+     * @param request        检查点触发请求对象
+     * @param timestamp      当前时间戳
+     * @param checkpoint     待处理的检查点对象
+    */
     private void triggerCheckpointRequest(
             CheckpointTriggerRequest request, long timestamp, PendingCheckpoint checkpoint) {
+        // 检查检查点对象是否已经被处理或销毁
         if (checkpoint.isDisposed()) {
+            // 如果检查点已经被处理或销毁，则触发失败处理
             onTriggerFailure(
                     checkpoint,
                     new CheckpointException(
                             CheckpointFailureReason.TRIGGER_CHECKPOINT_FAILURE,
                             checkpoint.getFailureCause()));
         } else {
+            // 触发检查点相关任务，返回一个CompletableFuture对象
+            // 该对象表示异步计算的结果，或者表示计算过程中的异常
             triggerTasks(request, timestamp, checkpoint)
                     .exceptionally(
                             failure -> {
+                                // 当触发检查点相关任务发生异常时，执行此处的lambda表达式
                                 LOG.info(
                                         "Triggering Checkpoint {} for job {} failed due to {}",
                                         checkpoint.getCheckpointID(),
                                         job,
                                         failure);
-
+                                // 根据异常类型，创建或获取CheckpointException对象
                                 final CheckpointException cause;
                                 if (failure instanceof CheckpointException) {
                                     cause = (CheckpointException) failure;
@@ -816,55 +897,81 @@ public class CheckpointCoordinator {
                                                             .TRIGGER_CHECKPOINT_FAILURE,
                                                     failure);
                                 }
+                                // 使用定时器异步执行检查点中止操作，防止在持有锁的情况下进行长时间操作
                                 timer.execute(
                                         () -> {
                                             synchronized (lock) {
                                                 abortPendingCheckpoint(checkpoint, cause);
                                             }
                                         });
+                                // 返回null，因为exceptionally方法处理的是异常情况，不需要返回正常结果
                                 return null;
                             });
 
             // It is possible that the tasks has finished
             // checkpointing at this point.
             // So we need to complete this pending checkpoint.
+            // 在此处检查检查点是否可能已经完成
+            // 这可能是因为在触发任务的同时，检查点任务已经完成
+            // 所以我们需要完成这个待处理的检查点
             if (maybeCompleteCheckpoint(checkpoint)) {
+                // 如果检查点完成，则触发成功处理
                 onTriggerSuccess();
             }
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 触发任务的检查点或保存点。
+     *
+     * @param request        检查点触发请求对象
+     * @param timestamp      当前时间戳
+     * @param checkpoint     待处理的检查点对象
+     * @return 一个CompletableFuture，表示所有任务检查点的触发操作是否完成
+    */
     private CompletableFuture<Void> triggerTasks(
             CheckpointTriggerRequest request, long timestamp, PendingCheckpoint checkpoint) {
         // no exception, no discarding, everything is OK
+        // 获取检查点ID
+        // 如果没有异常，没有丢弃，一切正常
         final long checkpointId = checkpoint.getCheckpointID();
-
+        // 根据配置和请求属性确定检查点类型
         final SnapshotType type;
         if (this.forceFullSnapshot && !request.props.isSavepoint()) {
+            // 如果强制要求完整快照且不是保存点请求，则使用FULL_CHECKPOINT
             type = FULL_CHECKPOINT;
         } else {
+            // 否则，使用请求中指定的检查点类型
             type = request.props.getCheckpointType();
         }
-
+        // 创建检查点选项对象，该对象包含检查点配置信息
         final CheckpointOptions checkpointOptions =
                 CheckpointOptions.forConfig(
                         type,
                         checkpoint.getCheckpointStorageLocation().getLocationReference(),
-                        isExactlyOnceMode,
-                        unalignedCheckpointsEnabled,
-                        alignedCheckpointTimeout);
+                        isExactlyOnceMode,// 是否是恰好一次模式
+                        unalignedCheckpointsEnabled,// 是否启用非对齐检查点
+                        alignedCheckpointTimeout);// 对齐检查点超时时间
 
         // send messages to the tasks to trigger their checkpoints
+        // 创建一个列表来存储每个任务触发检查点后的确认响应的CompletableFuture
+        // 向任务发送消息以触发它们的检查点
         List<CompletableFuture<Acknowledge>> acks = new ArrayList<>();
         for (Execution execution : checkpoint.getCheckpointPlan().getTasksToTrigger()) {
             if (request.props.isSynchronous()) {
+                // 如果请求是同步的，则触发同步保存点
                 acks.add(
                         execution.triggerSynchronousSavepoint(
                                 checkpointId, timestamp, checkpointOptions));
             } else {
+                // 如果请求是异步的，则触发异步检查点
                 acks.add(execution.triggerCheckpoint(checkpointId, timestamp, checkpointOptions));
             }
         }
+        // 等待所有任务的检查点触发响应完成
+        // 返回一个CompletableFuture，表示所有任务检查点的触发操作是否完成
         return FutureUtils.waitForAll(acks);
     }
 
@@ -877,28 +984,58 @@ public class CheckpointCoordinator {
      * @param externalSavepointLocation the external savepoint location, it might be null
      * @return the checkpoint location
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 异步初始化检查点位置。由于该操作可能会消耗大量时间，因此预期在I/O线程中执行。
+     *
+     * @param checkpointID 检查点ID
+     * @param props 检查点属性
+     * @param externalSavepointLocation 外部保存点位置，可能为null
+     * @param initializeBaseLocations 是否初始化基础位置
+     * @return 初始化后的检查点存储位置
+     * @throws Exception 初始化过程中可能抛出的异常
+    */
     private CheckpointStorageLocation initializeCheckpointLocation(
             long checkpointID,
             CheckpointProperties props,
             @Nullable String externalSavepointLocation,
             boolean initializeBaseLocations)
             throws Exception {
+        // 声明用于存储初始化后的检查点存储位置的变量
         final CheckpointStorageLocation checkpointStorageLocation;
+        // 如果当前属性表示这是一个保存点
         if (props.isSavepoint()) {
+            // 调用checkpointStorageView的initializeLocationForSavepoint方法来初始化保存点的位置
+            // 并传入检查点ID和外部保存点位置作为参数
             checkpointStorageLocation =
                     checkpointStorageView.initializeLocationForSavepoint(
                             checkpointID, externalSavepointLocation);
         } else {
+            // 如果不是保存点，并且需要初始化基础位置
             if (initializeBaseLocations) {
+                // 调用checkpointStorageView的initializeBaseLocationsForCheckpoint方法来初始化基础位置
                 checkpointStorageView.initializeBaseLocationsForCheckpoint();
             }
+            // 调用checkpointStorageView的initializeLocationForCheckpoint方法来初始化检查点的位置
+            // 并传入检查点ID作为参数
             checkpointStorageLocation =
                     checkpointStorageView.initializeLocationForCheckpoint(checkpointID);
         }
-
+        // 返回初始化后的检查点存储位置
         return checkpointStorageLocation;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建PendingCheckpoint
+     * @param timestamp 检查点的时间戳
+     * @param props 检查点的属性
+     * @param checkpointPlan 检查点的计划
+     * @param isPeriodic 是否是周期性检查点
+     * @param checkpointID 检查点的ID
+    */
     private PendingCheckpoint createPendingCheckpoint(
             long timestamp,
             CheckpointProperties props,
@@ -907,44 +1044,50 @@ public class CheckpointCoordinator {
             long checkpointID,
             CompletableFuture<CompletedCheckpoint> onCompletionPromise,
             CompletableFuture<Void> masterTriggerCompletionPromise) {
-
+        // 使用锁来保证线程安全
         synchronized (lock) {
             try {
                 // since we haven't created the PendingCheckpoint yet, we need to check the
                 // global state here.
+                // 在创建PendingCheckpoint之前，我们需要检查全局状态
+                // 因为我们还没有创建PendingCheckpoint，所以在这里检查全局状态
                 preCheckGlobalState(isPeriodic);
             } catch (Throwable t) {
                 throw new CompletionException(t);
             }
         }
-
+        // 跟踪待处理的检查点统计信息
         PendingCheckpointStats pendingCheckpointStats =
                 trackPendingCheckpointStats(checkpointID, checkpointPlan, props, timestamp);
 
+        // 创建一个新的PendingCheckpoint实例
         final PendingCheckpoint checkpoint =
                 new PendingCheckpoint(
-                        job,
-                        checkpointID,
-                        timestamp,
-                        checkpointPlan,
-                        OperatorInfo.getIds(coordinatorsToCheckpoint),
-                        masterHooks.keySet(),
-                        props,
-                        onCompletionPromise,
-                        pendingCheckpointStats,
-                        masterTriggerCompletionPromise);
+                        job,// 相关的作业
+                        checkpointID,// 检查点的ID
+                        timestamp,// 检查点的时间戳
+                        checkpointPlan,// 检查点的计划
+                        OperatorInfo.getIds(coordinatorsToCheckpoint), // 需要进行检查点的协调器ID集合
+                        masterHooks.keySet(),// 主协调器钩子的键集合
+                        props,// 检查点的属性
+                        onCompletionPromise,// 检查点完成时的Promise
+                        pendingCheckpointStats,// 待处理的检查点统计信息
+                        masterTriggerCompletionPromise);// 触发检查点完成时的Promise
 
         synchronized (lock) {
+            // 将新的PendingCheckpoint添加到pendingCheckpoints映射中
             pendingCheckpoints.put(checkpointID, checkpoint);
 
+            // 使用定时器计划在检查点超时后取消检查点
             ScheduledFuture<?> cancellerHandle =
                     timer.schedule(
-                            new CheckpointCanceller(checkpoint),
-                            checkpointTimeout,
-                            TimeUnit.MILLISECONDS);
-
+                            new CheckpointCanceller(checkpoint),// 检查点取消器
+                            checkpointTimeout,// 检查点超时时间
+                            TimeUnit.MILLISECONDS); // 时间单位：毫秒
+            // 尝试设置检查点的取消器句柄
             if (!checkpoint.setCancellerHandle(cancellerHandle)) {
                 // checkpoint is already disposed!
+                // 返回创建的PendingCheckpoint实例
                 cancellerHandle.cancel(false);
             }
         }
@@ -964,47 +1107,68 @@ public class CheckpointCoordinator {
      * @param checkpoint the pending checkpoint
      * @return the future represents master hook states are finished or not
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 异步捕获主节点钩子（hooks）的状态快照。
+     *
+     * @param checkpoint 等待中的检查点
+     * @return 一个表示主节点钩子状态是否完成的 CompletableFuture
+    */
     private CompletableFuture<Void> snapshotMasterState(PendingCheckpoint checkpoint) {
+        // 如果主节点钩子列表为空，则直接返回一个已经完成的 CompletableFuture
         if (masterHooks.isEmpty()) {
             return CompletableFuture.completedFuture(null);
         }
-
+        // 获取检查点的ID和时间戳
         final long checkpointID = checkpoint.getCheckpointID();
+        // 创建一个新的 CompletableFuture 来表示主节点钩子状态捕获的完成情况
         final long timestamp = checkpoint.getCheckpointTimestamp();
-
+        // 遍历主节点钩子列表
         final CompletableFuture<Void> masterStateCompletableFuture = new CompletableFuture<>();
         for (MasterTriggerRestoreHook<?> masterHook : masterHooks.values()) {
             MasterHooks.triggerHook(masterHook, checkpointID, timestamp, executor)
                     .whenCompleteAsync(
                             (masterState, throwable) -> {
                                 try {
+                                    // 使用锁来确保线程安全
                                     synchronized (lock) {
+                                        // 如果 masterStateCompletableFuture 已经完成（无论是正常还是异常），则直接返回
                                         if (masterStateCompletableFuture.isDone()) {
                                             return;
                                         }
+                                        // 检查检查点是否已经被丢弃
                                         if (checkpoint.isDisposed()) {
                                             throw new IllegalStateException(
                                                     "Checkpoint "
                                                             + checkpointID
                                                             + " has been discarded");
                                         }
+                                        // 如果没有发生异常（throwable 为 null）
                                         if (throwable == null) {
+                                            // 通知检查点主节点状态已经被确认
                                             checkpoint.acknowledgeMasterState(
                                                     masterHook.getIdentifier(), masterState);
+                                            // 检查是否所有主节点状态都已经被确认
                                             if (checkpoint.areMasterStatesFullyAcknowledged()) {
+                                                // 如果所有状态都已确认，则完成 masterStateCompletableFuture
                                                 masterStateCompletableFuture.complete(null);
                                             }
+                                            // 如果发生异常
                                         } else {
+                                            // 使用异常完成 masterStateCompletableFuture
                                             masterStateCompletableFuture.completeExceptionally(
                                                     throwable);
                                         }
                                     }
                                 } catch (Throwable t) {
+                                    // 如果在处理钩子结果时发生异常，则使用异常完成 masterStateCompletableFuture
                                     masterStateCompletableFuture.completeExceptionally(t);
                                 }
                             },
                             timer);
         }
+        // 返回 masterStateCompletableFuture，它将在所有主节点钩子处理完或出现异常时完成
         return masterStateCompletableFuture;
     }
 
@@ -2035,19 +2199,34 @@ public class CheckpointCoordinator {
     //  Periodic scheduling of checkpoints
     // --------------------------------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *  启动检查点调度器的方法
+    */
     public void startCheckpointScheduler() {
+        // 使用锁来确保并发访问时的一致性
         synchronized (lock) {
+            // 检查是否已关闭，若已关闭则抛出异常
             if (shutdown) {
                 throw new IllegalArgumentException("Checkpoint coordinator is shut down");
             }
+            // 使用Preconditions工具类来检查是否配置了周期性检查点
+            // 如果没有配置周期性检查点，则抛出状态异常
             Preconditions.checkState(
                     isPeriodicCheckpointingConfigured(),
                     "Can not start checkpoint scheduler, if no periodic checkpointing is configured");
 
             // make sure all prior timers are cancelled
+            // 确保所有之前的定时器都被取消，防止重复调度
             stopCheckpointScheduler();
-
+            // 设置periodicScheduling为true，表示现在处于周期性调度状态
             periodicScheduling = true;
+            /**
+             *  使用clock.relativeTimeMillis()获取当前相对时间（可能是相对于某个基准点的时间），并加上一个随机初始延迟
+             * 然后调用scheduleTriggerWithDelay方法来调度检查点触发器
+             * scheduleTriggerWithDelay会安排一个定时任务来触发检查点
+             */
             scheduleTriggerWithDelay(clock.relativeTimeMillis(), getRandomInitDelay());
         }
     }
@@ -2114,9 +2293,22 @@ public class CheckpointCoordinator {
         return ThreadLocalRandom.current().nextLong(minPauseBetweenCheckpoints, baseInterval + 1L);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 延迟调度器
+    */
     private void scheduleTriggerWithDelay(long currentRelativeTime, long initDelay) {
+        // 计算下一个检查点触发的相对时间，为当前相对时间加上初始延迟
         nextCheckpointTriggeringRelativeTime = currentRelativeTime + initDelay;
+        // 创建一个新的周期性触发器实例
         currentPeriodicTrigger = new ScheduledTrigger();
+        /**
+         *  使用timer来调度触发器，在initDelay毫秒后首次触发，之后每隔固定时间间隔（未在方法参数中给出）再次触发
+         * 触发器的执行逻辑在ScheduledTrigger类的run方法中定义
+         * currentPeriodicTriggerFuture是ScheduledFuture对象，用于管理这个定时任务
+         * 如果需要，可以通过这个对象来取消定时任务
+         */
         currentPeriodicTriggerFuture =
                 timer.schedule(currentPeriodicTrigger, initDelay, TimeUnit.MILLISECONDS);
     }
@@ -2175,17 +2367,25 @@ public class CheckpointCoordinator {
 
         @Override
         public void run() {
+            // 使用锁来保证并发安全性
             synchronized (lock) {
+                // 检查当前正在运行的触发器是否和当前对象相同
                 if (currentPeriodicTrigger != this) {
                     // Another periodic trigger has been scheduled but this one
                     // has not been force cancelled yet.
                     return;
                 }
 
+                // 获取当前检查点的间隔时间
                 long checkpointInterval = getCurrentCheckpointInterval();
+                // 如果检查点间隔时间不是禁用值
                 if (checkpointInterval
                         != CheckpointCoordinatorConfiguration.DISABLED_CHECKPOINT_INTERVAL) {
+                    // 则更新下一个检查点触发的相对时间，加上当前检查点间隔时间
                     nextCheckpointTriggeringRelativeTime += checkpointInterval;
+                    // 计算距离下一个检查点触发时间的延迟，取该延迟和0之间的最大值
+                    // 以确保不会立即触发（如果当前时间已经超过了下次触发的计划时间）
+                    // 然后使用timer重新调度当前触发器
                     currentPeriodicTriggerFuture =
                             timer.schedule(
                                     this,
@@ -2195,6 +2395,9 @@ public class CheckpointCoordinator {
                                                     - clock.relativeTimeMillis()),
                                     TimeUnit.MILLISECONDS);
                 } else {
+                    // 如果检查点间隔时间是禁用值
+                    // 则设置下一个检查点触发的相对时间为Long.MAX_VALUE（表示永远不再触发）
+                    // 并将当前周期性触发器及其Future对象置为null，表示不再使用它们
                     nextCheckpointTriggeringRelativeTime = Long.MAX_VALUE;
                     currentPeriodicTrigger = null;
                     currentPeriodicTriggerFuture = null;
@@ -2202,8 +2405,10 @@ public class CheckpointCoordinator {
             }
 
             try {
+                // 尝试触发检查点
                 triggerCheckpoint(checkpointProperties, null, true);
             } catch (Exception e) {
+                //打印错误信息
                 LOG.error("Exception while triggering checkpoint for job {}.", job, e);
             }
         }

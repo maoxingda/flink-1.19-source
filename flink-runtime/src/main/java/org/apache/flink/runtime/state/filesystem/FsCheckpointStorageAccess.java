@@ -161,29 +161,55 @@ public class FsCheckpointStorageAccess extends AbstractFsCheckpointStorageAccess
         return true;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化检查点所需的基础目录。
+     *
+     * @throws IOException 如果在创建目录时发生I/O异常
+    */
     @Override
     public void initializeBaseLocationsForCheckpoint() throws IOException {
+        // 尝试创建共享状态目录
         if (!fileSystem.mkdirs(sharedStateDirectory)) {
+            // 如果目录创建失败（可能是已经存在或其他原因），则抛出异常
             throw new IOException(
                     "Failed to create directory for shared state: " + sharedStateDirectory);
         }
+        // 尝试创建任务拥有的状态目录
         if (!fileSystem.mkdirs(taskOwnedStateDirectory)) {
+            // 如果目录创建失败（可能是已经存在或其他原因），则抛出异常
             throw new IOException(
                     "Failed to create directory for task owned state: " + taskOwnedStateDirectory);
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化给定检查点ID的检查点存储位置。
+     *
+     * @param checkpointId 检查点ID
+     * @return 初始化后的检查点存储位置
+     * @throws IOException 如果在初始化过程中发生I/O异常
+    */
     @Override
     public CheckpointStorageLocation initializeLocationForCheckpoint(long checkpointId)
             throws IOException {
+        // 检查检查点ID是否非负，如果为负则抛出异常
         checkArgument(checkpointId >= 0, "Illegal negative checkpoint id: %s.", checkpointId);
 
         // prepare all the paths needed for the checkpoints
+        // 准备检查点所需的所有路径
+        // 创建检查点目录，包括使用给定的检查点目录和检查点ID
         final Path checkpointDir = createCheckpointDirectory(checkpointsDirectory, checkpointId);
 
         // create the checkpoint exclusive directory
+        // 创建检查点的独占目录
+        // 如果目录不存在，则使用fileSystem的mkdirs方法创建它
         fileSystem.mkdirs(checkpointDir);
-
+        // 创建一个FsCheckpointStorageLocation实例，该实例封装了文件系统和检查点目录等所需的信息
+        // FsCheckpointStorageLocation是用于在文件系统中存储检查点的位置信息
         return new FsCheckpointStorageLocation(
                 fileSystem,
                 checkpointDir,

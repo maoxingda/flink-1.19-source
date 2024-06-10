@@ -425,6 +425,19 @@ public class HeapKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个快照任务，该任务将执行快照并返回一个包含快照结果的RunnableFuture对象。
+     * 快照结果包含KeyedStateHandle类型的数据。
+     *
+     * @param checkpointId 检查点的唯一标识符
+     * @param timestamp 时间戳，表示快照的时间点
+     * @param streamFactory 用于创建检查点流的工厂，不能为null
+     * @param checkpointOptions 检查点的选项配置，不能为null
+     * @return 一个RunnableFuture对象，表示快照任务，其执行结果将是SnapshotResult<KeyedStateHandle>类型
+     * @throws Exception 如果在创建快照任务或执行快照时发生异常
+    */
     @Nonnull
     @Override
     public RunnableFuture<SnapshotResult<KeyedStateHandle>> snapshot(
@@ -433,13 +446,15 @@ public class HeapKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
             @Nonnull final CheckpointStreamFactory streamFactory,
             @Nonnull CheckpointOptions checkpointOptions)
             throws Exception {
-
+        // 创建一个SnapshotStrategyRunner对象，用于管理和执行快照策略
         SnapshotStrategyRunner<KeyedStateHandle, ?> snapshotStrategyRunner =
                 new SnapshotStrategyRunner<>(
                         "Heap backend snapshot",
                         checkpointStrategy,
                         cancelStreamRegistry,
                         snapshotExecutionType);
+        // 调用SnapshotStrategyRunner的snapshot方法，执行快照并返回RunnableFuture对象
+        // 该对象可用于等待快照完成并获取快照结果
         return snapshotStrategyRunner.snapshot(
                 checkpointId, timestamp, streamFactory, checkpointOptions);
     }

@@ -246,6 +246,14 @@ public class OperatorCoordinatorHolder
         coordinator.subtaskReset(subtask, checkpointId);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 触发协调器的检查点，并在检查点完成后将结果设置到给定的 CompletableFuture 对象中。
+     *
+     * @param checkpointId 检查点的唯一标识符
+     * @param result 用于存储检查点结果的 CompletableFuture 对象
+    */
     @Override
     public void checkpointCoordinator(long checkpointId, CompletableFuture<byte[]> result) {
         // unfortunately, this method does not run in the scheduler executor, but in the
@@ -310,36 +318,54 @@ public class OperatorCoordinatorHolder
         coordinator.resetToCheckpoint(checkpointId, checkpointData);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 在主线程执行器中执行协调器的检查点逻辑。
+     *
+     * @param checkpointId 检查点的唯一标识符
+     * @param result 用于存储检查点结果的 CompletableFuture 对象
+    */
     private void checkpointCoordinatorInternal(
             final long checkpointId, final CompletableFuture<byte[]> result) {
+        // 断言当前线程是主线程执行器中的线程
         mainThreadExecutor.assertRunningInMainThread();
-
+        // 创建一个新的 CompletableFuture 对象来存储协调器检查点的结果
         final CompletableFuture<byte[]> coordinatorCheckpoint = new CompletableFuture<>();
-
+        // 异步处理 coordinatorCheckpoint 的结果。当协调器检查点完成时，无论是成功还是失败，都会执行此 lambda 表达式
         FutureUtils.assertNoException(
                 coordinatorCheckpoint.handleAsync(
                         (success, failure) -> {
+                            // 如果协调器检查点失败，则将异常传递给外部的 result
                             if (failure != null) {
                                 result.completeExceptionally(failure);
                             } else if (closeGateways(checkpointId)) {
+                                // 如果能够关闭网关，则等待事件完成后完成检查点
                                 completeCheckpointOnceEventsAreDone(checkpointId, result, success);
                             } else {
                                 // if we cannot close the gateway, this means the checkpoint
                                 // has been aborted before, so the future is already
                                 // completed exceptionally. but we try to complete it here
                                 // again, just in case, as a safety net.
+                                // 如果不能关闭网关，说明检查点已被中止，但为了确保结果的一致性，
+                                // 我们再次尝试将结果设置为异常，作为一个安全网
+                                // 注意：在正常情况下，由于检查点中止，coordinatorCheckpoint 可能已经以异常方式完成
                                 result.completeExceptionally(
                                         new FlinkException("Cannot close gateway"));
                             }
                             return null;
                         },
+                        // 使用主线程执行器来异步处理结果
                         mainThreadExecutor));
 
         try {
+            // 遍历子任务网关映射，并为每个子任务网关标记检查点
             subtaskGatewayMap.forEach(
                     (subtask, gateway) -> gateway.markForCheckpoint(checkpointId));
+            // 调用协调器的 checkpointCoordinator 方法来触发实际的协调器检查点
             coordinator.checkpointCoordinator(checkpointId, coordinatorCheckpoint);
         } catch (Throwable t) {
+            //异常处理
             ExceptionUtils.rethrowIfFatalErrorOrOOM(t);
             result.completeExceptionally(t);
             globalFailureHandler.handleGlobalFailure(t);

@@ -36,6 +36,7 @@ public class CheckpointCoordinatorConfiguration implements Serializable {
     public static final long MINIMAL_CHECKPOINT_TIME = 10;
 
     // interval of max value means disable periodic checkpoint
+    //最大值间隔意味着禁用定期检查点
     public static final long DISABLED_CHECKPOINT_INTERVAL = Long.MAX_VALUE;
 
     private static final long serialVersionUID = 2L;

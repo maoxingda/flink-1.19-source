@@ -84,28 +84,36 @@ public class DefaultCheckpointPlanCalculator implements CheckpointPlanCalculator
                 });
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建CheckpointPlan检查点计划
+    */
     @Override
     public CompletableFuture<CheckpointPlan> calculateCheckpointPlan() {
+        // 使用CompletableFuture在上下文的主执行器上异步执行检查点计划的计算
         return CompletableFuture.supplyAsync(
                 () -> {
                     try {
+                        // 如果有任务已经完成，并且配置不允许在任务完成后进行检查点操作，则抛出异常
                         if (context.hasFinishedTasks() && !allowCheckpointsAfterTasksFinished) {
                             throw new CheckpointException(
                                     "Some tasks of the job have already finished and checkpointing with finished tasks is not enabled.",
                                     CheckpointFailureReason.NOT_ALL_REQUIRED_TASKS_RUNNING);
                         }
-
+                        // 检查所有任务是否都已初始化
                         checkAllTasksInitiated();
-
+                        // 根据是否有任务已完成，选择不同的计算检查点计划的方法
                         CheckpointPlan result =
                                 context.hasFinishedTasks()
-                                        ? calculateAfterTasksFinished()
-                                        : calculateWithAllTasksRunning();
-
+                                        ? calculateAfterTasksFinished()// 如果有任务已完成，则调用此方法计算检查点计划
+                                        : calculateWithAllTasksRunning();// 如果所有任务都在运行，则调用此方法计算检查点计划
+                        // 检查需要等待的任务是否都已启动
                         checkTasksStarted(result.getTasksToWaitFor());
-
+                        // 返回计算得出的检查点计划
                         return result;
                     } catch (Throwable throwable) {
+                        // 如果在计算过程中发生异常，将其包装为CompletionException并抛出
                         throw new CompletionException(throwable);
                     }
                 },
@@ -155,21 +163,30 @@ public class DefaultCheckpointPlanCalculator implements CheckpointPlanCalculator
      *
      * @return The plan of this checkpoint.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 当所有任务都在运行时，计算检查点计划。
+     * 这个方法会简单地标记所有源任务为需要触发，并将所有任务标记为需要等待和提交。
+     *
+     * @return 当前检查点的计划。
+    */
     private CheckpointPlan calculateWithAllTasksRunning() {
+        // 获取所有源任务的当前执行尝试，并收集到一个列表中
         List<Execution> executionsToTrigger =
                 sourceTasks.stream()
                         .map(ExecutionVertex::getCurrentExecutionAttempt)
                         .collect(Collectors.toList());
-
+        // 创建需要等待的任务列表
         List<Execution> tasksToWaitFor = createTaskToWaitFor(allTasks);
-
+        // 使用上述信息创建一个检查点计划实例
         return new DefaultCheckpointPlan(
-                Collections.unmodifiableList(executionsToTrigger),
-                Collections.unmodifiableList(tasksToWaitFor),
-                Collections.unmodifiableList(allTasks),
-                Collections.emptyList(),
-                Collections.emptyList(),
-                allowCheckpointsAfterTasksFinished);
+                Collections.unmodifiableList(executionsToTrigger),// 源任务作为需要触发的执行
+                Collections.unmodifiableList(tasksToWaitFor),// 所有任务作为需要等待和提交的任务
+                Collections.unmodifiableList(allTasks),// 所有任务列表（可能包括非源任务）
+                Collections.emptyList(),// 预留字段，当前为空列表
+                Collections.emptyList(),// 预留字段，当前为空列表
+                allowCheckpointsAfterTasksFinished);// 是否允许在任务完成后进行检查点
     }
 
     /**
@@ -328,13 +345,23 @@ public class DefaultCheckpointPlanCalculator implements CheckpointPlanCalculator
 
         return runningStatusByVertex;
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 根据提供的任务顶点列表创建需要等待的任务执行列表。
+     *
+     * @param tasks 任务的执行顶点列表。
+     * @return 需要等待确认的任务执行列表。
+    */
     private List<Execution> createTaskToWaitFor(List<ExecutionVertex> tasks) {
+        // 创建一个新的列表，用于存储需要等待的任务执行实例，初始容量设置为任务的数量
         List<Execution> tasksToAck = new ArrayList<>(tasks.size());
+        // 遍历提供的每个任务顶点
         for (ExecutionVertex task : tasks) {
+            // 将每个任务顶点的当前执行尝试添加到需要等待的任务列表中
             tasksToAck.add(task.getCurrentExecutionAttempt());
         }
-
+        // 返回创建好的需要等待的任务执行列表
         return tasksToAck;
     }
 }

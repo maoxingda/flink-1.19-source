@@ -376,8 +376,19 @@ public abstract class OperatorChain<OUT, OP extends StreamOperator<OUT>>
         broadcastEvent(event, false);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的事件广播到所有流输出。
+     *
+     * @param event 要广播的事件对象，必须是AbstractEvent或其子类的实例
+     * @param isPriorityEvent 指示该事件是否为优先事件的布尔值
+     * @throws IOException 如果在广播事件过程中发生I/O异常，则抛出此异常
+    */
     public void broadcastEvent(AbstractEvent event, boolean isPriorityEvent) throws IOException {
+        // 遍历所有的流输出
         for (RecordWriterOutput<?> streamOutput : streamOutputs) {
+            // 对每个流输出调用broadcastEvent方法，将事件和优先级标志传递给它
             streamOutput.broadcastEvent(event, isPriorityEvent);
         }
     }
@@ -495,23 +506,34 @@ public abstract class OperatorChain<OUT, OP extends StreamOperator<OUT>>
         return (tailOperatorWrapper == null) ? null : tailOperatorWrapper.getStreamOperator();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 为指定的 StreamOperator 捕获通道状态，并将其与 OperatorSnapshotFutures 关联起来。
+     *
+     * @param op                      要进行通道状态快照的 StreamOperator。
+     * @param channelStateWriteResult 通道状态写入的结果，包含了输入通道和结果子分区的状态句柄。
+     * @param snapshotInProgress      当前的快照进度对象。
+    */
     protected void snapshotChannelStates(
             StreamOperator<?> op,
             ChannelStateWriter.ChannelStateWriteResult channelStateWriteResult,
             OperatorSnapshotFutures snapshotInProgress) {
+        // 如果传入的 operator 是主 operator，则设置其输入通道状态的快照未来
         if (op == getMainOperator()) {
             snapshotInProgress.setInputChannelStateFuture(
                     channelStateWriteResult
-                            .getInputChannelStateHandles()
-                            .thenApply(StateObjectCollection::new)
-                            .thenApply(SnapshotResult::of));
+                            .getInputChannelStateHandles()// 获取输入通道状态句柄
+                            .thenApply(StateObjectCollection::new)// 将句柄转换为 StateObjectCollection
+                            .thenApply(SnapshotResult::of));// 将 StateObjectCollection 封装为 SnapshotResult
         }
+        // 如果传入的 operator 是尾 operator，则设置其结果子分区状态的快照未来
         if (op == getTailOperator()) {
             snapshotInProgress.setResultSubpartitionStateFuture(
                     channelStateWriteResult
-                            .getResultSubpartitionStateHandles()
-                            .thenApply(StateObjectCollection::new)
-                            .thenApply(SnapshotResult::of));
+                            .getResultSubpartitionStateHandles()// 获取结果子分区状态句柄
+                            .thenApply(StateObjectCollection::new) // 将句柄转换为 StateObjectCollection
+                            .thenApply(SnapshotResult::of)); // 将 StateObjectCollection 封装为 SnapshotResult
         }
     }
 
