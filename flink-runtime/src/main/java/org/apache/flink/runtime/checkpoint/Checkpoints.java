@@ -76,18 +76,41 @@ public class Checkpoints {
     //  Writing out checkpoint metadata
     // ------------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将CheckpointMetadata写入到OutputStream中
+     * @param checkpointMetadata 要存储的检查点元数据
+     * @param out 目标OutputStream
+    */
     public static void storeCheckpointMetadata(
             CheckpointMetadata checkpointMetadata, OutputStream out) throws IOException {
-
+        // 创建一个DataOutputStream，以便将数据以二进制形式写入到OutputStream
         DataOutputStream dos = new DataOutputStream(out);
+        // 调用重载的storeCheckpointMetadata方法，将检查点元数据写入到DataOutputStream中
         storeCheckpointMetadata(checkpointMetadata, dos);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将CheckpointMetadata写入到OutputStream中
+     * @param checkpointMetadata 要存储的检查点元数据
+     * @param out 目标OutputStream
+     */
     public static void storeCheckpointMetadata(
             CheckpointMetadata checkpointMetadata, DataOutputStream out) throws IOException {
+        // 调用另一个重载的storeCheckpointMetadata方法，并默认使用MetadataV4Serializer
         storeCheckpointMetadata(checkpointMetadata, out, MetadataV4Serializer.INSTANCE);
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将CheckpointMetadata写入到OutputStream中
+     * @param checkpointMetadata 要存储的检查点元数据
+     * @param out 目标OutputStream
+     * @param serializer 序列化器
+     */
     public static void storeCheckpointMetadata(
             CheckpointMetadata checkpointMetadata,
             DataOutputStream out,
@@ -95,9 +118,12 @@ public class Checkpoints {
             throws IOException {
 
         // write generic header
+        // 写入通用的头部信息
+        // HEADER_MAGIC_NUMBER 是头部的魔法数字，用于验证文件内容是否完整
         out.writeInt(HEADER_MAGIC_NUMBER);
-
+        // 写入序列化器的版本号
         out.writeInt(serializer.getVersion());
+        // 使用传入的序列化器将检查点元数据序列化并写入到DataOutputStream中
         serializer.serialize(checkpointMetadata, out);
     }
 

@@ -2,11 +2,13 @@ package com.source.demo;
 
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.contrib.streaming.state.PredefinedOptions;
-import org.apache.flink.contrib.streaming.state.RocksDBStateBackend;
+import org.apache.flink.configuration.CheckpointingOptions;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.StateBackendOptions;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 /**
@@ -19,21 +21,20 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 public class SocketWordCountState {
     public static void main(String[] args) throws Exception{
+        Configuration config = new Configuration();
+        config.set(StateBackendOptions.STATE_BACKEND, "hashmap");
+        config.set(CheckpointingOptions.CHECKPOINT_STORAGE, "filesystem");
+        config.set(CheckpointingOptions.CHECKPOINTS_DIRECTORY, "file:///H:/chk");
         /**
          * 创建StreamExecutionEnvironment
          */
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment(config);
         env.registerCachedFile("./a_conf/a.txt","cache");
 
         /** 设置检查点的时间间隔 */
-        //需要开启 Checkpoint 机制
-        env.enableCheckpointing(10000, CheckpointingMode.EXACTLY_ONCE);
-        //需要开启持久化的路径  可选hdfs 本地
-        env.getCheckpointConfig().setCheckpointStorage("file:///H:/chk");
-        //StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-  		//env.setStateBackend(new HashMapStateBackend());
-  		//env.getCheckpointConfig().setCheckpointStorage("hdfs:///checkpoints");
-
+        //需要开启 Checkpoint 机制10000000
+        env.enableCheckpointing(60000, CheckpointingMode.EXACTLY_ONCE);
+        env.getCheckpointConfig().setExternalizedCheckpointCleanup(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
         env.setParallelism(2);
         env.setMaxParallelism(2);
 

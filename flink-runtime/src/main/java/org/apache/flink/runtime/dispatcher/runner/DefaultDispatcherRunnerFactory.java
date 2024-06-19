@@ -50,6 +50,7 @@ public class DefaultDispatcherRunnerFactory implements DispatcherRunnerFactory {
             PartialDispatcherServices partialDispatcherServices)
             throws Exception {
 
+        // todo 核心
         final DispatcherLeaderProcessFactory dispatcherLeaderProcessFactory =
                 dispatcherLeaderProcessFactoryFactory.createFactory(
                         jobPersistenceComponentFactory,

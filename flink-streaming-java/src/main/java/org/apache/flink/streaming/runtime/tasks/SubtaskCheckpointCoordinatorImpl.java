@@ -343,10 +343,10 @@ class SubtaskCheckpointCoordinatorImpl implements SubtaskCheckpointCoordinator {
                 System.currentTimeMillis(),
                 metadata.getTimestamp(),
                 System.currentTimeMillis() - metadata.getTimestamp());
-        //构造CheckpointBarrier
+        //核心点1.构造CheckpointBarrier
         CheckpointBarrier checkpointBarrier =
                 new CheckpointBarrier(metadata.getCheckpointId(), metadata.getTimestamp(), options);
-        // 发送检查点屏障，并根据选项确定是否为非对齐检查点
+        //核心点2. 发送检查点屏障，并根据选项确定是否为非对齐检查点
         operatorChain.broadcastEvent(checkpointBarrier, options.isUnalignedCheckpoint());
 
         // Step (3): Register alignment timer to timeout aligned barrier to unaligned barrier
@@ -688,6 +688,19 @@ class SubtaskCheckpointCoordinatorImpl implements SubtaskCheckpointCoordinator {
                         });
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 异步完成并报告检查点。
+     *
+     * @param snapshotFutures    每个 OperatorID 的 OperatorSnapshotFutures 映射，包含操作员快照的未来结果
+     * @param metadata           检查点元数据
+     * @param metrics            检查点度量构建器
+     * @param isTaskDeployedAsFinished 任务是否以已完成状态部署
+     * @param isTaskFinished       任务是否已完成
+     * @param isRunning            任务是否正在运行的提供者
+     * @throws IOException 如果在异步检查点过程中发生I/O错误
+    */
     private void finishAndReportAsync(
             Map<OperatorID, OperatorSnapshotFutures> snapshotFutures,
             CheckpointMetaData metadata,
@@ -696,25 +709,29 @@ class SubtaskCheckpointCoordinatorImpl implements SubtaskCheckpointCoordinator {
             boolean isTaskFinished,
             Supplier<Boolean> isRunning)
             throws IOException {
+        // 创建一个 AsyncCheckpointRunnable 对象，该对象将异步处理检查点逻辑
         AsyncCheckpointRunnable asyncCheckpointRunnable =
                 new AsyncCheckpointRunnable(
-                        snapshotFutures,
-                        metadata,
-                        metrics,
-                        System.nanoTime(),
-                        taskName,
-                        unregisterConsumer(),
-                        env,
-                        asyncExceptionHandler,
-                        isTaskDeployedAsFinished,
-                        isTaskFinished,
-                        isRunning);
-
+                        snapshotFutures,// 传递操作员快照的未来结果
+                        metadata,// 传递检查点元数据
+                        metrics,// 传递检查点度量构建器
+                        System.nanoTime(),// 获取当前系统纳秒时间戳
+                        taskName,// 假设 taskName 是类的成员变量，表示任务名称
+                        unregisterConsumer(),// 注销消费者
+                        env,//执行环境
+                        asyncExceptionHandler,// 异步异常处理器
+                        isTaskDeployedAsFinished,// 传递任务是否以已完成状态部署的标志
+                        isTaskFinished,// 传递任务是否已完成的标志
+                        isRunning); // 传递任务是否正在运行的提供者
+        // 传递任务是否正在运行的提供者
         registerAsyncCheckpointRunnable(
                 asyncCheckpointRunnable.getCheckpointId(), asyncCheckpointRunnable);
 
         // we are transferring ownership over snapshotInProgressList for cleanup to the thread,
         // active on submit
+        // 将 AsyncCheckpointRunnable 提交到异步操作线程池执行，
+        // 提交后，snapshotInProgressList（假设它是类的某个成员变量）的所有权将转移给执行该任务的线程，
+        // 用于后续的清理工作
         asyncOperationsThreadPool.execute(asyncCheckpointRunnable);
     }
 

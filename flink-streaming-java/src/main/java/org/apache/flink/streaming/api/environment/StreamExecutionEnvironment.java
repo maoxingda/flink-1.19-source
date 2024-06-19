@@ -278,15 +278,25 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      * <p>In addition, this constructor allows specifying the {@link PipelineExecutorServiceLoader}
      * and user code {@link ClassLoader}.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建StreamExecutionEnvironment并对配置进行初始化
+    */
     @PublicEvolving
     public StreamExecutionEnvironment(
             final PipelineExecutorServiceLoader executorServiceLoader,
             final Configuration configuration,
             final ClassLoader userClassloader) {
+        // 检查 executorServiceLoader 是否为空，如果不为空则赋值给成员变量
         this.executorServiceLoader = checkNotNull(executorServiceLoader);
+        // 检查 configuration 是否为空，如果不为空则基于其创建一个新的 Configuration 对象（可能是为了封装或隔离）
         this.configuration = new Configuration(checkNotNull(configuration));
+        // 基于 this.configuration 创建一个新的 ExecutionConfig 对象，用于配置执行时的参数（如并行度等）
         this.config = new ExecutionConfig(this.configuration);
+        // 基于 this.configuration 创建一个新的 CheckpointConfig 对象，用于配置检查点相关的参数（如检查点间隔等）
         this.checkpointCfg = new CheckpointConfig(this.configuration);
+        // 如果 userClassloader 为空，则使用当前类的类加载器；否则使用传入的 userClassloader
         this.userClassloader =
                 userClassloader == null ? getClass().getClassLoader() : userClassloader;
 
@@ -301,6 +311,16 @@ public class StreamExecutionEnvironment implements AutoCloseable {
         // Given this, it is safe to overwrite the execution config default values here because all
         // other ways assume
         // that the env is already instantiated so they will overwrite the value passed here.
+
+        // 配置的优先级说明：
+        // i) 在操作符级别指定，例如使用 SingleOutputStreamOperator.setParallelism() 设置并行度。
+        // ii) 通过编程方式指定，例如使用 env.setRestartStrategy() 方法设置重启策略。
+        // iii) 在这里传入的 configuration 中指定。
+        //
+        // 如果在多个地方指定了相同的配置，则上述顺序决定了优先级。
+        //
+        // 鉴于这种机制，在这里可以安全地覆盖 ExecutionConfig 的默认值，因为其他方式都假定
+        // 环境已经实例化，因此它们会覆盖这里传递的值。
         this.configure(this.configuration, this.userClassloader);
     }
 
@@ -1088,15 +1108,25 @@ public class StreamExecutionEnvironment implements AutoCloseable {
      * @param configuration a configuration to read the values from
      * @param classLoader a class loader to use when loading classes
      */
+
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 配置参数
+    */
     @PublicEvolving
     public void configure(ReadableConfig configuration, ClassLoader classLoader) {
+        // 将传入的配置合并到当前环境的配置中
         this.configuration.addAll(Configuration.fromMap(configuration.toMap()));
+        // 如果配置中设置了时间特性，则设置流的时间特性
         configuration
                 .getOptional(StreamPipelineOptions.TIME_CHARACTERISTIC)
                 .ifPresent(this::setStreamTimeCharacteristic);
+        // 如果配置中设置了作业监听器，则注册自定义的监听器
         configuration
                 .getOptional(DeploymentOptions.JOB_LISTENERS)
                 .ifPresent(listeners -> registerCustomListeners(classLoader, listeners));
+        // 如果配置中设置了缓存文件，则清空当前缓存文件列表并添加新的缓存文件
         configuration
                 .getOptional(PipelineOptions.CACHED_FILES)
                 .ifPresent(
@@ -1104,11 +1134,15 @@ public class StreamExecutionEnvironment implements AutoCloseable {
                             this.cacheFile.clear();
                             this.cacheFile.addAll(DistributedCache.parseCachedFilesFromString(f));
                         });
-
+        // 使用传入的配置和类加载器重新配置 ExecutionConfig
         config.configure(configuration, classLoader);
+        // 使用传入的配置重新配置 CheckpointConfig
         checkpointCfg.configure(configuration);
 
         // reset state backend for backward compatibility
+
+        // 为了向后兼容，重置状态后端
+        // 如果配置中设置了状态后端，则将默认状态后端设置为 null
         configuration
                 .getOptional(StateBackendOptions.STATE_BACKEND)
                 .ifPresent(ignored -> this.defaultStateBackend = null);

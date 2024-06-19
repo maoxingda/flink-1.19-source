@@ -657,6 +657,16 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
     }
 
     // TODO: This method needs a leader session ID
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 当子任务成功处理了一个检查点并准备将其状态持久化时，调用此方法以通知调度器
+     * @param jobID 作业的唯一标识符
+     * @param executionAttemptID 执行尝试的唯一标识符
+     * @param checkpointId 当前检查点的ID
+     * @param checkpointMetrics 关于检查点的度量指标
+     * @param checkpointState 序列化后的子任务状态快照
+    */
     @Override
     public void acknowledgeCheckpoint(
             final JobID jobID,
@@ -664,6 +674,8 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
             final long checkpointId,
             final CheckpointMetrics checkpointMetrics,
             @Nullable final SerializedValue<TaskStateSnapshot> checkpointState) {
+        // 通知调度器NG（该检查点已被确认
+        // 并传递相关的作业ID、执行尝试ID、检查点ID、度量指标以及反序列化后的子任务状态快照
         schedulerNG.acknowledgeCheckpoint(
                 jobID,
                 executionAttemptID,

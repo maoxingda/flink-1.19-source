@@ -1088,6 +1088,11 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * ack告知Checkpoint完成
+    */
     @Override
     public void acknowledgeCheckpoint(
             final JobID jobID,
@@ -1095,7 +1100,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
             final long checkpointId,
             final CheckpointMetrics checkpointMetrics,
             final TaskStateSnapshot checkpointState) {
-
+        //调用executionGraphHandler来确认检查点
         executionGraphHandler.acknowledgeCheckpoint(
                 jobID, executionAttemptID, checkpointId, checkpointMetrics, checkpointState);
     }

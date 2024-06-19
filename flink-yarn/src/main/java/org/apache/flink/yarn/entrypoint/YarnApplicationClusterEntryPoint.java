@@ -64,35 +64,44 @@ public final class YarnApplicationClusterEntryPoint extends ApplicationClusterEn
 
     public static void main(final String[] args) {
         // startup checks and logging
+        // 记录环境信息
         EnvironmentInformation.logEnvironmentInfo(
                 LOG, YarnApplicationClusterEntryPoint.class.getSimpleName(), args);
+        // 注册信号处理器，以便在接收到如SIGTERM等信号时能够优雅地关闭应用
         SignalHandler.register(LOG);
+        // 安装JVM关闭时的安全保障措施，确保在JVM关闭时执行一些清理或关闭资源的操作
         JvmShutdownSafeguard.installAsShutdownHook(LOG);
-
+        // 获取系统环境变量
         Map<String, String> env = System.getenv();
-
+        // 获取当前工作目录，这通常是在YARN容器中运行的应用的当前目录
         final String workingDirectory = env.get(ApplicationConstants.Environment.PWD.key());
+        // 检查工作目录是否已设置，如果没有设置则抛出异常
         Preconditions.checkArgument(
                 workingDirectory != null,
                 "Working directory variable (%s) not set",
                 ApplicationConstants.Environment.PWD.key());
 
         try {
+            // 尝试记录YARN环境信息，这些信息对于调试和监控应用很有用
             YarnEntrypointUtils.logYarnEnvironmentInformation(env, LOG);
         } catch (IOException e) {
+            // 如果在记录YARN环境信息时发生IO异常，则记录警告日志
             LOG.warn("Could not log YARN environment information.", e);
         }
-
+        // 解析命令行参数，并生成动态参数配置对象
+        // 如果参数解析失败，则通过调用System.exit退出应用
         final Configuration dynamicParameters =
                 ClusterEntrypointUtils.parseParametersOrExit(
                         args,
                         new DynamicParametersConfigurationParserFactory(),
                         YarnApplicationClusterEntryPoint.class);
+        // 加载配置，包括从工作目录、动态参数和环境变量中加载的配置
         final Configuration configuration =
                 YarnEntrypointUtils.loadConfiguration(workingDirectory, dynamicParameters, env);
-
+       // 定义一个PackagedProgram对象，用于存储打包的程序（可能是应用或作业）
         PackagedProgram program = null;
         try {
+            // 尝试获取打包的程序，这通常涉及到从配置、文件或其他资源中加载程序
             program = getPackagedProgram(configuration);
         } catch (Exception e) {
             LOG.error("Could not create application program.", e);
@@ -100,15 +109,18 @@ public final class YarnApplicationClusterEntryPoint extends ApplicationClusterEn
         }
 
         try {
+            // 尝试配置执行环境，这通常包括设置程序参数、资源等
             configureExecution(configuration, program);
         } catch (Exception e) {
+            // 如果在配置执行环境时发生异常，记录错误日志并退出程序
             LOG.error("Could not apply application configuration.", e);
             System.exit(1);
         }
-
+       // 创建一个YarnApplicationClusterEntryPoint对象，该对象表示YARN应用程序集群的入口点
+       // 它将使用之前获取的配置和打包的程序进行初始化
         YarnApplicationClusterEntryPoint yarnApplicationClusterEntrypoint =
                 new YarnApplicationClusterEntryPoint(configuration, program);
-
+        // 运行YARN应用程序集群的入口点，这通常意味着启动应用程序并在YARN集群上执行
         ClusterEntrypoint.runClusterEntrypoint(yarnApplicationClusterEntrypoint);
     }
 

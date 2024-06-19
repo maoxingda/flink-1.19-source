@@ -1,4 +1,4 @@
-package com.source.sql;
+package com.source.sql.demo;
 
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -27,7 +27,7 @@ public class FlinkSQLDemo {
 
         // 执行 SQL 查询
         final Table result =
-                tableEnv.sqlQuery("select * from " + tableA);
+                tableEnv.sqlQuery("select user,product from " + tableA + " where user= '111' ");
         tableEnv.toDataStream(result, Order.class).print();
 
         // 执行任务

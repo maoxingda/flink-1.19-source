@@ -314,32 +314,49 @@ public class PendingCheckpoint implements Checkpoint {
         return onCompletionPromise;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 最终完成Checkpoint
+    */
     public CompletedCheckpoint finalizeCheckpoint(
             CheckpointsCleaner checkpointsCleaner, Runnable postCleanup, Executor executor)
             throws IOException {
-
+        // 使用同步块确保在finalizeCheckpoint方法执行期间，对象的状态不会被其他线程修改
         synchronized (lock) {
+            // 检查检查点是否已被丢弃
             checkState(!isDisposed(), "checkpoint is discarded");
+            // 检查检查点是否已完全确认
             checkState(
                     isFullyAcknowledged(),
                     "Pending checkpoint has not been fully acknowledged yet");
 
             // make sure we fulfill the promise with an exception if something fails
+            // 尝试完成检查点，如果在完成过程中发生异常，则确保通过异常来履行承诺
             try {
+                // 更新操作员状态以标记它们已完成
                 checkpointPlan.fulfillFinishedTaskStatus(operatorStates);
 
                 // write out the metadata
+                // 写入元数据
+                // 创建一个包含检查点ID、操作员状态、主状态以及属性的检查点元数据对象
                 final CheckpointMetadata savepoint =
                         new CheckpointMetadata(
                                 checkpointId, operatorStates.values(), masterStates, props);
+                // 创建一个存储位置的输出流，用于保存检查点元数据
+                // 存储位置可能是文件系统、数据库等
                 final CompletedCheckpointStorageLocation finalizedLocation;
 
                 try (CheckpointMetadataOutputStream out =
                         targetLocation.createMetadataOutputStream()) {
+                    // 将检查点元数据写入输出流
                     Checkpoints.storeCheckpointMetadata(savepoint, out);
+                    // 关闭输出流并获取最终的存储位置
+                    // 这可能涉及一些后处理步骤，如同步、刷新缓存等
                     finalizedLocation = out.closeAndFinalizeCheckpoint();
                 }
-
+                // 创建一个已完成的检查点对象
+                // 包含作业ID、检查点ID、时间戳、操作员状态、主状态、属性以及最终的存储位置等信息
                 CompletedCheckpoint completed =
                         new CompletedCheckpoint(
                                 jobId,
@@ -353,12 +370,17 @@ public class PendingCheckpoint implements Checkpoint {
                                 toCompletedCheckpointStats(finalizedLocation));
 
                 // mark this pending checkpoint as disposed, but do NOT drop the state
+                // 标记此待处理检查点为已丢弃，但不丢弃状态
+                // 这可能意味着将检查点从待处理列表中移除，但保留其状态以便后续恢复或其他用途
                 dispose(false, checkpointsCleaner, postCleanup, executor);
-
+                // 返回已完成的检查点对象
                 return completed;
             } catch (Throwable t) {
+                //异步编程封装异常
                 onCompletionPromise.completeExceptionally(t);
+                //抛出异常
                 ExceptionUtils.rethrowIOException(t);
+                //返回null
                 return null; // silence the compiler
             }
         }
@@ -381,52 +403,76 @@ public class PendingCheckpoint implements Checkpoint {
      * @param metrics Checkpoint metrics for the stats
      * @return TaskAcknowledgeResult of the operation
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 确认具有给定执行尝试ID和子任务状态的任务。
+     *
+     * @param executionAttemptId 确认的任务的执行尝试ID
+     * @param operatorSubtaskStates 确认的任务的子任务状态快照
+     * @param metrics 检查点的度量统计信息
+     * @return 操作的任务确认结果
+    */
     public TaskAcknowledgeResult acknowledgeTask(
             ExecutionAttemptID executionAttemptId,
             TaskStateSnapshot operatorSubtaskStates,
             CheckpointMetrics metrics) {
-
+        // 使用锁进行同步，确保并发安全
         synchronized (lock) {
+            // 如果当前对象已经被销毁（disposed），则返回任务确认结果为“已丢弃”
             if (disposed) {
                 return TaskAcknowledgeResult.DISCARDED;
             }
-
+            // 从未确认的任务集合中移除该执行尝试ID对应的任务执行顶点
             final ExecutionVertex vertex = notYetAcknowledgedTasks.remove(executionAttemptId);
-
+            // 如果顶点为null（即找不到该执行尝试ID对应的任务），则进行进一步判断
             if (vertex == null) {
+                // 如果已确认的任务集合中包含该执行尝试ID，则返回任务确认结果为“重复”
                 if (acknowledgedTasks.contains(executionAttemptId)) {
                     return TaskAcknowledgeResult.DUPLICATE;
+                    // 否则，返回任务确认结果为“未知”
                 } else {
                     return TaskAcknowledgeResult.UNKNOWN;
                 }
+                // 如果顶点不为null（即找到了该执行尝试ID对应的任务），则将其加入已确认的任务集合
             } else {
                 acknowledgedTasks.add(executionAttemptId);
             }
-
+            // 获取当前系统时间戳作为确认时间
             long ackTimestamp = System.currentTimeMillis();
+            // 如果子任务状态快照不为null且标记为任务已完成（即部署为完成状态）
             if (operatorSubtaskStates != null && operatorSubtaskStates.isTaskDeployedAsFinished()) {
+                // 在恢复时向检查点计划报告该任务已完成
                 checkpointPlan.reportTaskFinishedOnRestore(vertex);
             } else {
+                // 否则，遍历该任务的所有操作符ID
                 List<OperatorIDPair> operatorIDs = vertex.getJobVertex().getOperatorIDs();
                 for (OperatorIDPair operatorID : operatorIDs) {
+                    // 更新操作符的状态
                     updateOperatorState(vertex, operatorSubtaskStates, operatorID);
                 }
-
+                // 如果子任务状态快照不为null且标记为任务已完成
                 if (operatorSubtaskStates != null && operatorSubtaskStates.isTaskFinished()) {
+                    // 在检查点计划中报告该任务的操作符已完成
                     checkpointPlan.reportTaskHasFinishedOperators(vertex);
                 }
             }
-
+            // 增加已确认任务的数量
             ++numAcknowledgedTasks;
 
             // publish the checkpoint statistics
             // to prevent null-pointers from concurrent modification, copy reference onto stack
+            // 发布检查点统计信息
+            // 为了防止并发修改导致的空指针异常，将引用复制到栈上
             if (pendingCheckpointStats != null) {
                 // Do this in millis because the web frontend works with them
+                // 由于前端通常以毫秒为单位显示时间，因此这里将纳秒转换为毫秒
                 long alignmentDurationMillis = metrics.getAlignmentDurationNanos() / 1_000_000;
                 long checkpointStartDelayMillis =
                         metrics.getCheckpointStartDelayNanos() / 1_000_000;
 
+                // 创建一个子任务状态统计对象，用于记录该子任务在检查点过程中的各种统计信息
+                // SubtaskStateStats 对象包含了子任务的索引、确认时间戳、持久化的字节数、同步和异步持续时间等
                 SubtaskStateStats subtaskStateStats =
                         new SubtaskStateStats(
                                 vertex.getParallelSubtaskIndex(),
@@ -441,7 +487,13 @@ public class PendingCheckpoint implements Checkpoint {
                                 checkpointStartDelayMillis,
                                 metrics.getUnalignedCheckpoint(),
                                 true);
-
+                // 记录检查点统计信息的日志（trace级别），包括：
+                // - 检查点ID（checkpointId）
+                // - 子任务名称（包含子任务索引）
+                // - 状态大小（转换为KB，如果为0则直接记录为0）
+                // - 总持续时间（从触发到结束的时间，单位毫秒）
+                // - 同步部分持续时间（单位毫秒）
+                // - 异步部分持续时间（单位毫秒）
                 LOG.trace(
                         "Checkpoint {} stats for {}: size={}Kb, duration={}ms, sync part={}ms, async part={}ms",
                         checkpointId,
@@ -453,10 +505,12 @@ public class PendingCheckpoint implements Checkpoint {
                                 pendingCheckpointStats.getTriggerTimestamp()),
                         subtaskStateStats.getSyncCheckpointDuration(),
                         subtaskStateStats.getAsyncCheckpointDuration());
+                // 将子任务的状态统计信息报告给待处理的检查点统计信息对象
+                // 这可能意味着将统计信息存储到某个中央存储系统，或用于后续的分析和报告
                 pendingCheckpointStats.reportSubtaskStats(
                         vertex.getJobvertexId(), subtaskStateStats);
             }
-
+            // 无论是否处理了统计信息，都返回成功的任务确认结果
             return TaskAcknowledgeResult.SUCCESS;
         }
     }

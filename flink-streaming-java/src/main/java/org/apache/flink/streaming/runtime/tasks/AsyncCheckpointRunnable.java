@@ -105,48 +105,68 @@ final class AsyncCheckpointRunnable implements Runnable, Closeable {
         this.isTaskRunning = isTaskRunning;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @Override
     public void run() {
+        // 记录异步操作开始的时间（纳秒）
         final long asyncStartNanos = System.nanoTime();
+        // 计算从构造异步操作对象到开始执行之间的延迟时间（毫秒）
         final long asyncStartDelayMillis = (asyncStartNanos - asyncConstructionNanos) / 1_000_000L;
+        // 记录日志，显示异步检查点开始执行的信息，包括任务名、检查点ID和异步启动延迟时间
         LOG.debug(
                 "{} - started executing asynchronous part of checkpoint {}. Asynchronous start delay: {} ms",
                 taskName,
                 checkpointMetaData.getCheckpointId(),
                 asyncStartDelayMillis);
 
+        // 初始化线程的文件系统安全网 确保线程在访问文件系统时的安全或恢复措施
         FileSystemSafetyNet.initializeSafetyNetForThread();
         try {
 
+            // 根据任务是否以已完成状态部署，决定是完成已完成的快照还是非完成的快照
             SnapshotsFinalizeResult snapshotsFinalizeResult =
                     isTaskDeployedAsFinished
-                            ? finalizedFinishedSnapshots()
-                            : finalizeNonFinishedSnapshots();
-
+                            ? finalizedFinishedSnapshots()// 如果任务以已完成状态部署，则完成已完成的快照
+                            : finalizeNonFinishedSnapshots();// 否则，完成非完成的快照
+            // 记录异步操作结束的时间（纳秒）
             final long asyncEndNanos = System.nanoTime();
+            // 计算异步操作的持续时间（毫秒）
             final long asyncDurationMillis = (asyncEndNanos - asyncConstructionNanos) / 1_000_000L;
 
+            // 更新检查点指标（metrics），设置在对齐期间持久化的字节数
             checkpointMetrics.setBytesPersistedDuringAlignment(
                     snapshotsFinalizeResult.bytesPersistedDuringAlignment);
+            // 更新检查点指标，设置异步操作的持续时间（毫秒）
             checkpointMetrics.setAsyncDurationMillis(asyncDurationMillis);
 
+            // 尝试将异步检查点的状态从RUNNING更改为COMPLETED
+            // 如果状态更改成功，说明异步检查点成功完成
             if (asyncCheckpointState.compareAndSet(
                     AsyncCheckpointState.RUNNING, AsyncCheckpointState.COMPLETED)) {
-
+                // 报告已完成的快照状态，包括JobManager、Task和Operator的子任务状态
+                // 同时传入异步操作的持续时间
                 reportCompletedSnapshotStates(
                         snapshotsFinalizeResult.jobManagerTaskOperatorSubtaskStates,
                         snapshotsFinalizeResult.localTaskOperatorSubtaskStates,
                         asyncDurationMillis);
 
             } else {
+                // 如果状态更改失败，可能是因为检查点在之前已经被关闭或取消
+                // 因此，日志中记录一条debug级别的消息
                 LOG.debug(
                         "{} - asynchronous part of checkpoint {} could not be completed because it was closed before.",
                         taskName,
                         checkpointMetaData.getCheckpointId());
             }
-
+            // 无论是否成功完成，都完成future对象，表示异步操作已经结束
+            // 在这里传入null作为结果，因为可能并不需要具体的返回值
             finishedFuture.complete(null);
         } catch (Exception e) {
+            // 捕获异常，如果异步操作在执行过程中出现异常
             LOG.info(
                     "{} - asynchronous part of checkpoint {} could not be completed.",
                     taskName,
@@ -155,18 +175,30 @@ final class AsyncCheckpointRunnable implements Runnable, Closeable {
             handleExecutionException(e);
             finishedFuture.completeExceptionally(e);
         } finally {
+            // 无论成功还是失败，都执行清理操作
             unregisterConsumer.accept(this);
+            // 关闭线程的文件系统安全网，并清理受保护的资源
             FileSystemSafetyNet.closeSafetyNetAndGuardedResourcesForThread();
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 阻塞等待所有的状态操作执行完成
+    */
     private SnapshotsFinalizeResult finalizedFinishedSnapshots() throws Exception {
+        // 遍历所有正在进行的操作员快照
         for (Map.Entry<OperatorID, OperatorSnapshotFutures> entry :
                 operatorSnapshotsInProgress.entrySet()) {
+            // 获取当前操作员快照的状态和结果
             OperatorSnapshotFutures snapshotInProgress = entry.getValue();
             // We should wait for the channels states get completed before continuing,
             // otherwise the alignment of barriers might have not finished yet.
+            // 等待输入通道的状态完成。这是必要的，因为如果在通道状态完成之前继续，
+            // 屏障的对齐可能还没有完成，这可能导致数据不一致或其他问题。
             snapshotInProgress.getInputChannelStateFuture().get();
+            // 等待结果子分区状态完成。这也是确保所有数据都已正确处理和持久化的重要步骤。
             snapshotInProgress.getResultSubpartitionStateFuture().get();
         }
 
@@ -215,14 +247,26 @@ final class AsyncCheckpointRunnable implements Runnable, Closeable {
                 bytesPersistedDuringAlignment);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 报告Checkpoint快照完成状态
+     * @param acknowledgedTaskStateSnapshot 已被确认的任务状态快照
+     * @param localTaskStateSnapshot 本地任务状态快照
+     * @param asyncDurationMillis 异步快照操作持续时间（毫秒）
+    */
     private void reportCompletedSnapshotStates(
             TaskStateSnapshot acknowledgedTaskStateSnapshot,
             TaskStateSnapshot localTaskStateSnapshot,
             long asyncDurationMillis) {
-
+        // 检查是否存在已确认的状态快照
         boolean hasAckState = acknowledgedTaskStateSnapshot.hasState();
+        // 检查是否存在本地状态快照
         boolean hasLocalState = localTaskStateSnapshot.hasState();
 
+        // 校验状态：确保如果本地存在状态，则必须有对应的已确认状态，
+        // 或者如果没有已确认状态，则本地也不应该有状态
+        // 这用于防止本地有缓存状态但未被作业管理器确认的情况
         checkState(
                 hasAckState || !hasLocalState,
                 "Found cached state but no corresponding primary state is reported to the job "
@@ -232,25 +276,29 @@ final class AsyncCheckpointRunnable implements Runnable, Closeable {
         // empty state
         // to stateless tasks on restore. This enables simple job modifications that only concern
         // stateless without the need to assign them uids to match their (always empty) states.
+
+        // 如果任务是无状态的（即没有状态需要保存），我们通过报告null状态来标记，
+        // 这样在恢复时就不会尝试将空状态分配给无状态任务。
         taskEnvironment
                 .getTaskStateManager()
                 .reportTaskStateSnapshots(
-                        checkpointMetaData,
+                        checkpointMetaData,// 检查点元数据
                         checkpointMetrics
                                 .setBytesPersistedOfThisCheckpoint(
                                         acknowledgedTaskStateSnapshot.getCheckpointedSize())
                                 .setTotalBytesPersisted(
                                         acknowledgedTaskStateSnapshot.getStateSize())
-                                .build(),
-                        hasAckState ? acknowledgedTaskStateSnapshot : null,
-                        hasLocalState ? localTaskStateSnapshot : null);
-
+                                .build(),// 构建检查点指标
+                        hasAckState ? acknowledgedTaskStateSnapshot : null,// 如果有已确认状态，则报告；否则报告null
+                        hasLocalState ? localTaskStateSnapshot : null);// 如果有本地状态，则报告；否则报告null
+        // 记录日志：调试级别，显示任务名称、完成的检查点ID以及异步操作的持续时间
         LOG.debug(
                 "{} - finished asynchronous part of checkpoint {}. Asynchronous duration: {} ms",
                 taskName,
                 checkpointMetaData.getCheckpointId(),
                 asyncDurationMillis);
-
+        // 这是一个跟踪级别的日志记录，用于在调试或诊断时捕获详细的信息
+        // 该日志记录报告了在给定检查点中，针对特定任务所报告的状态快照
         LOG.trace(
                 "{} - reported the following states in snapshot for checkpoint {}: {}.",
                 taskName,

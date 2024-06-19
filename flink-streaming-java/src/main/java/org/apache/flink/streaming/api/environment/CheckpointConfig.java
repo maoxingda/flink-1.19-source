@@ -972,51 +972,71 @@ public class CheckpointConfig implements java.io.Serializable {
      *
      * @param configuration a configuration to read the values from
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从给定的 {@link ReadableConfig} 中设置所有相关的选项
+    */
     public void configure(ReadableConfig configuration) {
+        // 如果配置中设置了检查点模式，则设置检查点模式
         configuration
                 .getOptional(ExecutionCheckpointingOptions.CHECKPOINTING_MODE)
                 .ifPresent(this::setCheckpointingMode);
+        // 如果配置中设置了检查点间隔，则设置检查点间隔（毫秒）
         configuration
                 .getOptional(ExecutionCheckpointingOptions.CHECKPOINTING_INTERVAL)
                 .ifPresent(i -> this.setCheckpointInterval(i.toMillis()));
+        // 如果配置中设置了积压时的检查点间隔，则设置积压时的检查点间隔（毫秒）
         configuration
                 .getOptional(ExecutionCheckpointingOptions.CHECKPOINTING_INTERVAL_DURING_BACKLOG)
                 .ifPresent(i -> this.setCheckpointIntervalDuringBacklog(i.toMillis()));
+        // 如果配置中设置了检查点超时时间，则设置检查点超时时间（毫秒）
         configuration
                 .getOptional(ExecutionCheckpointingOptions.CHECKPOINTING_TIMEOUT)
                 .ifPresent(t -> this.setCheckpointTimeout(t.toMillis()));
+        // 如果配置中设置了最大并发检查点数量，则设置最大并发检查点数量
         configuration
                 .getOptional(ExecutionCheckpointingOptions.MAX_CONCURRENT_CHECKPOINTS)
                 .ifPresent(this::setMaxConcurrentCheckpoints);
+        // 如果配置中设置了检查点之间的最小暂停时间，则设置检查点之间的最小暂停时间（毫秒）
         configuration
                 .getOptional(ExecutionCheckpointingOptions.MIN_PAUSE_BETWEEN_CHECKPOINTS)
                 .ifPresent(m -> this.setMinPauseBetweenCheckpoints(m.toMillis()));
+        // 如果配置中设置了可容忍的失败检查点数量，则设置可容忍的失败检查点数量
         configuration
                 .getOptional(ExecutionCheckpointingOptions.TOLERABLE_FAILURE_NUMBER)
                 .ifPresent(this::setTolerableCheckpointFailureNumber);
+        // 如果配置中设置了外部化检查点清理，则设置外部化检查点清理策略
         configuration
                 .getOptional(ExecutionCheckpointingOptions.EXTERNALIZED_CHECKPOINT)
                 .ifPresent(this::setExternalizedCheckpointCleanup);
+        // 如果配置中设置了允许非对齐检查点，则启用非对齐检查点
         configuration
                 .getOptional(ExecutionCheckpointingOptions.ENABLE_UNALIGNED)
                 .ifPresent(this::enableUnalignedCheckpoints);
+        // 如果配置中设置了在飞行数据中忽略的检查点ID，则设置该ID
         configuration
                 .getOptional(ExecutionCheckpointingOptions.CHECKPOINT_ID_OF_IGNORED_IN_FLIGHT_DATA)
                 .ifPresent(this::setCheckpointIdOfIgnoredInFlightData);
+        // 如果配置中设置了对齐检查点的超时时间，则设置该超时时间
         configuration
                 .getOptional(ExecutionCheckpointingOptions.ALIGNED_CHECKPOINT_TIMEOUT)
                 .ifPresent(this::setAlignedCheckpointTimeout);
+        // 如果配置中设置了每个通道状态文件允许的最大子任务数，则设置该值
         configuration
                 .getOptional(
                         ExecutionCheckpointingOptions.UNALIGNED_MAX_SUBTASKS_PER_CHANNEL_STATE_FILE)
                 .ifPresent(this::setMaxSubtasksPerChannelStateFile);
+        // 如果配置中设置了强制使用非对齐检查点，则强制启用非对齐检查点
         configuration
                 .getOptional(ExecutionCheckpointingOptions.FORCE_UNALIGNED)
                 .ifPresent(this::setForceUnalignedCheckpoints);
+        // 如果配置中设置了检查点存储的目录，则设置检查点存储位置
         configuration
                 .getOptional(CheckpointingOptions.CHECKPOINTS_DIRECTORY)
                 .ifPresent(this::setCheckpointStorage);
         // reset checkpoint storage for backward compatibility
+        // 为了向后兼容性，重置检查点存储（如果存在旧的CHECKPOINT_STORAGE配置键）
         configuration
                 .getOptional(CheckpointingOptions.CHECKPOINT_STORAGE)
                 .ifPresent(ignored -> this.storage = null);

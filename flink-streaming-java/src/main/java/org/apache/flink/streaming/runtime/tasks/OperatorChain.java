@@ -519,7 +519,7 @@ public abstract class OperatorChain<OUT, OP extends StreamOperator<OUT>>
             StreamOperator<?> op,
             ChannelStateWriter.ChannelStateWriteResult channelStateWriteResult,
             OperatorSnapshotFutures snapshotInProgress) {
-        // 如果传入的 operator 是主 operator，则设置其输入通道状态的快照未来
+        // 如果传入的 operator 是主 operator，则设置其输入通道状态的快照Future
         if (op == getMainOperator()) {
             snapshotInProgress.setInputChannelStateFuture(
                     channelStateWriteResult
@@ -527,7 +527,7 @@ public abstract class OperatorChain<OUT, OP extends StreamOperator<OUT>>
                             .thenApply(StateObjectCollection::new)// 将句柄转换为 StateObjectCollection
                             .thenApply(SnapshotResult::of));// 将 StateObjectCollection 封装为 SnapshotResult
         }
-        // 如果传入的 operator 是尾 operator，则设置其结果子分区状态的快照未来
+        // 如果传入的 operator 是尾 operator，则设置其结果子分区状态的快照Future
         if (op == getTailOperator()) {
             snapshotInProgress.setResultSubpartitionStateFuture(
                     channelStateWriteResult

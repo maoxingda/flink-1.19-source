@@ -122,28 +122,42 @@ public abstract class CheckpointBarrierHandler implements Closeable {
         return CompletableFuture.completedFuture(null);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+     *
+    */
     protected void notifyCheckpoint(CheckpointBarrier checkpointBarrier) throws IOException {
+        // 创建一个CheckpointMetaData对象，用于存储检查点的元数据
+        // 元数据包括检查点ID、检查点时间戳以及当前系统时间（毫秒）
         CheckpointMetaData checkpointMetaData =
                 new CheckpointMetaData(
                         checkpointBarrier.getId(),
                         checkpointBarrier.getTimestamp(),
                         System.currentTimeMillis());
-
+        // 创建一个CheckpointMetricsBuilder对象，用于构建检查点的度量指标
         CheckpointMetricsBuilder checkpointMetrics;
+        // 判断当前检查点ID是否与开始对齐的检查点ID相同
         if (checkpointBarrier.getId() == startAlignmentCheckpointId) {
+            // 如果是，则设置对齐相关的度量指标
+            // 包括对齐持续时间、对齐期间处理的字节数以及检查点开始延迟
             checkpointMetrics =
                     new CheckpointMetricsBuilder()
                             .setAlignmentDurationNanos(latestAlignmentDurationNanos)
                             .setBytesProcessedDuringAlignment(latestBytesProcessedDuringAlignment)
                             .setCheckpointStartDelayNanos(latestCheckpointStartDelayNanos);
         } else {
+            // 如果不是，则设置默认的对齐度量指标（通常为0）
+            // 因为这些指标与当前检查点无关
             checkpointMetrics =
                     new CheckpointMetricsBuilder()
                             .setAlignmentDurationNanos(0L)
                             .setBytesProcessedDuringAlignment(0L)
                             .setCheckpointStartDelayNanos(0);
         }
-
+        // 触发检查点通知，将检查点元数据、检查点选项以及检查点度量指标传递给toNotifyOnCheckpoint对象
+        // toNotifyOnCheckpoint可能是一个用于处理检查点事件的监听器或回调接口
         toNotifyOnCheckpoint.triggerCheckpointOnBarrier(
                 checkpointMetaData, checkpointBarrier.getCheckpointOptions(), checkpointMetrics);
     }
@@ -159,16 +173,33 @@ public abstract class CheckpointBarrierHandler implements Closeable {
         toNotifyOnCheckpoint.abortCheckpointOnBarrier(checkpointId, cause);
     }
 
+
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+     *
+    */
     protected void markAlignmentStartAndEnd(long checkpointId, long checkpointCreationTimestamp) {
+        // 标记检查点对齐的开始，使用给定的检查点ID和创建时间戳
+        // 通常在所有需要的通道都接收到检查点屏障时调用
         markAlignmentStart(checkpointId, checkpointCreationTimestamp);
+        // 标记检查点对齐的结束
+        // 这里传递了0作为参数，但在实际应用中可能需要一个具体的值来标识对齐结束的状态或时间戳
+        // 此处可能是一个简化的示例或占位符，具体实现可能需要根据实际情况来完善
         markAlignmentEnd(0);
     }
 
     protected void markAlignmentStart(long checkpointId, long checkpointCreationTimestamp) {
+        // 计算最新的检查点开始延迟（以纳秒为单位）
+        // 延迟是当前绝对时间（毫秒）减去检查点创建时间戳（毫秒），然后乘以1,000,000转换为纳秒
+        // 如果结果为负数，则取0（表示没有延迟）
         latestCheckpointStartDelayNanos =
                 1_000_000 * Math.max(0, clock.absoluteTimeMillis() - checkpointCreationTimestamp);
-
+        // 重置对齐状态，可能是清除之前的对齐相关信息或准备开始新的对齐过程
         resetAlignment();
+        // 记录对齐开始的相对时间戳（纳秒）
+        // 这里的clock.relativeTimeNanos()可能返回从某个固定时间点（如系统启动）开始到现在的经过时间
         startOfAlignmentTimestamp = clock.relativeTimeNanos();
         startAlignmentCheckpointId = checkpointId;
     }
@@ -177,15 +208,28 @@ public abstract class CheckpointBarrierHandler implements Closeable {
         markAlignmentEnd(clock.relativeTimeNanos() - startOfAlignmentTimestamp);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+     *
+    */
     protected void markAlignmentEnd(long alignmentDuration) {
+        // 检查对齐持续时间是否大于等于0
+        // 如果小于0，则抛出异常，提示对齐时间不应为负值，并询问时间是否单调递增
         checkState(
                 alignmentDuration >= 0,
                 "Alignment time is less than zero({}). Is the time monotonic?",
                 alignmentDuration);
-
+        // 完成对齐持续时间的记录，可能是将结果设置到某个完成状态的变量中
+        // 这里的 alignmentDuration 是对齐的总时间（以纳秒为单位）
         latestAlignmentDurationNanos.complete(alignmentDuration);
+        // 完成对齐期间处理的字节数的记录
+        // bytesProcessedDuringAlignment 是在对齐过程中处理的字节数
         latestBytesProcessedDuringAlignment.complete(bytesProcessedDuringAlignment);
 
+        // 将对齐开始的时间戳重置为 OUTSIDE_OF_ALIGNMENT，表示当前不在对齐状态
+        // OUTSIDE_OF_ALIGNMENT 可能是一个常量，表示不在对齐状态的时间戳标识
         startOfAlignmentTimestamp = OUTSIDE_OF_ALIGNMENT;
         bytesProcessedDuringAlignment = 0;
     }

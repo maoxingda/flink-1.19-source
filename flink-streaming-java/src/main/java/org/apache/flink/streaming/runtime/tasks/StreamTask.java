@@ -1405,7 +1405,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             // 初始化输入的检查点
             subtaskCheckpointCoordinator.initInputsCheckpoint(
                     checkpointMetaData.getCheckpointId(), checkpointOptions);
-            // 执行检查点，并获取是否成功
+            // 1.执行检查点，并获取是否成功
             boolean success =
                     performCheckpoint(checkpointMetaData, checkpointOptions, checkpointMetrics);
             // 如果检查点未成功，则拒绝该检查点
@@ -1479,23 +1479,37 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
         return Optional.empty();
     }
 
+
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+     *
+    */
     @Override
     public void triggerCheckpointOnBarrier(
             CheckpointMetaData checkpointMetaData,
             CheckpointOptions checkpointOptions,
             CheckpointMetricsBuilder checkpointMetrics)
             throws IOException {
-
+         // 使用 FlinkSecurityManager 监控当前线程的用户系统退出行为
+        // 这通常用于确保在执行关键任务（如检查点）时，用户代码不会意外地终止 JVM
         FlinkSecurityManager.monitorUserSystemExitForCurrentThread();
         try {
+            // 执行实际的检查点操作
+            // 传入检查点的元数据、选项和度量指标构建器
             performCheckpoint(checkpointMetaData, checkpointOptions, checkpointMetrics);
         } catch (CancelTaskException e) {
+            // 如果在执行检查点过程中任务被取消
+            // 记录日志，并重新抛出 CancelTaskException 异常
             LOG.info(
                     "Operator {} was cancelled while performing checkpoint {}.",
                     getName(),
                     checkpointMetaData.getCheckpointId());
             throw e;
         } catch (Exception e) {
+            // 捕获其他所有异常
+            // 将异常包装为 IOException 并重新抛出
             throw new IOException(
                     "Could not perform checkpoint "
                             + checkpointMetaData.getCheckpointId()
@@ -1504,6 +1518,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                             + '.',
                     e);
         } finally {
+            // 无论是否发生异常，都取消对当前线程的用户系统退出的监控
             FlinkSecurityManager.unmonitorUserSystemExitForCurrentThread();
         }
     }

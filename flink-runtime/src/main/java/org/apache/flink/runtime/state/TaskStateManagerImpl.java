@@ -143,17 +143,30 @@ public class TaskStateManagerImpl implements TaskStateManager {
         checkpointResponder.reportInitializationMetrics(jobId, subTaskInitializationMetrics);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 报告任务状态的快照信息。
+     *
+     * @param checkpointMetaData 检查点的元数据，不能为null
+     * @param checkpointMetrics 检查点的度量信息，不能为null
+     * @param acknowledgedState 被确认的状态快照，可以为null
+     * @param localState 本地状态快照，可以为null
+    */
     @Override
     public void reportTaskStateSnapshots(
             @Nonnull CheckpointMetaData checkpointMetaData,
             @Nonnull CheckpointMetrics checkpointMetrics,
             @Nullable TaskStateSnapshot acknowledgedState,
             @Nullable TaskStateSnapshot localState) {
-
+        // 获取检查点的ID
         long checkpointId = checkpointMetaData.getCheckpointId();
-
+        // 将本地状态快照存储到本地状态存储中
+        // 这一步可能是为了容错或恢复时能够重新加载状态
         localStateStore.storeLocalState(checkpointId, localState);
 
+        // 确认检查点，并可能将状态快照发送给其他组件（如持久化存储或下游任务）
+        // 这一步通知系统该检查点已被处理，并附带相关的度量信息和状态快照
         checkpointResponder.acknowledgeCheckpoint(
                 jobId, executionAttemptID, checkpointId, checkpointMetrics, acknowledgedState);
     }

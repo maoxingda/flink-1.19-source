@@ -166,28 +166,36 @@ public class CliFrontend {
     // --------------------------------------------------------------------------------------------
     //  Execute Actions
     // --------------------------------------------------------------------------------------------
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * Application模式运行
+    */
     protected void runApplication(String[] args) throws Exception {
         LOG.info("Running 'run-application' command.");
-
+        // 获取运行命令的选项配置
         final Options commandOptions = CliFrontendParser.getRunCommandOptions();
+        // 根据提供的选项配置和参数，获取命令行对象
         final CommandLine commandLine = getCommandLine(commandOptions, args, true);
 
+        // 如果命令行对象包含帮助选项（HELP_OPTION），则打印帮助信息并返回
         if (commandLine.hasOption(HELP_OPTION.getOpt())) {
             CliFrontendParser.printHelpForRunApplication(customCommandLines);
             return;
         }
-
+        // 验证并获取有效的命令行对象
         final CustomCommandLine activeCommandLine =
                 validateAndGetActiveCommandLine(checkNotNull(commandLine));
-
+        // 创建一个Application集群部署器
         final ApplicationDeployer deployer =
                 new ApplicationClusterDeployer(clusterClientServiceLoader);
-
+        // 声明两个变量，用于存储程序选项和有效配置
         final ProgramOptions programOptions;
         final Configuration effectiveConfiguration;
 
         // No need to set a jarFile path for Pyflink job.
+        // 如果命令行指定的是Python程序的入口点，则不需要设置jar文件路径
+          // 对于Pyflink作业，我们直接创建Python程序选项，并获取有效配置
         if (ProgramOptionsUtils.isPythonEntryPoint(commandLine)) {
             programOptions = ProgramOptionsUtils.createPythonProgramOptions(commandLine);
             effectiveConfiguration =
@@ -197,9 +205,14 @@ public class CliFrontend {
                             programOptions,
                             Collections.emptyList());
         } else {
+            // 如果命令行没有指定Python程序的入口点，则按照非Pyflink作业进行处理
+            // 从命令行创建ProgramOptions对象
             programOptions = new ProgramOptions(commandLine);
+            // 验证ProgramOptions对象的有效性
             programOptions.validate();
+            // 解析并获取JAR文件的URI
             final URI uri = PackagedProgramUtils.resolveURI(programOptions.getJarFilePath());
+            // 获取最终有效的配置，包括JAR文件的URI作为参数之一
             effectiveConfiguration =
                     getEffectiveConfiguration(
                             activeCommandLine,
@@ -207,10 +220,12 @@ public class CliFrontend {
                             programOptions,
                             Collections.singletonList(uri.toString()));
         }
-
+        // 创建ApplicationConfiguration对象，包含程序参数和入口点类名
         final ApplicationConfiguration applicationConfiguration =
                 new ApplicationConfiguration(
                         programOptions.getProgramArgs(), programOptions.getEntryPointClassName());
+        // 使用ApplicationDeployer对象运行应用程序
+        // 传入有效配置和应用程序配置
         deployer.run(effectiveConfiguration, applicationConfiguration);
     }
 

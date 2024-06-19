@@ -2318,43 +2318,61 @@ public class StreamingJobGraphGenerator {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 配置Checkpoint
+    */
     private void configureCheckpointing() {
+        // 获取流图的检查点配置
         CheckpointConfig cfg = streamGraph.getCheckpointConfig();
-
+        // 获取检查点间隔
         long interval = cfg.getCheckpointInterval();
+        // 如果检查点间隔小于最小检查点时间，则禁用检查点
         if (interval < MINIMAL_CHECKPOINT_TIME) {
             interval = CheckpointCoordinatorConfiguration.DISABLED_CHECKPOINT_INTERVAL;
         }
 
         //  --- configure options ---
 
+        // 配置检查点终止后的保留策略
         CheckpointRetentionPolicy retentionAfterTermination;
+        // 如果启用了外部化检查点
         if (cfg.isExternalizedCheckpointsEnabled()) {
+            // 获取外部化检查点的清理模式
             CheckpointConfig.ExternalizedCheckpointCleanup cleanup =
                     cfg.getExternalizedCheckpointCleanup();
             // Sanity check
+            // 合理性检查：如果启用了外部化检查点但没有配置清理模式，则抛出异常
             if (cleanup == null) {
                 throw new IllegalStateException(
                         "Externalized checkpoints enabled, but no cleanup mode configured.");
             }
+            // 根据清理模式设置检查点终止后的保留策略
             retentionAfterTermination =
                     cleanup.deleteOnCancellation()
-                            ? CheckpointRetentionPolicy.RETAIN_ON_FAILURE
-                            : CheckpointRetentionPolicy.RETAIN_ON_CANCELLATION;
+                            ? CheckpointRetentionPolicy.RETAIN_ON_FAILURE // 取消时删除，失败时保留
+                            : CheckpointRetentionPolicy.RETAIN_ON_CANCELLATION; // 取消时保留
         } else {
+            // 如果没有启用外部化检查点，则检查点终止后从不保留
             retentionAfterTermination = CheckpointRetentionPolicy.NEVER_RETAIN_AFTER_TERMINATION;
         }
 
         //  --- configure the master-side checkpoint hooks ---
 
+        // 创建用于存储主节点侧检查点钩子的列表
         final ArrayList<MasterTriggerRestoreHook.Factory> hooks = new ArrayList<>();
 
+        // 遍历流图中的每个节点
         for (StreamNode node : streamGraph.getStreamNodes()) {
+            // 如果节点的操作工厂是UdfStreamOperatorFactory的实例
             if (node.getOperatorFactory() instanceof UdfStreamOperatorFactory) {
+                // 获取用户定义的函数
                 Function f =
                         ((UdfStreamOperatorFactory) node.getOperatorFactory()).getUserFunction();
-
+                // 如果用户定义的函数实现了WithMasterCheckpointHook接口
                 if (f instanceof WithMasterCheckpointHook) {
+                    // 将函数封装为检查点钩子工厂并添加到列表中
                     hooks.add(
                             new FunctionMasterCheckpointHookFactory(
                                     (WithMasterCheckpointHook<?>) f));
@@ -2364,72 +2382,90 @@ public class StreamingJobGraphGenerator {
 
         // because the hooks can have user-defined code, they need to be stored as
         // eagerly serialized values
+        // 定义一个序列化的MasterTriggerRestoreHook.Factory数组
         final SerializedValue<MasterTriggerRestoreHook.Factory[]> serializedHooks;
+        // 如果没有配置任何检查点钩子，则serializedHooks为null
         if (hooks.isEmpty()) {
             serializedHooks = null;
         } else {
             try {
+                // 将钩子列表转换为数组
                 MasterTriggerRestoreHook.Factory[] asArray =
                         hooks.toArray(new MasterTriggerRestoreHook.Factory[hooks.size()]);
+                // 将数组序列化为SerializedValue对象
                 serializedHooks = new SerializedValue<>(asArray);
             } catch (IOException e) {
+                // 如果序列化失败，则抛出运行时异常
                 throw new FlinkRuntimeException("Trigger/restore hook is not serializable", e);
             }
         }
 
         // because the state backend can have user-defined code, it needs to be stored as
         // eagerly serialized value
+        // 因为状态后端可能包含用户定义的代码，所以需要将其存储为预先序列化的值
         final SerializedValue<StateBackend> serializedStateBackend;
+        // 如果流图中没有设置状态后端，则serializedStateBackend为null
         if (streamGraph.getStateBackend() == null) {
             serializedStateBackend = null;
         } else {
             try {
+                // 将状态后端序列化为SerializedValue对象
                 serializedStateBackend =
                         new SerializedValue<StateBackend>(streamGraph.getStateBackend());
             } catch (IOException e) {
+                // 如果序列化失败，则抛出运行时异常
                 throw new FlinkRuntimeException("State backend is not serializable", e);
             }
         }
 
         // because the checkpoint storage can have user-defined code, it needs to be stored as
         // eagerly serialized value
+
+        // 因为检查点存储可能包含用户定义的代码，所以需要将其存储为预先序列化的值
         final SerializedValue<CheckpointStorage> serializedCheckpointStorage;
+
+        // 如果流图中没有设置检查点存储，则serializedCheckpointStorage为null
         if (streamGraph.getCheckpointStorage() == null) {
             serializedCheckpointStorage = null;
         } else {
             try {
+                // 将检查点存储序列化为SerializedValue对象
                 serializedCheckpointStorage =
                         new SerializedValue<>(streamGraph.getCheckpointStorage());
             } catch (IOException e) {
+                // 如果序列化失败，则抛出运行时异常
                 throw new FlinkRuntimeException("Checkpoint storage is not serializable", e);
             }
         }
 
         //  --- done, put it all together ---
-
+        // 创建一个JobCheckpointingSettings对象，用于配置作业的检查点设置
         JobCheckpointingSettings settings =
                 new JobCheckpointingSettings(
+                        // 使用CheckpointCoordinatorConfiguration.builder()来配置检查点协调器的参数
                         CheckpointCoordinatorConfiguration.builder()
-                                .setCheckpointInterval(interval)
+                                .setCheckpointInterval(interval)  // 设置检查点之间的时间间隔
+                                // 设置在backlog期间检查点的时间间隔
                                 .setCheckpointIntervalDuringBacklog(
                                         cfg.getCheckpointIntervalDuringBacklog())
-                                .setCheckpointTimeout(cfg.getCheckpointTimeout())
-                                .setMinPauseBetweenCheckpoints(cfg.getMinPauseBetweenCheckpoints())
-                                .setMaxConcurrentCheckpoints(cfg.getMaxConcurrentCheckpoints())
-                                .setCheckpointRetentionPolicy(retentionAfterTermination)
+                                .setCheckpointTimeout(cfg.getCheckpointTimeout())// 设置检查点超时时间
+                                .setMinPauseBetweenCheckpoints(cfg.getMinPauseBetweenCheckpoints()) // 设置两次检查点之间的最小暂停时间
+                                .setMaxConcurrentCheckpoints(cfg.getMaxConcurrentCheckpoints())// 设置同时运行的最大检查点数量
+                                .setCheckpointRetentionPolicy(retentionAfterTermination) // 设置作业终止后检查点的保留策略
                                 .setExactlyOnce(
-                                        getCheckpointingMode(cfg) == CheckpointingMode.EXACTLY_ONCE)
+                                        getCheckpointingMode(cfg) == CheckpointingMode.EXACTLY_ONCE) // 设置作业是否以恰好一次（EXACTLY_ONCE）模式执行
                                 .setTolerableCheckpointFailureNumber(
-                                        cfg.getTolerableCheckpointFailureNumber())
-                                .setUnalignedCheckpointsEnabled(cfg.isUnalignedCheckpointsEnabled())
+                                        cfg.getTolerableCheckpointFailureNumber())  // 设置可以容忍的检查点失败次数
+                                .setUnalignedCheckpointsEnabled(cfg.isUnalignedCheckpointsEnabled())  // 设置是否启用非对齐检查点
                                 .setCheckpointIdOfIgnoredInFlightData(
-                                        cfg.getCheckpointIdOfIgnoredInFlightData())
+                                        cfg.getCheckpointIdOfIgnoredInFlightData())// 设置被忽略的正在传输的数据的检查点ID
                                 .setAlignedCheckpointTimeout(
-                                        cfg.getAlignedCheckpointTimeout().toMillis())
+                                        cfg.getAlignedCheckpointTimeout().toMillis()) // 设置对齐检查点的超时时间（毫秒）
                                 .setEnableCheckpointsAfterTasksFinish(
-                                        streamGraph.isEnableCheckpointsAfterTasksFinish())
+                                        streamGraph.isEnableCheckpointsAfterTasksFinish())// 设置在任务完成后是否启用检查点
                                 .build(),
-                        serializedStateBackend,
+                        serializedStateBackend,// 序列化的状态后端对象
+                        // 检查流图中是否启用了状态变更日志（state changelog）
                         streamGraph
                                 .getJobConfiguration()
                                 .getOptional(StateChangelogOptions.ENABLE_STATE_CHANGE_LOG)
@@ -2438,6 +2474,7 @@ public class StreamingJobGraphGenerator {
                         serializedCheckpointStorage,
                         serializedHooks);
 
+        // 将配置好的检查点设置应用到作业图（JobGraph）上
         jobGraph.setSnapshotSettings(settings);
     }
 

@@ -40,13 +40,13 @@ import static org.apache.flink.util.Preconditions.checkState;
 /** The default implementation of he {@link CheckpointPlan}. */
 public class DefaultCheckpointPlan implements CheckpointPlan {
 
-    private final List<Execution> tasksToTrigger;
+    private final List<Execution> tasksToTrigger;// 待触发的任务列表，一旦满足条件就会触发这些任务
 
-    private final List<Execution> tasksToWaitFor;
+    private final List<Execution> tasksToWaitFor;// 需要等待完成的任务列表，通常这些任务可能是其他任务的依赖
 
-    private final List<ExecutionVertex> tasksToCommitTo;
+    private final List<ExecutionVertex> tasksToCommitTo;//需要提交到某个状态（如持久化）的执行顶点列表
 
-    private final List<Execution> finishedTasks;
+    private final List<Execution> finishedTasks;// 已经完成的任务列表，可能用于记录、清理或后续处理
 
     private final boolean mayHaveFinishedTasks;
 

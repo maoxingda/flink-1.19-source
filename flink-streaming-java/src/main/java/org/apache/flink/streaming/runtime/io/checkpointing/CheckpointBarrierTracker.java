@@ -90,10 +90,19 @@ public class CheckpointBarrierTracker extends CheckpointBarrierHandler {
         this.pendingCheckpoints = new ArrayDeque<>();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理Barrier
+     * @param receivedBarrier 接收到的检查点屏障
+     * @param channelInfo 输入通道的信息
+     * @param isRpcTriggered 是否由RPC触发
+    */
     @Override
     public void processBarrier(
             CheckpointBarrier receivedBarrier, InputChannelInfo channelInfo, boolean isRpcTriggered)
             throws IOException {
+        // 提取接收到的屏障的ID
         final long barrierId = receivedBarrier.getId();
 
         // fast path for single channel trackers. We only go with the fast path
@@ -102,42 +111,60 @@ public class CheckpointBarrierTracker extends CheckpointBarrierHandler {
         // 2. Received EndOfPartition from channel 0.
         // 3. Received barrier from channel 1.
         // In this case we should finish the existing pending checkpoint.
+        // 对于单通道追踪器的快速路径。我们只对新的检查点使用快速路径，
+        // 否则我们可能会遇到以下情况：
+        // 1. 从通道0（总共2个通道）接收到屏障并开始一个新的检查点。
+        // 2. 从通道0接收到EndOfPartition。
+        // 3. 从通道1接收到屏障。
+        // 在这种情况下，我们应该完成现有的挂起检查点。
         if (receivedBarrier.getId() > latestPendingCheckpointID && numOpenChannels == 1) {
+            // 标记对齐的开始和结束，使用屏障ID和屏障的时间戳
             markAlignmentStartAndEnd(barrierId, receivedBarrier.getTimestamp());
+            // 通知检查点完成
             notifyCheckpoint(receivedBarrier);
             return;
         }
 
         // general path for multiple input channels
         if (LOG.isDebugEnabled()) {
+            // 如果开启了debug级别的日志记录，记录接收到的屏障的详细信息
             LOG.debug("Received barrier for checkpoint {} from channel {}", barrierId, channelInfo);
         }
 
         // find the checkpoint barrier in the queue of pending barriers
+        // 在挂起的屏障队列中查找对应的检查点屏障
         CheckpointBarrierCount barrierCount = null;
         int pos = 0;
 
         for (CheckpointBarrierCount next : pendingCheckpoints) {
+            // 如果找到了相同ID的屏障，则记录其位置和计数
             if (next.checkpointId() == barrierId) {
                 barrierCount = next;
                 break;
             }
+            // 记录当前遍历的位置
             pos++;
         }
 
         if (barrierCount != null) {
             // add one to the count to that barrier and check for completion
+            // 如果找到了对应ID的屏障计数，那么给该屏障的计数加一，并检查是否完成
             int numChannelsNew = barrierCount.markChannelAligned(channelInfo);
+            // 如果当前通道数达到了目标通道数，表示所有需要的通道都已经收到了屏障
             if (numChannelsNew == barrierCount.getTargetChannelCount()) {
                 // checkpoint can be triggered (or is aborted and all barriers have been seen)
                 // first, remove this checkpoint and all all prior pending
                 // checkpoints (which are now subsumed)
+                // 检查点可以被触发（或者检查点被中止，但所有屏障都已经被看到）
+                // 首先，移除当前以及所有之前的挂起检查点（它们现在已经被包含在当前检查点中）
                 for (int i = 0; i <= pos; i++) {
                     pendingCheckpoints.pollFirst();
                 }
 
                 // notify the listener
+                // 通知监听器
                 if (!barrierCount.isAborted()) {
+                    // 如果检查点没有被中止，则触发对齐的检查点
                     triggerCheckpointOnAligned(barrierCount);
                 }
             }
@@ -146,14 +173,22 @@ public class CheckpointBarrierTracker extends CheckpointBarrierHandler {
             // add it only if it is newer than the latest checkpoint.
             // if it is not newer than the latest checkpoint ID, then there cannot be a
             // successful checkpoint for that ID anyways
+            // 这是该检查点ID的第一个屏障
+            // 只有当它是比最新检查点更新的时候才添加它
+            // 如果它不是最新的检查点ID，那么对于那个ID来说，无论如何都不会有成功的检查点
             if (barrierId > latestPendingCheckpointID) {
+                // 标记对齐的开始，使用屏障ID和屏障的时间戳
                 markAlignmentStart(barrierId, receivedBarrier.getTimestamp());
+                // 更新最新挂起检查点ID
                 latestPendingCheckpointID = barrierId;
+                // 将新的屏障计数添加到挂起检查点队列的末尾
                 pendingCheckpoints.addLast(
                         new CheckpointBarrierCount(receivedBarrier, channelInfo, numOpenChannels));
 
                 // make sure we do not track too many checkpoints
+                // 确保我们不跟踪过多的检查点
                 if (pendingCheckpoints.size() > MAX_CHECKPOINTS_TO_TRACK) {
+                    // 如果挂起检查点数量超过了限制，移除最早的挂起检查点
                     pendingCheckpoints.pollFirst();
                 }
             }

@@ -102,15 +102,29 @@ public class ExecutionGraphHandler {
                 });
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 确认检查点。
+     *
+     * @param jobID 作业ID
+     * @param executionAttemptID 执行尝试ID
+     * @param checkpointId 检查点ID
+     * @param checkpointMetrics 检查点度量指标
+     * @param checkpointState 检查点状态快照
+    */
     public void acknowledgeCheckpoint(
             final JobID jobID,
             final ExecutionAttemptID executionAttemptID,
             final long checkpointId,
             final CheckpointMetrics checkpointMetrics,
             final TaskStateSnapshot checkpointState) {
+        // 处理检查点协调器消息
+        // 这里的"AcknowledgeCheckpoint"是一个日志或调试信息，用于标识正在进行的操作
         processCheckpointCoordinatorMessage(
                 "AcknowledgeCheckpoint",
                 coordinator ->
+                        // 调用检查点协调器的receiveAcknowledgeMessage方法，通知检查点已被确认
                         coordinator.receiveAcknowledgeMessage(
                                 new AcknowledgeCheckpoint(
                                         jobID,
@@ -129,29 +143,46 @@ public class ExecutionGraphHandler {
                                 decline,
                                 retrieveTaskManagerLocation(decline.getTaskExecutionId())));
     }
-
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 处理检查点协调器的消息。
+     *
+     * @param messageType 消息类型
+     * @param process     用于处理检查点协调器的ThrowingConsumer
+    */
     private void processCheckpointCoordinatorMessage(
             String messageType, ThrowingConsumer<CheckpointCoordinator, Exception> process) {
+        // 确保当前线程是主线程
         mainThreadExecutor.assertRunningInMainThread();
 
+        // 从执行图中获取检查点协调器
         final CheckpointCoordinator checkpointCoordinator =
                 executionGraph.getCheckpointCoordinator();
-
+        // 如果检查点协调器不为空
         if (checkpointCoordinator != null) {
+            // 在IO线程池中异步执行处理逻辑
             ioExecutor.execute(
                     () -> {
                         try {
+                            // 调用传入的process来处理检查点协调器
                             process.accept(checkpointCoordinator);
                         } catch (Exception t) {
+                            // 处理过程中出现异常，记录警告日志
                             log.warn("Error while processing " + messageType + " message", t);
                         }
                     });
+            // 如果没有检查点协调器
         } else {
+            // 构造错误消息的模板
             String errorMessage =
                     "Received " + messageType + " message for job {} with no CheckpointCoordinator";
+            // 判断作业的执行状态
             if (executionGraph.getState() == JobStatus.RUNNING) {
+                // 如果作业正在运行，记录错误日志
                 log.error(errorMessage, executionGraph.getJobID());
             } else {
+                // 如果作业未在运行，记录调试日志
                 log.debug(errorMessage, executionGraph.getJobID());
             }
         }

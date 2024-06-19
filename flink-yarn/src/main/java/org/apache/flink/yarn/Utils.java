@@ -660,6 +660,16 @@ public final class Utils {
         return Resource.newInstance(unitMemMB, unitVcore);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取符合要求的远程提供的库目录列表
+     *
+     * @param configuration Flink配置对象，包含Flink相关的配置信息
+     * @param yarnConfiguration Yarn配置对象，包含Yarn集群相关的配置信息
+     * @return 符合条件的远程提供的库目录列表
+     * @throws IOException 如果在获取或处理路径时发生I/O异常
+    */
     public static List<Path> getQualifiedRemoteProvidedLibDirs(
             org.apache.flink.configuration.Configuration configuration,
             YarnConfiguration yarnConfiguration)
@@ -668,22 +678,39 @@ public final class Utils {
         return getRemoteSharedLibPaths(
                 configuration,
                 pathStr -> {
+                    // 创建一个Path对象
                     final Path path = new Path(pathStr);
+                    // 获取与给定Yarn配置相关联的文件系统，并对路径进行限定（确保它是完全限定的路径）
                     return path.getFileSystem(yarnConfiguration).makeQualified(path);
                 });
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取远程共享库路径列表
+     *
+     * @param configuration Flink配置对象，包含Flink相关的配置信息
+     * @param strToPathMapper 字符串到Path的映射函数，负责将字符串路径转换为Path对象，并可能抛出IOException
+     * @return 远程共享库路径列表
+     * @throws IOException 如果在字符串到Path的映射过程中发生I/O异常
+    */
     private static List<Path> getRemoteSharedLibPaths(
             org.apache.flink.configuration.Configuration configuration,
             FunctionWithException<String, Path, IOException> strToPathMapper)
             throws IOException {
 
+        // 从Flink配置中解码YARN配置选项中的PROVIDED_LIB_DIRS配置项，
+        // 使用提供的strToPathMapper函数将字符串路径转换为Path对象
+        //YarnConfigOptions.PROVIDED_LIB_DIRS=yarn.provided.lib.dirs
         final List<Path> providedLibDirs =
                 ConfigUtils.decodeListFromConfig(
                         configuration, YarnConfigOptions.PROVIDED_LIB_DIRS, strToPathMapper);
-
+        // 遍历所有提供的库目录路径
         for (Path path : providedLibDirs) {
+            // 检查路径是否为远程路径（即可以从所有工作节点访问）
             if (!Utils.isRemotePath(path.toString())) {
+                // 如果不是远程路径，则抛出IllegalArgumentException异常
                 throw new IllegalArgumentException(
                         "The \""
                                 + YarnConfigOptions.PROVIDED_LIB_DIRS.key()
@@ -693,6 +720,7 @@ public final class Utils {
                                 + "\" is local.");
             }
         }
+        // 返回远程共享库路径列表
         return providedLibDirs;
     }
 

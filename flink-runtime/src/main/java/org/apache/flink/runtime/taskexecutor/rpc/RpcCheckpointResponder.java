@@ -40,6 +40,17 @@ public class RpcCheckpointResponder implements CheckpointResponder {
                 Preconditions.checkNotNull(checkpointCoordinatorGateway);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 确认检查点的方法，当子任务成功处理了一个检查点并准备将其状态持久化时调用。
+     *
+     * @param jobID              作业的唯一标识符
+     * @param executionAttemptID 执行尝试的唯一标识符
+     * @param checkpointId       当前检查点的ID
+     * @param checkpointMetrics  关于检查点的度量指标
+     * @param subtaskState       子任务的状态快照，表示在检查点时的状态
+    */
     @Override
     public void acknowledgeCheckpoint(
             JobID jobID,
@@ -47,6 +58,8 @@ public class RpcCheckpointResponder implements CheckpointResponder {
             long checkpointId,
             CheckpointMetrics checkpointMetrics,
             TaskStateSnapshot subtaskState) {
+        // 调用checkpointCoordinatorGateway的acknowledgeCheckpoint方法，以确认检查点
+        // 这里可能需要先将子任务状态快照序列化，以便进行传输或存储
         checkpointCoordinatorGateway.acknowledgeCheckpoint(
                 jobID,
                 executionAttemptID,

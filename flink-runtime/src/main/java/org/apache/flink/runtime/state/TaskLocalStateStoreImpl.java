@@ -117,14 +117,23 @@ public class TaskLocalStateStoreImpl implements OwnedTaskLocalStateStore {
         this.disposed = false;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 存储本地状态快照。
+     *
+     * @param checkpointId 检查点ID，必须是非负数
+     * @param localState   本地状态快照，可以为空
+    */
     @Override
     public void storeLocalState(
             @Nonnegative long checkpointId, @Nullable TaskStateSnapshot localState) {
-
+        // 如果本地状态为空，则使用一个空的占位符替换
         if (localState == null) {
             localState = NULL_DUMMY;
         }
 
+        // 如果跟踪级别的日志被启用，则记录存储本地状态的信息
         if (LOG.isTraceEnabled()) {
             LOG.trace(
                     "Stored local state for checkpoint {} in subtask ({} - {} - {}) : {}.",
@@ -141,24 +150,28 @@ public class TaskLocalStateStoreImpl implements OwnedTaskLocalStateStore {
                     jobVertexID,
                     subtaskIndex);
         }
-
+        // 用于存储需要丢弃的状态的元组
         Tuple2<Long, TaskStateSnapshot> toDiscard = null;
-
+        // 使用锁确保线程安全
         synchronized (lock) {
+            // 如果任务已经被销毁，则忽略晚到达的状态存储请求，并直接丢弃状态
             if (disposed) {
                 // we ignore late stores and simply discard the state.
+                // 我们忽略晚到达的存储请求，并简单地丢弃状态。
                 toDiscard = Tuple2.of(checkpointId, localState);
             } else {
+                // 否则，将新的状态快照存储到存储映射中，并替换掉之前的快照（如果有）
                 TaskStateSnapshot previous =
                         storedTaskStateByCheckpointID.put(checkpointId, localState);
+                // 持久化本地状态元数据（可能是写入到外部存储或日志中）
                 persistLocalStateMetadata(checkpointId, localState);
-
+                // 如果之前的快照存在，则创建一个包含检查点ID和之前状态的元组，用于后续丢弃
                 if (previous != null) {
                     toDiscard = Tuple2.of(checkpointId, previous);
                 }
             }
         }
-
+        // 如果存在需要丢弃的状态，则异步丢弃它们
         if (toDiscard != null) {
             asyncDiscardLocalStateForCollection(Collections.singletonList(toDiscard));
         }
@@ -170,18 +183,31 @@ public class TaskLocalStateStoreImpl implements OwnedTaskLocalStateStore {
      * @param checkpointId identifying the checkpoint
      * @param localState task state snapshot that will be persisted
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将本地状态的序列化内容写入任务状态快照文件。
+     *
+     * @param checkpointId 标识检查点的ID
+     * @param localState   需要持久化的任务状态快照
+    */
     private void persistLocalStateMetadata(long checkpointId, TaskStateSnapshot localState) {
+        // 创建检查点目录，如果目录创建失败则抛出异常
         createFolderOrFail(getCheckpointDirectory(checkpointId));
+        // 获取与检查点ID相对应的任务状态快照文件
         final File taskStateSnapshotFile = getTaskStateSnapshotFile(checkpointId);
+        // 尝试使用ObjectOutputStream将本地状态序列化并写入文件
         try (ObjectOutputStream oos =
                 new ObjectOutputStream(new FileOutputStream(taskStateSnapshotFile))) {
+            // 将本地状态快照对象写入文件
             oos.writeObject(localState);
-
+            // 记录日志，表示已成功写入任务状态快照文件
             LOG.debug(
                     "Successfully written local task state snapshot file {} for checkpoint {}.",
                     taskStateSnapshotFile,
                     checkpointId);
         } catch (IOException e) {
+            // 如果写入过程中发生IOException，则重新抛出包装后的异常
             ExceptionUtils.rethrow(e, "Could not write the local task state snapshot file.");
         }
     }

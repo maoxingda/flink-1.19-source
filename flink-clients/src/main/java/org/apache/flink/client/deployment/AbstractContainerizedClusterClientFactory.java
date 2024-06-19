@@ -35,16 +35,28 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public abstract class AbstractContainerizedClusterClientFactory<ClusterID>
         implements ClusterClientFactory<ClusterID> {
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 获取启动集群需要的配置信息
+    */
     @Override
     public ClusterSpecification getClusterSpecification(Configuration configuration) {
+        // 检查传入的配置信息是否为空
         checkNotNull(configuration);
 
+        // 从配置中获取JobManager（作业管理器）的总进程内存（MB为单位）
+        // JobManagerProcessUtils是一个工具类，用于从配置中解析JobManager的内存规格
+        // 这里使用了一个新的选项来解释旧的堆内存配置（如果有的话）
         final int jobManagerMemoryMB =
                 JobManagerProcessUtils.processSpecFromConfigWithNewOptionToInterpretLegacyHeap(
                                 configuration, JobManagerOptions.TOTAL_PROCESS_MEMORY)
                         .getTotalProcessMemorySize()
                         .getMebiBytes();
 
+        // 从配置中获取TaskManager（任务管理器）的总进程内存（MB为单位）
+        // TaskExecutorProcessUtils是另一个工具类，用于从配置中解析TaskManager的内存规格
+        // 这里还涉及到一个将旧的TaskManager堆内存大小配置映射到新的配置选项的逻辑
         final int taskManagerMemoryMB =
                 TaskExecutorProcessUtils.processSpecFromConfig(
                                 TaskExecutorProcessUtils
@@ -53,9 +65,10 @@ public abstract class AbstractContainerizedClusterClientFactory<ClusterID>
                                                 TaskManagerOptions.TOTAL_PROCESS_MEMORY))
                         .getTotalProcessMemorySize()
                         .getMebiBytes();
-
+        // 从配置中获取每个TaskManager的槽位数（即并发执行任务的数量）
         int slotsPerTaskManager = configuration.get(TaskManagerOptions.NUM_TASK_SLOTS);
-
+        // 使用ClusterSpecification.ClusterSpecificationBuilder创建一个集群规格
+        // 并设置JobManager和TaskManager的内存以及每个TaskManager的槽位数
         return new ClusterSpecification.ClusterSpecificationBuilder()
                 .setMasterMemoryMB(jobManagerMemoryMB)
                 .setTaskManagerMemoryMB(taskManagerMemoryMB)

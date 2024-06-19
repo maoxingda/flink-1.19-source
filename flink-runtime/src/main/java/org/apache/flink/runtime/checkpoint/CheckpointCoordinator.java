@@ -749,7 +749,7 @@ public class CheckpointCoordinator {
                                             pendingCheckpoint.setCheckpointTargetLocation(
                                                     checkpointInfo.f1);
                                         }
-                                        // 触发并确认所有协调器的检查点（checkpoint）操作，并返回一个CompletableFuture来表示该操作的完成
+                                        // 不是真正的触发 触发并确认所有协调器的检查点（checkpoint）操作，并返回一个CompletableFuture来表示该操作的完成
                                         // 参数包括：
                                         // - coordinatorsToCheckpoint：需要触发检查点的协调器列表
                                         // - pendingCheckpoint：当前待处理的检查点
@@ -1258,18 +1258,32 @@ public class CheckpointCoordinator {
     }
 
     // Returns true if the checkpoint is successfully completed, false otherwise.
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试完成检查点，如果成功完成则返回true，否则返回false
+    */
     private boolean maybeCompleteCheckpoint(PendingCheckpoint checkpoint) {
+        // 使用锁来保证对检查点状态的同步访问
         synchronized (lock) {
+            // 检查检查点是否已经被所有子任务确认
             if (checkpoint.isFullyAcknowledged()) {
                 try {
                     // we need to check inside the lock for being shutdown as well,
                     // otherwise we get races and invalid error log messages.
+                    // 在锁内部再次检查是否已关闭，以避免竞态条件和无效的错误日志消息
+                    // 如果在检查点完成前系统被关闭，则不执行完成操作
                     if (shutdown) {
+                        // 如果系统已关闭，则不完成检查点，直接返回false
                         return false;
                     }
+                    // 调用方法来实际完成待处理的检查点
                     completePendingCheckpoint(checkpoint);
+                    // 如果完成操作成功，则跳出try块，继续执行下面的return语句
                 } catch (CheckpointException ce) {
+                    // 如果在完成检查点过程中发生异常，则调用失败处理函数
                     onTriggerFailure(checkpoint, ce);
+                    //返回false
                     return false;
                 }
             }
@@ -1368,13 +1382,24 @@ public class CheckpointCoordinator {
      * @throws CheckpointException If the checkpoint cannot be added to the completed checkpoint
      *     store.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 接收来自任务管理器的AcknowledgeCheckpoint消息，并返回该消息是否与待处理的检查点相关联。
+     *
+     * @param message 从任务管理器接收到的检查点确认消息
+     * @param taskManagerLocationInfo 确认检查点消息的发送者的位置信息
+     * @return 一个标志，指示被确认的检查点是否与待处理的检查点相关联
+     * @throws CheckpointException 如果无法将检查点添加到已完成的检查点存储中
+    */
     public boolean receiveAcknowledgeMessage(
             AcknowledgeCheckpoint message, String taskManagerLocationInfo)
             throws CheckpointException {
+        // 如果作业已经关闭或传入的消息为空，则直接返回false
         if (shutdown || message == null) {
             return false;
         }
-
+        // 如果传入的消息所属的作业与当前作业不匹配，则记录错误日志并返回false
         if (!job.equals(message.getJob())) {
             LOG.error(
                     "Received wrong AcknowledgeCheckpoint message for job {} from {} : {}",
@@ -1383,18 +1408,20 @@ public class CheckpointCoordinator {
                     message);
             return false;
         }
-
+        // 获取消息中的检查点ID
         final long checkpointId = message.getCheckpointId();
-
+        // 使用锁来确保操作的原子性，避免并发问题
         synchronized (lock) {
             // we need to check inside the lock for being shutdown as well, otherwise we
             // get races and invalid error log messages
+            // 再次检查作业是否已关闭，因为可能在同步块外部关闭
             if (shutdown) {
                 return false;
             }
-
+            // 从待处理的检查点集合中查找与传入ID匹配的待处理检查点
             final PendingCheckpoint checkpoint = pendingCheckpoints.get(checkpointId);
 
+            // 检查消息中是否包含了子任务的状态
             if (message.getSubtaskState() != null) {
                 // Register shared state regardless of checkpoint state and task ACK state.
                 // This way, shared state is
@@ -1402,7 +1429,19 @@ public class CheckpointCoordinator {
                 // 2. removed eventually upon checkpoint subsumption (or job cancellation)
                 // Do not register savepoints' shared state, as Flink is not in charge of
                 // savepoints' lifecycle
+                // 无论检查点的状态或任务确认状态如何，都注册共享状态。
+                // 这样做的目的是：
+                // 1. 如果消息是延迟的或者状态将被任务以其他方式使用，则保持共享状态。
+                // 2. 当检查点被包含（或作业被取消）时，最终会移除共享状态。
+
+                // 不要注册保存点的共享状态，因为 Flink 不负责管理保存点的生命周期
+                // 这里，我们检查是否找到了与消息中的检查点ID对应的PendingCheckpoint对象
+                // 并且该检查点不是保存点（即它是一个常规的检查点）
                 if (checkpoint == null || !checkpoint.getProps().isSavepoint()) {
+                    // 调用消息中的子任务状态对象的registerSharedStates方法
+                    // 将其共享状态注册到completedCheckpointStore的共享状态注册表中
+                    // 使用当前检查点的ID作为关联标识
+                    // 这样，共享的状态可以在需要时被检索或管理
                     message.getSubtaskState()
                             .registerSharedStates(
                                     completedCheckpointStore.getSharedStateRegistry(),
@@ -1410,25 +1449,32 @@ public class CheckpointCoordinator {
                 }
             }
 
+            // 确保当前有一个有效的检查点对象且它没有被销毁
             if (checkpoint != null && !checkpoint.isDisposed()) {
 
+                // 尝试确认任务的检查点
+                // 此方法会处理与给定任务的检查点确认相关的所有逻辑
+                // 包括检查任务ID、状态以及可能的度量指标
                 switch (checkpoint.acknowledgeTask(
                         message.getTaskExecutionId(),
                         message.getSubtaskState(),
                         message.getCheckpointMetrics())) {
                     case SUCCESS:
+                        // 如果确认成功  打印日志
                         LOG.debug(
                                 "Received acknowledge message for checkpoint {} from task {} of job {} at {}.",
                                 checkpointId,
                                 message.getTaskExecutionId(),
                                 message.getJob(),
                                 taskManagerLocationInfo);
-
+                        // 如果检查点已经被所有相关任务确认
                         if (checkpoint.isFullyAcknowledged()) {
+                            // 完成挂起的检查点（例如，将其标记为已完成，并可能触发清理逻辑）
                             completePendingCheckpoint(checkpoint);
                         }
                         break;
                     case DUPLICATE:
+                        // 如果确认消息是重复的打印日志
                         LOG.debug(
                                 "Received a duplicate acknowledge message for checkpoint {}, task {}, job {}, location {}.",
                                 message.getCheckpointId(),
@@ -1437,6 +1483,7 @@ public class CheckpointCoordinator {
                                 taskManagerLocationInfo);
                         break;
                     case UNKNOWN:
+                        // 如果无法确认检查点（因为任务的执行尝试ID未知）
                         LOG.warn(
                                 "Could not acknowledge the checkpoint {} for task {} of job {} at {}, "
                                         + "because the task's execution attempt id was unknown. Discarding "
@@ -1445,7 +1492,7 @@ public class CheckpointCoordinator {
                                 message.getTaskExecutionId(),
                                 message.getJob(),
                                 taskManagerLocationInfo);
-
+                        // 丢弃与该消息关联的子任务状态，避免状态滞留
                         discardSubtaskState(
                                 message.getJob(),
                                 message.getTaskExecutionId(),
@@ -1453,6 +1500,7 @@ public class CheckpointCoordinator {
                                 message.getSubtaskState());
 
                         break;
+                    // 如果挂起的检查点已被丢弃  打印日志
                     case DISCARDED:
                         LOG.warn(
                                 "Could not acknowledge the checkpoint {} for task {} of job {} at {}, "
@@ -1462,7 +1510,7 @@ public class CheckpointCoordinator {
                                 message.getTaskExecutionId(),
                                 message.getJob(),
                                 taskManagerLocationInfo);
-
+                        // 丢弃与该消息关联的子任务状态，避免状态滞留
                         discardSubtaskState(
                                 message.getJob(),
                                 message.getTaskExecutionId(),
@@ -1471,21 +1519,30 @@ public class CheckpointCoordinator {
                 }
 
                 return true;
+                // 如果之前的检查点确认逻辑未能成功处理，且检查点对象本身不为空，正常不会触发
             } else if (checkpoint != null) {
                 // this should not happen
+                //抛出异常
                 throw new IllegalStateException(
                         "Received message for discarded but non-removed checkpoint "
                                 + checkpointId);
             } else {
+                // 如果检查点对象为空（可能已经被处理或销毁），则继续处理其他逻辑
+                // 报告与检查点相关的度量指标（例如，统计信息、性能数据等）
                 reportCheckpointMetrics(
                         message.getCheckpointId(),
                         message.getTaskExecutionId(),
                         message.getCheckpointMetrics());
+                // 标记变量，用于表示检查点是否之前处于挂起状态
                 boolean wasPendingCheckpoint;
 
                 // message is for an unknown checkpoint, or comes too late (checkpoint disposed)
+                // 消息是针对一个已经过期或未知的检查点，或者消息来得太晚（检查点已经被销毁）
+                // 检查检查点ID是否存在于最近过期的检查点列表中
                 if (recentExpiredCheckpoints.contains(checkpointId)) {
+                    // 如果是，则表示该检查点之前处于挂起状态
                     wasPendingCheckpoint = true;
+                    // 记录警告日志，说明收到了一个已过期检查点的消息
                     LOG.warn(
                             "Received late message for now expired checkpoint attempt {} from task "
                                     + "{} of job {} at {}.",
@@ -1494,6 +1551,8 @@ public class CheckpointCoordinator {
                             message.getJob(),
                             taskManagerLocationInfo);
                 } else {
+                    // 如果不在过期列表中，则说明这是一个未知的检查点
+                    // 记录调试日志，说明收到了一个未知检查点的消息
                     LOG.debug(
                             "Received message for an unknown checkpoint {} from task {} of job {} at {}.",
                             checkpointId,
@@ -1504,12 +1563,13 @@ public class CheckpointCoordinator {
                 }
 
                 // try to discard the state so that we don't have lingering state lying around
+                // 尝试丢弃与该消息关联的子任务状态，以避免状态滞留
                 discardSubtaskState(
                         message.getJob(),
                         message.getTaskExecutionId(),
                         message.getCheckpointId(),
                         message.getSubtaskState());
-
+                // 返回 wasPendingCheckpoint 的值，以便调用者知道是否之前存在挂起的检查点
                 return wasPendingCheckpoint;
             }
         }
@@ -1523,38 +1583,64 @@ public class CheckpointCoordinator {
      * @param pendingCheckpoint to complete
      * @throws CheckpointException if the completion failed
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试完成给定的待处理检查点。
+     *
+     * <p>重要提示：该方法应仅在检查点锁的范围内调用。
+     *
+     * @param pendingCheckpoint 要完成的待处理检查点
+     * @throws CheckpointException 如果完成失败，则抛出此异常
+    */
     private void completePendingCheckpoint(PendingCheckpoint pendingCheckpoint)
             throws CheckpointException {
+        // 获取待处理检查点的ID
         final long checkpointId = pendingCheckpoint.getCheckpointID();
+        // 初始化一个用于存储完成后的检查点的变量
         final CompletedCheckpoint completedCheckpoint;
+        // 初始化一个用于存储被最新检查点替代的旧检查点的变量
         final CompletedCheckpoint lastSubsumed;
+        // 获取检查点的属性
         final CheckpointProperties props = pendingCheckpoint.getProps();
 
+        // 通知共享状态注册表该检查点已完成
         completedCheckpointStore.getSharedStateRegistry().checkpointCompleted(checkpointId);
 
         try {
+            // 对待处理检查点进行最后的处理，如保存状态等，并返回完成后的检查点
             completedCheckpoint = finalizeCheckpoint(pendingCheckpoint);
 
             // the pending checkpoint must be discarded after the finalization
+            // 在完成处理后，待处理检查点必须被丢弃，并且completedCheckpoint不能为空
+            // 使用Preconditions进行状态检查
             Preconditions.checkState(pendingCheckpoint.isDisposed() && completedCheckpoint != null);
 
+            // 如果不是保存点（Savepoint）
             if (!props.isSavepoint()) {
+                // 将完成的检查点添加到存储中，并替代最旧的检查点
                 lastSubsumed =
                         addCompletedCheckpointToStoreAndSubsumeOldest(
                                 checkpointId, completedCheckpoint, pendingCheckpoint);
             } else {
+                // 如果是保存点，则不需要替代旧的检查点
                 lastSubsumed = null;
             }
-
+            // 通知等待完成的Future，检查点已完成，并传入完成的检查点对象
             pendingCheckpoint.getCompletionFuture().complete(completedCheckpoint);
+            // 报告完成的检查点
             reportCompletedCheckpoint(completedCheckpoint);
         } catch (Exception exception) {
             // For robustness reasons, we need catch exception and try marking the checkpoint
             // completed.
+            // 使用completeExceptionally方法将异常传递给等待完成的Future
             pendingCheckpoint.getCompletionFuture().completeExceptionally(exception);
+            //抛出异常
             throw exception;
         } finally {
+            // 无论是否发生异常，都要从待处理检查点列表中移除该检查点
             pendingCheckpoints.remove(checkpointId);
+            // 调度下一次检查点触发请求
             scheduleTriggerRequest();
         }
 
@@ -1628,27 +1714,42 @@ public class CheckpointCoordinator {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 尝试对给定的待处理检查点进行最终化处理，包括保存状态等操作。
+     *
+     * @param pendingCheckpoint 待处理的检查点
+     * @return 完成的检查点
+     * @throws CheckpointException 如果最终化处理失败，则抛出此异常
+    */
     private CompletedCheckpoint finalizeCheckpoint(PendingCheckpoint pendingCheckpoint)
             throws CheckpointException {
         try {
+            // 调用待处理检查点的finalizeCheckpoint方法，进行最终化处理
+            // 该方法可能涉及状态保存、资源清理等操作
+            // 传入检查点清理器、调度触发请求的方法引用和执行器
             final CompletedCheckpoint completedCheckpoint =
                     pendingCheckpoint.finalizeCheckpoint(
                             checkpointsCleaner, this::scheduleTriggerRequest, executor);
-
+            // 返回完成后的检查点对象
             return completedCheckpoint;
         } catch (Exception e1) {
             // abort the current pending checkpoint if we fails to finalize the pending
             // checkpoint.
+            // 如果在最终化处理过程中发生异常，则终止当前的待处理检查点
+            // 终止原因根据异常类型决定
             final CheckpointFailureReason failureReason =
                     e1 instanceof PartialFinishingNotSupportedByStateException
                             ? CheckpointFailureReason.CHECKPOINT_DECLINED_TASK_CLOSING
                             : CheckpointFailureReason.FINALIZE_CHECKPOINT_FAILURE;
-
+            // 如果待处理检查点还未被丢弃（即尚未被外部清理）
             if (!pendingCheckpoint.isDisposed()) {
+                // 终止待处理检查点，并传入异常信息
                 abortPendingCheckpoint(
                         pendingCheckpoint, new CheckpointException(failureReason, e1));
             }
-
+            // 抛出新的异常，包含失败的检查点ID和失败原因
             throw new CheckpointException(
                     "Could not finalize the pending checkpoint "
                             + pendingCheckpoint.getCheckpointID()

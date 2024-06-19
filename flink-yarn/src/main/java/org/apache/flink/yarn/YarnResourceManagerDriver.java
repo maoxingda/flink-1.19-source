@@ -174,33 +174,50 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
     //  ResourceManagerDriver
     // ------------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 初始化ResourceManagerDriver
+    */
     @Override
     protected void initializeInternal() throws Exception {
+        // 标记资源管理器为正在运行状态
         isRunning = true;
+        // 创建一个YarnContainerEventHandler对象，用于处理与YARN容器相关的事件
         final YarnContainerEventHandler yarnContainerEventHandler = new YarnContainerEventHandler();
         try {
+            // 创建一个ResourceManagerClient对象，该对象负责与YARN资源管理器进行通信
+            // 参数包括心跳间隔、事件处理器等
             resourceManagerClient =
                     yarnResourceManagerClientFactory.createResourceManagerClient(
                             yarnHeartbeatIntervalMillis, yarnContainerEventHandler);
+            // 使用YARN配置初始化ResourceManagerClient
             resourceManagerClient.init(yarnConfig);
+            // 启动ResourceManagerClient
             resourceManagerClient.start();
-
+            // 向YARN注册应用程序主节点(Application Master)，并获取响应
             final RegisterApplicationMasterResponse registerApplicationMasterResponse =
                     registerApplicationMaster();
             getContainersFromPreviousAttempts(registerApplicationMasterResponse);
+            // 创建一个适配器，用于将YARN的资源限制转换为Flink任务执行器的配置
+            // 该适配器使用注册响应中的最大资源能力，并获取Flink配置中定义的外部资源配置键
             taskExecutorProcessSpecContainerResourcePriorityAdapter =
                     new TaskExecutorProcessSpecContainerResourcePriorityAdapter(
                             registerApplicationMasterResponse.getMaximumResourceCapability(),
                             ExternalResourceUtils.getExternalResourceConfigurationKeys(
                                     flinkConfig,
                                     YarnConfigOptions.EXTERNAL_RESOURCE_YARN_CONFIG_KEY_SUFFIX));
+            // 如果在上面的过程中出现异常，则捕获并抛出ResourceManagerException异常
         } catch (Exception e) {
             throw new ResourceManagerException("Could not start resource manager client.", e);
         }
 
+        // 创建一个NodeManagerClient对象，该对象负责与YARN节点管理器进行通信
         nodeManagerClient =
                 yarnNodeManagerClientFactory.createNodeManagerClient(yarnContainerEventHandler);
+        // 使用YARN配置初始化NodeManagerClient
         nodeManagerClient.init(yarnConfig);
+        // 启动NodeManagerClient
         nodeManagerClient.start();
     }
 
