@@ -1190,13 +1190,24 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
     //        are not fully usable and accessible at that point.
     // ------------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将 OperatorEvent 传递给对应的 OperatorCoordinator。
+     *
+     * @param taskExecutionId 任务执行尝试的唯一标识符
+     * @param operatorId      操作符的唯一标识符
+     * @param evt             要传递的 OperatorEvent
+     * @throws FlinkException 如果在传递事件时发生 Flink 相关的异常
+    */
     @Override
     public void deliverOperatorEventToCoordinator(
             final ExecutionAttemptID taskExecutionId,
             final OperatorID operatorId,
             final OperatorEvent evt)
             throws FlinkException {
-
+        // 调用 operatorCoordinatorHandler 的 deliverOperatorEventToCoordinator 方法
+        // 将 OperatorEvent 传递给对应的 OperatorCoordinator
         operatorCoordinatorHandler.deliverOperatorEventToCoordinator(
                 taskExecutionId, operatorId, evt);
     }

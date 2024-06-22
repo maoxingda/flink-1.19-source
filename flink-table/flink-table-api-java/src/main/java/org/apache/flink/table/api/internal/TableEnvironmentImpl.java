@@ -723,18 +723,30 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 执行给定的 SQL 语句并返回结果。
+     *
+     * @param statement 要执行的 SQL 语句
+     * @return 执行结果，封装在 TableResult 对象中
+     * @throws TableException 如果 SQL 语句不支持或执行时出错
+    */
     @Override
     public TableResult executeSql(String statement) {
+        // 使用解析器解析 SQL 语句，得到操作列表
         List<Operation> operations = getParser().parse(statement);
-
+         // 如果操作列表中的操作数量不是 1，则抛出异常
+        // 因为这个函数可能只支持单个 SQL 语句的执行
         if (operations.size() != 1) {
             throw new TableException(UNSUPPORTED_QUERY_IN_EXECUTE_SQL_MSG);
         }
-
+        // 获取列表中的第一个操作
         Operation operation = operations.get(0);
+
         return executeInternal(operation);
     }
-
+    // 执行内部操作并返回结果
     public TableResultInternal executeCachedPlanInternal(CachedPlan cachedPlan) {
         if (cachedPlan instanceof DQLCachedPlan) {
             DQLCachedPlan dqlCachedPlan = (DQLCachedPlan) cachedPlan;

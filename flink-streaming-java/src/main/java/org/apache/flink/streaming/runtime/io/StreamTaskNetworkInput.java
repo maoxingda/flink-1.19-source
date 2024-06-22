@@ -93,9 +93,18 @@ public final class StreamTaskNetworkInput<T>
                                                 ioManager.getSpillingDirectoriesPaths())));
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 用于准备快照
+     * @param channelStateWriter 通道状态写入器，用于将状态写入到某个地方（如持久化存储）
+     * @param checkpointId 检查点的ID，通常用于标识和追踪不同的快照
+    */
     @Override
     public CompletableFuture<Void> prepareSnapshot(
             ChannelStateWriter channelStateWriter, long checkpointId) throws CheckpointException {
+
+        // 遍历记录反序列化器的映射表
         for (Map.Entry<
                         InputChannelInfo,
                         SpillingAdaptiveSpanningRecordDeserializer<
@@ -103,11 +112,12 @@ public final class StreamTaskNetworkInput<T>
                 e : recordDeserializers.entrySet()) {
 
             try {
+                // 调用channelStateWriter的addInputData方法，将未消费的数据添加到快照中
                 channelStateWriter.addInputData(
                         checkpointId,
-                        e.getKey(),
+                        e.getKey(),// 输入通道信息
                         ChannelStateWriter.SEQUENCE_NUMBER_UNKNOWN,
-                        e.getValue().getUnconsumedBuffer());
+                        e.getValue().getUnconsumedBuffer());// 获取反序列化器中未消费的缓冲区
             } catch (IOException ioException) {
                 throw new CheckpointException(CheckpointFailureReason.IO_EXCEPTION, ioException);
             }

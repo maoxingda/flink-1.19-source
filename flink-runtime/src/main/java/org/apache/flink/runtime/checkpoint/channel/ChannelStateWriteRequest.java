@@ -139,12 +139,26 @@ abstract class ChannelStateWriteRequest {
                 (writer, buffer) -> writer.writeInput(jobVertexID, subtaskIndex, info, buffer));
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个用于写入操作的ChannelStateWriteRequest
+     *
+     * @param jobVertexID    作业顶点的ID
+     * @param subtaskIndex   子任务的索引
+     * @param checkpointId   检查点的ID
+     * @param info           结果子分区的信息
+     * @param buffers        要写入的Buffer数组
+     * @return               创建好的ChannelStateWriteRequest
+     */
     static ChannelStateWriteRequest write(
             JobVertexID jobVertexID,
             int subtaskIndex,
             long checkpointId,
             ResultSubpartitionInfo info,
             Buffer... buffers) {
+        // 使用buildWriteRequest方法构建一个ChannelStateWriteRequest对象
+        // 参数包括作业顶点ID、子任务索引、检查点ID、操作名称、一个Buffer清理函数和写入操作函数
         return buildWriteRequest(
                 jobVertexID,
                 subtaskIndex,

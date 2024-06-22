@@ -106,17 +106,26 @@ public final class OperatorEventDispatcherImpl implements OperatorEventDispatche
             this.operatorId = operatorId;
         }
 
+        /**
+         * @授课老师(微信): yi_locus
+         * email: 156184212@qq.com
+         * 向JobMaster 发送CheckPointEvent消息
+         * 1.OperatorEvent进行序列化
+         * 2.方法流转到TaskOperatorEventGateway.sendOperatorEventToCoordinator
+        */
         @Override
         public void sendEventToCoordinator(OperatorEvent event) {
+            // 定义一个序列化的OperatorEvent变量
             final SerializedValue<OperatorEvent> serializedEvent;
             try {
+                // 尝试将OperatorEvent对象序列化为SerializedValue类型
+                // SerializedValue用于在Flink中传输序列化后的数据
                 serializedEvent = new SerializedValue<>(event);
             } catch (IOException e) {
-                // this is not a recoverable situation, so we wrap this in an
-                // unchecked exception and let it bubble up
+                //抛出异常
                 throw new FlinkRuntimeException("Cannot serialize operator event", e);
             }
-
+            // 调用toCoordinator对象的sendOperatorEventToCoordinator方法
             toCoordinator.sendOperatorEventToCoordinator(operatorId, serializedEvent);
         }
     }

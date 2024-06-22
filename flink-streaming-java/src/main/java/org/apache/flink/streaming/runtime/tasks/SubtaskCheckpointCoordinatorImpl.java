@@ -284,6 +284,9 @@ class SubtaskCheckpointCoordinatorImpl implements SubtaskCheckpointCoordinator {
         // 从屏障和记录/水印/计时器/回调的角度来看，以下所有步骤都作为一个原子步骤发生。
         // 我们通常试图尽快发出检查点屏障，以免影响下游的检查点对齐。
         // 如果当前检查点的ID小于或等于上一个检查点的ID，则可能是乱序的检查点屏障（之前可能已中止？）
+        /**
+         * 判断检查点是否大于等于当前检查点，如果大于等于表示已经做过Checkpoint无需重做
+         */
         if (lastCheckpointId >= metadata.getCheckpointId()) {
             LOG.info(
                     "Out of order checkpoint barrier (aborted previously?): {} >= {}",
@@ -300,7 +303,7 @@ class SubtaskCheckpointCoordinatorImpl implements SubtaskCheckpointCoordinator {
 
         // Step (0): Record the last triggered checkpointId and abort the sync phase of checkpoint
         // if necessary.
-        // 步骤 (0): 记录最后触发的检查点ID，并在必要时中止检查点的同步阶段
+        // todo 步骤 (0): 记录最后触发的检查点ID，并在必要时中止检查点的同步阶段
         lastCheckpointId = metadata.getCheckpointId();
         // 检查并清除已中止状态，如果已中止，则执行以下操作
         if (checkAndClearAbortedStatus(metadata.getCheckpointId())) {
@@ -331,8 +334,7 @@ class SubtaskCheckpointCoordinatorImpl implements SubtaskCheckpointCoordinator {
 
         // Step (1): Prepare the checkpoint, allow operators to do some pre-barrier work.
         //           The pre-barrier work should be nothing or minimal in the common case.
-        // 步骤 (1): 准备检查点，允许操作符执行一些屏障前的工作。
-       //           在常见情况下，屏障前的工作应该是无或极少的。
+        // todo 步骤 (1): 准备检查点，允许操作符执行一些屏障前的工作。正常情况下不会调用，其实就是对应AbstractStreamOperator
         operatorChain.prepareSnapshotPreBarrier(metadata.getCheckpointId());
 
         // Step (2): Send the checkpoint barrier downstream
@@ -346,7 +348,7 @@ class SubtaskCheckpointCoordinatorImpl implements SubtaskCheckpointCoordinator {
         //核心点1.构造CheckpointBarrier
         CheckpointBarrier checkpointBarrier =
                 new CheckpointBarrier(metadata.getCheckpointId(), metadata.getTimestamp(), options);
-        //核心点2. 发送检查点屏障，并根据选项确定是否为非对齐检查点
+        //核心点2. 以广播形式发送检查点屏障，并根据选项确定是否为非对齐检查点(我们当前程序中相当于向Map发送checkpoint)
         operatorChain.broadcastEvent(checkpointBarrier, options.isUnalignedCheckpoint());
 
         // Step (3): Register alignment timer to timeout aligned barrier to unaligned barrier
@@ -375,9 +377,10 @@ class SubtaskCheckpointCoordinatorImpl implements SubtaskCheckpointCoordinator {
         Map<OperatorID, OperatorSnapshotFutures> snapshotFutures =
                 CollectionUtil.newHashMapWithExpectedSize(operatorChain.getNumberOfOperators());
         try {
-            // 同步地执行快照捕获
-            // 这里的同步指的是方法调用本身是同步的，但快照捕获本身应该是异步的
-            // 如果所有操作符都成功响应了快照请求，则返回true
+            /**
+             * 数据源端口同步执行快照
+             * 并执行成功了向JobMaster汇报Ack确认
+             */
             if (takeSnapshotSync(
                     snapshotFutures, metadata, metrics, options, operatorChain, isRunning)) {
                 // 如果所有操作符都成功完成了快照，则调用该方法来结束并报告检查点结果
@@ -783,7 +786,7 @@ class SubtaskCheckpointCoordinatorImpl implements SubtaskCheckpointCoordinator {
         storage = applyFileMergingCheckpoint(storage, checkpointOptions);
 
         try {
-            // 对操作员链进行快照状态记录
+            // 对operatorChain链进行快照状态记录
             operatorChain.snapshotState(
                     operatorSnapshotsInProgress,
                     checkpointMetaData,

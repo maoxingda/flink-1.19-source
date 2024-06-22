@@ -88,11 +88,20 @@ class FlinkPlannerImpl(
    * @return
    *   a new validator instance or current existed one
    */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 从这个规划器中获取 [[FlinkCalciteSqlValidator]] 实例，
+     */
   def getOrCreateSqlValidator(): FlinkCalciteSqlValidator = {
+    // 如果 validator 为空（即尚未初始化）
     if (validator == null) {
+      // 调用 catalogReaderSupplier 的 apply 方法，并传入 false 作为参数，获取 catalogReader
       val catalogReader = catalogReaderSupplier.apply(false)
+      // 使用 catalogReader 创建一个新的 FlinkCalciteSqlValidator 实例，并赋值给 validator
       validator = createSqlValidator(catalogReader)
     }
+    // 返回 validator 实例
     validator
   }
 
@@ -112,32 +121,51 @@ class FlinkPlannerImpl(
     validator
   }
 
+  /**
+   * @授课老师(微信): yi_locus
+   * email: 156184212@qq.com
+   * @param aaaa
+  */
   def validate(sqlNode: SqlNode): SqlNode = {
+    // 获取或创建一个 SQL 验证器实例
     val validator = getOrCreateSqlValidator()
+    // 使用 SQL 验证器来验证 sqlNode
     validate(sqlNode, validator)
   }
 
+  /**
+   * @授课老师(微信): yi_locus
+   * email: 156184212@qq.com
+   *
+   *
+  */
   private def validate(sqlNode: SqlNode, validator: FlinkCalciteSqlValidator): SqlNode = {
     try {
+      // 使用 PreValidateReWriter 对 sqlNode 进行预验证和可能的重写
       sqlNode.accept(new PreValidateReWriter(validator, typeFactory))
       // do extended validation.
+      // 使用模式匹配进行验证
       sqlNode match {
+        // 根据 sqlNode 的类型，如果是 ExtendedSqlNode，则调用其 validate 方法
         case node: ExtendedSqlNode =>
           node.validate()
+        // 如果不是 ExtendedSqlNode，则不进行扩展验证
         case _ =>
       }
       // no need to validate row type for DDL and insert nodes.
+      // 对于 DDL 和某些特定类型的节点，不需要验证行类型
+      // 以下判断中，包含了这些特定类型的 SQL 语句
       if (
-        sqlNode.getKind.belongsTo(SqlKind.DDL)
-        || sqlNode.getKind == SqlKind.CREATE_FUNCTION
+        sqlNode.getKind.belongsTo(SqlKind.DDL)// 属于 DDL 类型的节点
+        || sqlNode.getKind == SqlKind.CREATE_FUNCTION // 创建函数、删除函数
         || sqlNode.getKind == SqlKind.DROP_FUNCTION
-        || sqlNode.getKind == SqlKind.OTHER_DDL
-        || sqlNode.isInstanceOf[SqlLoadModule]
-        || sqlNode.isInstanceOf[SqlShowCatalogs]
-        || sqlNode.isInstanceOf[SqlShowCurrentCatalog]
+        || sqlNode.getKind == SqlKind.OTHER_DDL  // 其他 DDL 类型的节点
+        || sqlNode.isInstanceOf[SqlLoadModule] // 加载模块
+        || sqlNode.isInstanceOf[SqlShowCatalogs]  // 显示目录、当前目录、数据库、当前数据库等查询
+          || sqlNode.isInstanceOf[SqlShowCurrentCatalog]
         || sqlNode.isInstanceOf[SqlShowDatabases]
         || sqlNode.isInstanceOf[SqlShowCurrentDatabase]
-        || sqlNode.isInstanceOf[SqlShowTables]
+          || sqlNode.isInstanceOf[SqlShowTables] // 显示表、函数、JAR 包、模块、视图、列、分区、过程、作业等查询
         || sqlNode.isInstanceOf[SqlShowFunctions]
         || sqlNode.isInstanceOf[SqlShowJars]
         || sqlNode.isInstanceOf[SqlShowModules]
@@ -158,44 +186,75 @@ class FlinkPlannerImpl(
       ) {
         return sqlNode
       }
+      // 对给定的 SQL 节点进行验证，并可能对其进行修改
       sqlNode match {
+        // 如果 sqlNode 是 SqlRichExplain 类型（可能是一个复杂的查询解释）
         case richExplain: SqlRichExplain =>
-          val validatedStatement = richExplain.getStatement match {
+          // 匹配 richExplain 中的语句，并进行验证
+        val validatedStatement = richExplain.getStatement match {
             // only validate source here
-            case insert: RichSqlInsert =>
-              validateRichSqlInsert(insert)
-            case others =>
+          // 只验证源语句（可能是 INSERT 语句）
+          case insert: RichSqlInsert =>
+            // 调用 validateRichSqlInsert 方法验证 INSERT 语句
+          validateRichSqlInsert(insert)
+          // 对于其他类型的语句，调用通用的 validate 方法进行验证
+          case others =>
               validate(others)
           }
+          // 将验证后的语句设置回 richExplain 中
           richExplain.setOperand(0, validatedStatement)
+          // 返回修改后的 richExplain
           richExplain
+        // 如果 sqlNode 是 SqlStatementSet 类型（可能包含多个 SQL 语句）
         case statementSet: SqlStatementSet =>
-          statementSet.getInserts.asScala.zipWithIndex.foreach {
-            case (insert, idx) => statementSet.setOperand(idx, validate(insert))
+          // 遍历 statementSet 中的 INSERT 语句，并逐个进行验证
+        statementSet.getInserts.asScala.zipWithIndex.foreach {
+          // 调用 validate 方法验证 INSERT 语句，并将验证后的语句设置回 statementSet 中
+          case (insert, idx) => statementSet.setOperand(idx, validate(insert))
           }
+          // 返回修改后的 statementSet
           statementSet
+        // 如果 sqlNode 是 SqlExecute 类型（可能是一个执行计划）
         case execute: SqlExecute =>
-          execute.setOperand(0, validate(execute.getStatement))
+          // 验证 execute 中的语句，并将验证后的语句设置回 execute 中
+        execute.setOperand(0, validate(execute.getStatement))
+          // 返回修改后的 execute
           execute
+        // 如果 sqlNode 是 RichSqlInsert 类型（可能是 INSERT 语句）
         case insert: RichSqlInsert =>
-          validateRichSqlInsert(insert)
+          // 调用 validateRichSqlInsert 方法验证 INSERT 语句
+        validateRichSqlInsert(insert)
+        // 如果 sqlNode 是 SqlCompilePlan 类型（可能是编译后的 SQL 计划）
         case compile: SqlCompilePlan =>
-          compile.setOperand(0, validate(compile.getOperandList.get(0)))
+          // 验证 compile 中的第一个操作数，并设置回 compile 中
+        compile.setOperand(0, validate(compile.getOperandList.get(0)))
+          // 返回修改后的 compile
           compile
+
+        // 如果 sqlNode 是 SqlCompileAndExecutePlan 类型（可能是编译并执行的 SQL 计划）
         case compileAndExecute: SqlCompileAndExecutePlan =>
-          compileAndExecute.setOperand(0, validate(compileAndExecute.getOperandList.get(0)))
+          // 验证 compileAndExecute 中的第一个操作数，并设置回 compileAndExecute 中
+        compileAndExecute.setOperand(0, validate(compileAndExecute.getOperandList.get(0)))
+          // 返回修改后的 compileAndExecute
           compileAndExecute
         // for call procedure statement
+        // 如果 sqlNode 是调用存储过程的语句
         case sqlCallNode if sqlCallNode.getKind == SqlKind.PROCEDURE_CALL =>
-          val callNode = sqlCallNode.asInstanceOf[SqlBasicCall]
+          // 将 sqlCallNode 转换为 SqlBasicCall 类型
+        val callNode = sqlCallNode.asInstanceOf[SqlBasicCall]
+          // 遍历 callNode 中的操作数，并逐个进行验证
           callNode.getOperandList.asScala.zipWithIndex.foreach {
+            // 调用 validate 方法验证操作数，并设置回 callNode 中
             case (operand, idx) => callNode.setOperand(idx, validate(operand))
           }
+          // 返回修改后的 callNode
           callNode
+        // 如果 sqlNode 不是上述任何类型，则使用 validator 进行默认验证
         case _ =>
           validator.validate(sqlNode)
       }
     } catch {
+      // 捕获可能出现的运行时异常，并转换为 ValidationException 异常抛出
       case e: RuntimeException =>
         throw new ValidationException(s"SQL validation failed. ${e.getMessage}", e)
     }

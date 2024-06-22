@@ -1,19 +1,13 @@
 package com.source.sql.demo;
 
-import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
-import java.util.Arrays;
-
-public class FlinkSQLDemo2 {
+public class FlinkSQLDategen {
     public static void main(String[] args) throws Exception {
         // 设置执行环境
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
-
-
         // 创建 TableEnvironment
         final StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
         String ddl = "CREATE TABLE t_user (\n"
@@ -35,7 +29,7 @@ public class FlinkSQLDemo2 {
         tableEnv.executeSql(ddl);
         //Table result = tableEnv.sqlQuery("select * from users");
         tableEnv.executeSql("select id,name,age from t_user where id > 5 ").print();
-        // 执行任务
+        // 执行任务 show tables;
         env.execute("Flink SQL Demo");
     }
 

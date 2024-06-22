@@ -70,14 +70,34 @@ public class CalciteParser {
      * @throws SqlParserException if an exception is thrown when parsing the statement
      * @throws SqlParserEOFException if the statement is incomplete
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将 SQL 字符串解析为 {@link SqlNodeList} 对象。
+     * 该 {@link SqlNodeList} 对象尚未进行验证。
+     *
+     * @param sql 要解析的 SQL 字符串
+     * @return 解析后的 SQL 节点列表
+     * @throws SqlParserException 解析语句时抛出异常
+     * @throws SqlParserEOFException 如果语句不完整
+    */
     public SqlNodeList parseSqlList(String sql) {
         try {
+            // 创建一个 SqlParser 实例来解析 SQL 字符串
             SqlParser parser = SqlParser.create(sql, config);
+            /**
+             * 调用 SqlParser 的 parseStmtList 方法来解析 SQL 语句列表
+             * 1，javaCC 使用自顶向下（top-down）递归下降（recursive descent)解析。
+             *  2，默认是LL(1)文法用于预测性解析。
+             */
             return parser.parseStmtList();
         } catch (SqlParseException e) {
+            // 如果异常消息中包含 "Encountered \"<EOF>\""，说明语句不完整
             if (e.getMessage().contains("Encountered \"<EOF>\"")) {
+                //抛出异常
                 throw new SqlParserEOFException(e.getMessage(), e);
             }
+            //抛出异常
             throw new SqlParserException("SQL parse failed. " + e.getMessage(), e);
         }
     }

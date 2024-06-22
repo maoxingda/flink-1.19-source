@@ -60,6 +60,20 @@ public interface SnapshotStrategy<S extends StateObject, SR extends SnapshotReso
      * @param checkpointOptions Options for how to perform this checkpoint.
      * @return A supplier that will yield a {@link StateObject}.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 一个操作，将快照写入由给定 {@link CheckpointStreamFactory} 提供的流中，
+     * 并返回一个 {@link SupplierWithException}（带有异常的提供者），该提供者提供对快照的状态句柄。
+     *
+     * @param syncPartResource 同步部分资源，可能用于协调快照过程或包含与快照相关的状态信息。
+     * @param checkpointId 快照的ID。
+     * @param timestamp 快照的时间戳。
+     * @param streamFactory 我们可以使用的工厂，用于将状态写入流。
+     * @param checkpointOptions 执行此检查点的选项。
+     * @return 一个提供者，将生成一个 {@link StateObject}（状态对象）。
+     * @throws Exception 如果在快照过程中发生异常，则抛出异常。
+    */
     SnapshotResultSupplier<S> asyncSnapshot(
             SR syncPartResource,
             long checkpointId,

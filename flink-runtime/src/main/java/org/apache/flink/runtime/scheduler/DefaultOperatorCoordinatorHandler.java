@@ -94,6 +94,11 @@ public class DefaultOperatorCoordinatorHandler implements OperatorCoordinatorHan
         coordinatorMap.values().forEach(IOUtils::closeQuietly);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     @Override
     public void deliverOperatorEventToCoordinator(
             final ExecutionAttemptID taskExecutionId,
@@ -107,6 +112,7 @@ public class DefaultOperatorCoordinatorHandler implements OperatorCoordinatorHan
         // then we assume that the call from the TaskManager was valid, and any bubbling exception
         // needs to cause a job failure.
 
+        // 从 ExecutionGraph 中获取已注册的执行
         final Execution exec = executionGraph.getRegisteredExecutions().get(taskExecutionId);
         if (exec == null
                 || exec.getState() != ExecutionState.RUNNING
@@ -115,19 +121,26 @@ public class DefaultOperatorCoordinatorHandler implements OperatorCoordinatorHan
             // event was just being dispatched asynchronously on the TM side.
             // It should be fine in those expected situations to just ignore this event, but, to be
             // on the safe, we notify the TM that the event could not be delivered.
+
+            // 这种情况在取消发生时很常见，或者在事件正在任务管理器端异步分派时任务失败。
+            // 在这些预期情况下，只需忽略此事件就可以了，但为了安全起见，
+            // 我们通知任务管理器该事件无法送达。
             throw new TaskNotRunningException(
                     "Task is not known or in state running on the JobManager.");
         }
-
+        // 从协调器映射中获取 OperatorCoordinatorHolder
         final OperatorCoordinatorHolder coordinator = coordinatorMap.get(operatorId);
         if (coordinator == null) {
+            // 如果没有为给定的操作符 ID 注册协调器，则抛出异常
             throw new FlinkException("No coordinator registered for operator " + operatorId);
         }
 
         try {
+            // 将事件传递给协调器处理
             coordinator.handleEventFromOperator(
                     exec.getParallelSubtaskIndex(), exec.getAttemptNumber(), evt);
         } catch (Throwable t) {
+            // 如果处理过程中发生异常，检查是否为致命错误或内存溢出
             ExceptionUtils.rethrowIfFatalErrorOrOOM(t);
             globalFailureHandler.handleGlobalFailure(t);
         }

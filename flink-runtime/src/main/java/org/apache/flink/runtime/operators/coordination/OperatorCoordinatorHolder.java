@@ -217,16 +217,30 @@ public class OperatorCoordinatorHolder
         context.unInitialize();
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * @param
+    */
     public void handleEventFromOperator(int subtask, int attemptNumber, OperatorEvent event)
             throws Exception {
+        // 确保当前线程是主线程
         mainThreadExecutor.assertRunningInMainThread();
+        // 判断事件是否是确认检查点事件（AcknowledgeCheckpointEvent）
         if (event instanceof AcknowledgeCheckpointEvent) {
+            // 如果是确认检查点事件，则通过子任务网关（SubtaskGateway）处理该事件
+            // 从子任务网关映射（subtaskGatewayMap）中获取对应子任务的网关
+            // 打开网关并取消标记该检查点
+            // getCheckpointID() 获取确认事件中的检查点ID
             subtaskGatewayMap
                     .get(subtask)
                     .openGatewayAndUnmarkCheckpoint(
                             ((AcknowledgeCheckpointEvent) event).getCheckpointID());
+            // 处理完成后直接返回，不再继续执行后续代码
             return;
         }
+        // 如果事件不是确认检查点事件，则将其传递给协调器（coordinator）进行处理
+        // 协调器会根据事件类型进行相应的处理逻辑
         coordinator.handleEventFromOperator(subtask, attemptNumber, event);
     }
 

@@ -1541,7 +1541,7 @@ public class Task
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 调用可调用对象以触发检查点。
+     * 触发Task类中的triggerCheckpointBarrier来进行检查的的操作
      *
      * @param checkpointID 标识检查点的ID。
      * @param checkpointTimestamp 与检查点关联的时间戳。
@@ -1551,22 +1551,33 @@ public class Task
             final long checkpointID,
             final long checkpointTimestamp,
             final CheckpointOptions checkpointOptions) {
-        // 获取当前任务的可调用对象
+        /**
+         * 获取当前任务的可调用对象实例(StreamTask、DataSourceTask都实现了TaskInvokable)
+         */
         final TaskInvokable invokable = this.invokable;
         // 创建检查点元数据，包括检查点ID、时间戳以及当前系统时间
+        /**
+         *
+         * 1.checkpointID checkpoint时间，当前时间作为元数据，创建检查点元数据对象CheckpointMetaData
+         */
         final CheckpointMetaData checkpointMetaData =
                 new CheckpointMetaData(
                         checkpointID, checkpointTimestamp, System.currentTimeMillis());
         // 检查当前任务是否处于运行状态
         if (executionState == ExecutionState.RUNNING) {
-            // 断言可调用对象是否实现了CheckpointableTask接口，即是否支持检查点
+            /**
+             * 判断当前invokable具体对象实例是否实现了CheckpointableTask接口，即是否支持检查点
+             * (StreamTask、DataSourceTask都实现了CheckpointableTask)
+             */
             checkState(invokable instanceof CheckpointableTask, "invokable is not checkpointable");
             try {
-                // 调用可调用对象的triggerCheckpointAsync方法异步触发检查点
-                // 此方法返回一个CompletableFuture，表示检查点触发的异步结果
+                /**
+                 * 2.invokable转换为CheckpointableTask对象调用triggerCheckpointAsync异步触发检查点，返回结果为CompletableFuture
+                 */
                 ((CheckpointableTask) invokable)
                          //触发CheckPoint
                         .triggerCheckpointAsync(checkpointMetaData, checkpointOptions)
+                        //检查点结束后回调，判断异常如果异常了则表示检查点处理失败则向JobMaster汇报此次检查点失败
                         .handle(
                                 // 使用CompletableFuture的handle方法处理触发检查点的结果
                                 (triggerResult, exception) -> {

@@ -219,7 +219,7 @@ final class AsyncCheckpointRunnable implements Runnable, Closeable {
             OperatorID operatorID = entry.getKey();
             OperatorSnapshotFutures snapshotInProgress = entry.getValue();
 
-            // finalize the async part of all by executing all snapshot runnables
+            // finalize the async part of all by executing all snapshot runnables 通过执行所有快照的可运行对象（或任务），来完成所有异步部分的操作。
             OperatorSnapshotFinalizer finalizedSnapshots =
                     new OperatorSnapshotFinalizer(snapshotInProgress);
 

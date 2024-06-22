@@ -608,11 +608,21 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 用于准备输入的快照（snapshot）
+     * @param channelStateWriter 用于写入通道状态的写入器
+     * @param checkpointId  检查点的ID
+    */
     private CompletableFuture<Void> prepareInputSnapshot(
             ChannelStateWriter channelStateWriter, long checkpointId) throws CheckpointException {
+        // 如果输入处理器为空，即没有设置或不可用
         if (inputProcessor == null) {
+            // 则返回一个已经完成的、无返回值的CompletableFuture
             return FutureUtils.completedVoidFuture();
         }
+        // 如果输入处理器存在，则调用其prepareSnapshot方法来准备快照
         return inputProcessor.prepareSnapshot(channelStateWriter, checkpointId);
     }
 
@@ -1330,6 +1340,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     //  Checkpoint and Restore
     // ------------------------------------------------------------------------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 触发Task进行异步Checkpoint
+    */
     @Override
     public CompletableFuture<Boolean> triggerCheckpointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
@@ -1347,7 +1362,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                                         .allMatch(InputGate::isFinished);
                         // 如果所有InputGates都已完成
                         if (noUnfinishedInputGates) {
-                            // 在邮箱中异步触发检查点，并设置结果Future为成功完成，并带有返回值
+                            // 1.在邮箱中异步触发检查点，并设置结果Future为成功完成，并带有返回值
                             result.complete(
                                     triggerCheckpointAsyncInMailbox(
                                             checkpointMetaData, checkpointOptions));
@@ -1405,10 +1420,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             // 初始化输入的检查点
             subtaskCheckpointCoordinator.initInputsCheckpoint(
                     checkpointMetaData.getCheckpointId(), checkpointOptions);
-            // 1.执行检查点，并获取是否成功
+            // 2.执行数据源检查点检查点，并获取是否成功
             boolean success =
                     performCheckpoint(checkpointMetaData, checkpointOptions, checkpointMetrics);
-            // 如果检查点未成功，则拒绝该检查点
+            // 如果检查点未成功，则拒绝该检查点，同样向JobMaster汇报
             if (!success) {
                 declineCheckpoint(checkpointMetaData.getCheckpointId());
             }
@@ -1566,7 +1581,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                             // 设置finalCheckpointMinId为当前检查点的ID
                             this.finalCheckpointMinId = checkpointMetaData.getCheckpointId();
                         }
-                        // 调用子任务的检查点协调器进行状态检查点操作
+                        // 调用子任务的检查点协调器进行状态检查点操作(此操作相当于调用的是Source对应的Task)
                         subtaskCheckpointCoordinator.checkpointState(
                                 checkpointMetaData,
                                 checkpointOptions,

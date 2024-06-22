@@ -210,12 +210,19 @@ class SubtaskGatewayImpl implements OperatorCoordinator.SubtaskGateway {
         return false;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *
+    */
     void openGatewayAndUnmarkCheckpoint(long checkpointId) {
+        // 检查是否在主线程中运行
         checkRunsInMainThread();
 
         // Gateways should always be marked and closed for a specific checkpoint before it can be
         // reopened for that checkpoint. If a gateway is to be opened for an unforeseen checkpoint,
         // exceptions should be thrown.
+        //如果当前最后的CheckjpointId 小于 发送的Checkpoint 则抛出异常
         if (latestAttemptedCheckpointId < checkpointId) {
             throw new IllegalStateException(
                     String.format(
@@ -227,24 +234,29 @@ class SubtaskGatewayImpl implements OperatorCoordinator.SubtaskGateway {
         // The message to open gateway with a specific checkpoint id might arrive after the
         // checkpoint has been aborted, or even after a new checkpoint has started. In these cases
         // this message should be ignored.
+        //缓冲中如果没有对应的checkPointId则返回
         if (!currentMarkedCheckpointIds.contains(checkpointId)) {
             return;
         }
 
+        // 如果阻塞事件映射（blockedEventsMap）中包含该检查点ID，则处理与该检查点相关的阻塞事件
         if (blockedEventsMap.containsKey(checkpointId)) {
+            // 如果该检查点ID是阻塞事件映射中的第一个键，则调用每个阻塞事件的发送动作
             if (blockedEventsMap.firstKey() == checkpointId) {
                 for (BlockedEvent blockedEvent : blockedEventsMap.firstEntry().getValue()) {
                     callSendAction(blockedEvent.sendAction, blockedEvent.future);
                 }
+                // 否则，将当前检查点ID的阻塞事件添加到前一个检查点ID的阻塞事件列表中
             } else {
                 blockedEventsMap
                         .floorEntry(checkpointId - 1)
                         .getValue()
                         .addAll(blockedEventsMap.get(checkpointId));
             }
+            // 从阻塞事件映射中移除该检查点ID
             blockedEventsMap.remove(checkpointId);
         }
-
+        // 从当前标记的检查点ID集合中移除该检查点ID
         currentMarkedCheckpointIds.remove(checkpointId);
     }
 

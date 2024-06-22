@@ -61,9 +61,12 @@ public class RpcTaskOperatorEventGateway implements TaskOperatorEventGateway {
     @Override
     public void sendOperatorEventToCoordinator(
             OperatorID operator, SerializedValue<OperatorEvent> event) {
+        // 调用rpcGateway的sendOperatorEventToCoordinator方法发送事件到协调器
         final CompletableFuture<Acknowledge> result =
                 rpcGateway.sendOperatorEventToCoordinator(taskExecutionId, operator, event);
 
+        // 使用whenComplete方法注册一个回调函数，该回调函数在异步计算完成时会被调用
+        // 无论计算成功还是失败，都会执行这个回调函数
         result.whenComplete(
                 (success, exception) -> {
                     if (exception != null) {

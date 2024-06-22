@@ -230,6 +230,9 @@ public class RegularOperatorChain<OUT, OP extends StreamOperator<OUT>>
             }
         }
         // 发送确认检查点事件，告知系统已经完成了检查点的捕获
+        /**
+         * 像JobMaster发送AcknowledgeCheckpointEvent事件消息
+         */
         sendAcknowledgeCheckpointEvent(checkpointMetaData.getCheckpointId());
     }
 

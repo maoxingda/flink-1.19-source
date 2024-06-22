@@ -176,6 +176,16 @@ public class ChannelStateWriterImpl implements ChannelStateWriter {
                 taskName + " result future already present for checkpoint " + checkpointId);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将输入数据添加到快照中
+     *
+     * @param checkpointId 检查点的ID
+     * @param info         输入通道的信息
+     * @param startSeqNum  起始序列号
+     * @param iterator     包含Buffer对象的可关闭迭代器，用于迭代输入数据
+    */
     @Override
     public void addInputData(
             long checkpointId,
@@ -201,6 +211,9 @@ public class ChannelStateWriterImpl implements ChannelStateWriter {
                 info,
                 startSeqNum,
                 data == null ? 0 : data.length);
+        // 调用enqueue方法，将写入操作封装的任务添加到队列中，并指定是否立即执行
+        // write方法会返回一个封装了写入操作的任务
+        // enqueue方法的第二个参数false表示不立即执行该任务
         enqueue(write(jobVertexID, subtaskIndex, checkpointId, info, data), false);
     }
 
@@ -272,21 +285,35 @@ public class ChannelStateWriterImpl implements ChannelStateWriter {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将ChannelStateWriteRequest请求加入队列
+     *
+     * @param request  要加入的请求
+     * @param atTheFront 是否将请求加入队列的头部
+    */
     private void enqueue(ChannelStateWriteRequest request, boolean atTheFront) {
         // state check and previous errors check are performed inside the worker
+        // 在worker内部执行状态检查和之前的错误检查
         try {
             if (atTheFront) {
+                // 如果需要将请求加入队列的头部，则使用高优先级提交
                 executor.submitPriority(request);
             } else {
+                // 否则，以普通优先级提交请求
                 executor.submit(request);
             }
         } catch (Exception e) {
+            // 如果提交请求时发生异常，则捕获该异常并包装为RuntimeException
             RuntimeException wrapped = new RuntimeException("unable to send request to worker", e);
             try {
+                // 尝试取消请求（如果可能），并将取消操作中的异常添加到包装的异常中
                 request.cancel(e);
             } catch (Exception cancelException) {
                 wrapped.addSuppressed(cancelException);
             }
+            // 抛出包装后的异常
             throw wrapped;
         }
     }

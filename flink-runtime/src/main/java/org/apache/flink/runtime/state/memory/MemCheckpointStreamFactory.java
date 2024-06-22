@@ -48,9 +48,19 @@ public class MemCheckpointStreamFactory implements CheckpointStreamFactory {
         this.maxStateSize = maxStateSize;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个用于检查点状态输出的流。
+     *
+     * @param scope 检查点状态的作用域
+     * @return 返回一个用于写入检查点状态的输出流
+     * @throws IOException 如果在创建输出流过程中发生I/O错误
+    */
     @Override
     public CheckpointStateOutputStream createCheckpointStateOutputStream(
             CheckpointedStateScope scope) throws IOException {
+        // 使用预设的最大状态大小来创建一个基于内存的检查点输出流
         return new MemoryCheckpointOutputStream(maxStateSize);
     }
 

@@ -313,7 +313,9 @@ public class StreamOperatorStateHandler {
                                     checkpointId, timestamp, factory, checkpointOptions));
 
                 } else {
-                    // 直接调用键控状态后端的snapshot方法进行状态快照
+                    /**
+                     * 直接调用键控状态后端的snapshot方法进行状态快照
+                     */
                     snapshotInProgress.setKeyedStateManagedFuture(
                             keyedStateBackend.snapshot(
                                     checkpointId, timestamp, factory, checkpointOptions));

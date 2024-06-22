@@ -147,18 +147,34 @@ public interface CheckpointStreamWithResultProvider extends Closeable {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建CheckpointStateOutputStream
+     * @param checkpointedStateScope 检查点状态的作用域，不能为空
+     * @param primaryStreamFactory 用于创建主流的检查点流工厂，不能为空
+    */
     @Nonnull
     static CheckpointStreamWithResultProvider createSimpleStream(
             @Nonnull CheckpointedStateScope checkpointedStateScope,
             @Nonnull CheckpointStreamFactory primaryStreamFactory)
             throws IOException {
-
+        //使用主流工厂创建主流的输出流
         CheckpointStateOutputStream primaryOut =
                 primaryStreamFactory.createCheckpointStateOutputStream(checkpointedStateScope);
-
+        // 返回一个仅包含主流的CheckpointStreamWithResultProvider
         return new CheckpointStreamWithResultProvider.PrimaryStreamOnly(primaryOut);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个支持本地恢复的复制流，用于在检查点时将状态数据写入主流和备份流
+     * @param checkpointId 检查点的ID，必须是非负数
+     * @param checkpointedStateScope 检查点状态的作用域，不能为空
+     * @param primaryStreamFactory 用于创建主流的检查点流工厂，不能为空
+     * @param secondaryStreamDirProvider 提供本地恢复备份流目录的提供者，不能为空
+    */
     @Nonnull
     static CheckpointStreamWithResultProvider createDuplicatingStream(
             @Nonnegative long checkpointId,
@@ -166,30 +182,33 @@ public interface CheckpointStreamWithResultProvider extends Closeable {
             @Nonnull CheckpointStreamFactory primaryStreamFactory,
             @Nonnull LocalRecoveryDirectoryProvider secondaryStreamDirProvider)
             throws IOException {
-
+        // 使用主流工厂创建主流的输出流
         CheckpointStateOutputStream primaryOut =
                 primaryStreamFactory.createCheckpointStateOutputStream(checkpointedStateScope);
 
         try {
+            // 创建一个用于备份流的文件，文件路径基于检查点ID和随机生成的UUID
             File outFile =
                     new File(
                             secondaryStreamDirProvider.subtaskSpecificCheckpointDirectory(
                                     checkpointId),
                             String.valueOf(UUID.randomUUID()));
+            // 将文件路径转换为URI路径
             Path outPath = new Path(outFile.toURI());
-
+            // 使用文件路径创建CheckpointState输出流
             CheckpointStateOutputStream secondaryOut =
                     new FileBasedStateOutputStream(outPath.getFileSystem(), outPath);
-
+            // 返回一个包含主流和备份流的CheckpointStreamWithResultProvider
             return new CheckpointStreamWithResultProvider.PrimaryAndSecondaryStream(
                     primaryOut, secondaryOut);
+            // 如果在创建备份流时发生异常
         } catch (IOException secondaryEx) {
             LOG.warn(
                     "Exception when opening secondary/local checkpoint output stream. "
                             + "Continue only with the primary stream.",
                     secondaryEx);
         }
-
+        // 如果备份流创建失败，返回仅包含主流的CheckpointStreamWithResultProvider
         return new CheckpointStreamWithResultProvider.PrimaryStreamOnly(primaryOut);
     }
 

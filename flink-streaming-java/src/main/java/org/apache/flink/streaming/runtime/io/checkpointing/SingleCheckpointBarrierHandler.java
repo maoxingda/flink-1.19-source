@@ -268,15 +268,19 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
                     stateTransformer)
             throws IOException {
         // 将对齐的通道添加到对齐通道列表中
+        /**
+         * alignedChannels集合表示当前接收到的CheckpointBarrier消息的上游的InputChannelInfo信息
+         * targetChannelCount代表Task需要接收CheckpointBarrier消息的所有channel数量。
+         */
         alignedChannels.add(alignedChannel);
         // 如果这是第一个对齐的通道
         if (alignedChannels.size() == 1) {
-            // 如果目标通道数量只有一个
+            // 如果目标通道数量只有一个 那表示已经对齐了所以直接设置对齐开始并结束
             if (targetChannelCount == 1) {
                 // 标记对齐开始和结束（因为只有一个通道，所以开始和结束是同时的）
                 markAlignmentStartAndEnd(barrier.getId(), barrier.getTimestamp());
             } else {
-                // 标记对齐开始
+                // 标记对齐开始如果目标数量是多个则表示需要等待对齐则触发开始对齐标志
                 markAlignmentStart(barrier.getId(), barrier.getTimestamp());
             }
         }

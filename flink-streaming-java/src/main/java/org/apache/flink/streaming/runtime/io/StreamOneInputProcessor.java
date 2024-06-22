@@ -95,9 +95,17 @@ public final class StreamOneInputProcessor<IN> implements StreamInputProcessor {
         return status;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 准备快照
+     * @param channelStateWriter 通道状态写入器，用于将状态写入到某个地方（如持久化存储）
+     * @param checkpointId 检查点的ID，通常用于标识和追踪不同的快照
+    */
     @Override
     public CompletableFuture<Void> prepareSnapshot(
             ChannelStateWriter channelStateWriter, long checkpointId) throws CheckpointException {
+        // 调用输入对象的prepareSnapshot方法，开始准备快照的过程
         return input.prepareSnapshot(channelStateWriter, checkpointId);
     }
 

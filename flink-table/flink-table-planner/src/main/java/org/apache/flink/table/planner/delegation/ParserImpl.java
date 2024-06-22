@@ -87,21 +87,44 @@ public class ParserImpl implements Parser {
      * @param statement input statement.
      * @return parsed operations.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 解析给定的 SQL 语句并返回操作列表。
+     *
+     * @param statement 要解析的 SQL 语句
+     * @return 包含解析后操作的列表（通常为单个操作）
+     * @throws TableException 如果解析失败或不支持查询
+    */
     @Override
     public List<Operation> parse(String statement) {
+        // 获取 Calcite 解析器实例
         CalciteParser parser = calciteParserSupplier.get();
+        // 获取 Flink 规划器实例 用来校验层使用
         FlinkPlannerImpl planner = validatorSupplier.get();
 
+        // 尝试使用扩展解析器解析 SQL 语句为命令
         Optional<Operation> command = EXTENDED_PARSER.parse(statement);
         if (command.isPresent()) {
+            // 如果解析成功，直接返回包含单个命令的列表
             return Collections.singletonList(command.get());
         }
 
         // parse the sql query
         // use parseSqlList here because we need to support statement end with ';' in sql client.
+        /**
+         * 解析 SQL 查询（如果扩展解析器未返回结果）
+         * 使用 parseSqlList 方法是因为我们需要支持 SQL 客户端中以分号结尾的语句
+         */
         SqlNodeList sqlNodeList = parser.parseSqlList(statement);
+        //其实内部只会有一个解析语句
         List<SqlNode> parsed = sqlNodeList.getList();
+        // 验证只解析了一个语句
         Preconditions.checkArgument(parsed.size() == 1, "only single statement supported");
+        /**
+         * 将解析的 SqlNode 转换为 Operation
+         * 如果转换失败，则抛出 TableException 异常
+         */
         return Collections.singletonList(
                 SqlNodeToOperationConversion.convert(planner, catalogManager, parsed.get(0))
                         .orElseThrow(() -> new TableException("Unsupported query: " + statement)));

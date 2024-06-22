@@ -253,9 +253,19 @@ public class SqlNodeToOperationConversion {
      * @param catalogManager CatalogManager to resolve full path for operations
      * @param sqlNode SqlNode to execute on
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将SqlNode校验后转换为Operation
+     *
+     * @param flinkPlanner FlinkPlannerImpl 实例，用于将 createTable 相关的 SQL 节点转换为 rel 节点
+     * @param catalogManager CatalogManager 实例，用于解析操作的全路径
+     * @param sqlNode 要执行的 SqlNode
+    */
     public static Optional<Operation> convert(
             FlinkPlannerImpl flinkPlanner, CatalogManager catalogManager, SqlNode sqlNode) {
         // validate the query
+        // 验证查询
         final SqlNode validated = flinkPlanner.validate(sqlNode);
         return convertValidatedSqlNode(flinkPlanner, catalogManager, validated);
     }

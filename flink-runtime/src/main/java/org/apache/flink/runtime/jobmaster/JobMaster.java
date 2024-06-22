@@ -711,6 +711,9 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
      * 接收到Task发送的OperatorEvent事件
+     * @param task 执行尝试的唯一标识符
+     * @param operatorID 操作符的唯一标识符
+     * @param serializedEvent 序列化后的操作符事件
     */
     @Override
     public CompletableFuture<Acknowledge> sendOperatorEventToCoordinator(
@@ -719,10 +722,14 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
             final SerializedValue<OperatorEvent> serializedEvent) {
 
         try {
+            // 尝试将序列化后的OperatorEvent反序列化为实际的OperatorEvent对象
             final OperatorEvent evt = serializedEvent.deserializeValue(userCodeLoader);
+            // 调用schedulerNG的deliverOperatorEventToCoordinator方法，将反序列化后的OperatorEvent发送到协调器
             schedulerNG.deliverOperatorEventToCoordinator(task, operatorID, evt);
+            // 如果上述操作成功，返回一个已经完成的CompletableFuture对象，其中包含了Acknowledge的实例
             return CompletableFuture.completedFuture(Acknowledge.get());
         } catch (Exception e) {
+            //封装异常返回
             return FutureUtils.completedExceptionally(e);
         }
     }
