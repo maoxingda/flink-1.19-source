@@ -53,7 +53,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Test json serialization/deserialization and util methods for {@link
- * org.apache.flink.table.planner.plan.nodes.exec.StateMetadata}.
+ * StateMetadata}.
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class StateMetadataTest {

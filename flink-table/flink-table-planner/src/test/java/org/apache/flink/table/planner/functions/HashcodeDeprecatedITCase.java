@@ -162,8 +162,8 @@ public class HashcodeDeprecatedITCase {
         }
 
         @Override
-        public ScanTableSource.ScanRuntimeProvider getScanRuntimeProvider(
-                ScanTableSource.ScanContext context) {
+        public ScanRuntimeProvider getScanRuntimeProvider(
+                ScanContext context) {
             return SourceFunctionProvider.of(new TestSourceFunction(), false);
         }
     }

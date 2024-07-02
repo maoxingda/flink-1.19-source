@@ -29,6 +29,7 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
  * @param <SplitT> The type of splits handled by the source.
  * @param <EnumChkT> The type of the enumerator checkpoints.
  */
+
 @Public
 public interface Source<T, SplitT extends SourceSplit, EnumChkT>
         extends SourceReaderFactory<T, SplitT> {

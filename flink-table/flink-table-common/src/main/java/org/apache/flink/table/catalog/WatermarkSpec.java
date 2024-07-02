@@ -29,7 +29,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * Representation of a watermark specification in a {@link ResolvedSchema}.
- *
+ * 在｛@link ResolvedSchema｝中表示水印规范。
  * <p>It defines the rowtime attribute and a {@link ResolvedExpression} for watermark generation.
  */
 @PublicEvolving

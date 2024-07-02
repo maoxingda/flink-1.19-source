@@ -76,18 +76,28 @@ class DefaultSchemaResolver implements SchemaResolver {
         this.resolverBuilder = resolverBuilder;
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 解析给定的Schema，并返回解析后的ResolvedSchema。
+     *
+     * @param schema 要解析的Schema对象
+     * @return 解析后的ResolvedSchema对象
+     */
     @Override
     public ResolvedSchema resolve(Schema schema) {
+        // 解析Schema中的列，并返回解析后的列列表
         final List<Column> columns = resolveColumns(schema.getColumns());
 
+        // 解析Schema中的Watermark规范，并返回解析后的Watermark规范列表
         final List<WatermarkSpec> watermarkSpecs =
                 resolveWatermarkSpecs(schema.getWatermarkSpecs(), columns);
-
+        // 根据Watermark规范和解析后的列，调整与Rowtime相关的属性
         final List<Column> columnsWithRowtime = adjustRowtimeAttributes(watermarkSpecs, columns);
-
+        // 解析Schema中的主键约束，并返回解析后的主键约束
         final UniqueConstraint primaryKey =
                 resolvePrimaryKey(schema.getPrimaryKey().orElse(null), columnsWithRowtime);
-
+        // 使用解析后的列、Watermark规范和主键约束，创建并返回ResolvedSchema对象
         return new ResolvedSchema(columnsWithRowtime, watermarkSpecs, primaryKey);
     }
 

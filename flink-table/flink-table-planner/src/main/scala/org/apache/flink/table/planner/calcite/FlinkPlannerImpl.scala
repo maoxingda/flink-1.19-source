@@ -136,7 +136,7 @@ class FlinkPlannerImpl(
   /**
    * @授课老师(微信): yi_locus
    * email: 156184212@qq.com
-   *
+   * 校验SqlNode
    *
   */
   private def validate(sqlNode: SqlNode, validator: FlinkCalciteSqlValidator): SqlNode = {
@@ -150,7 +150,7 @@ class FlinkPlannerImpl(
         case node: ExtendedSqlNode =>
           node.validate()
         // 如果不是 ExtendedSqlNode，则不进行扩展验证
-        case _ =>
+          case _ =>
       }
       // no need to validate row type for DDL and insert nodes.
       // 对于 DDL 和某些特定类型的节点，不需要验证行类型

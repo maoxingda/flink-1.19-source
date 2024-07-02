@@ -28,7 +28,6 @@ under the License.
 
 	<artifactId>flink-table</artifactId>
 	<name>Flink : Table : </name>
-
 	<packaging>pom</packaging>
 
 	<modules>
@@ -39,7 +38,7 @@ under the License.
 		<module>flink-table-api-java-bridge</module>
 		<module>flink-table-api-scala-bridge</module>
 		<module>flink-table-api-java-uber</module>
-		<!--<module>flink-table-planner</module>-->
+		<module>flink-table-planner</module>
 		<module>flink-table-planner-loader</module>
 		<module>flink-table-planner-loader-bundle</module>
 		<module>flink-table-runtime</module>

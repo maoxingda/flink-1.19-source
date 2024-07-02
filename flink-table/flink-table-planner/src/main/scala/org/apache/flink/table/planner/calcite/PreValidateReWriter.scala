@@ -48,17 +48,34 @@ import scala.collection.JavaConversions._
  * Implements [[org.apache.calcite.sql.util.SqlVisitor]] interface to do some rewrite work before
  * sql node validation.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 实现了 [[org.apache.calcite.sql.util.SqlVisitor]] 接口，用于在 SQL 节点验证之前执行一些重写工作。
+*/
 class PreValidateReWriter(
     val validator: FlinkCalciteSqlValidator,
     val typeFactory: RelDataTypeFactory)
   extends SqlBasicVisitor[Unit] {
+
+ /**
+  * @授课老师: 码界探索
+  * @微信: 252810631
+  * @版权所有: 请尊重劳动成果
+  * 接受一个SqlCall类型的参数call，并且没有返回值（Unit）
+  */
   override def visit(call: SqlCall): Unit = {
+    // 使用模式匹配检查call的类型
     call match {
+      // 如果call是SqlRichExplain类型或其子类型
       case e: SqlRichExplain =>
-        e.getStatement match {
-          case r: RichSqlInsert => rewriteInsert(r)
-          case _ => // do nothing
+        // 再次使用模式匹配检查SqlRichExplain中的getStatement方法返回的对象类型
+      e.getStatement match {
+        // 如果getStatement返回的是RichSqlInsert类型或其子类型
+        case r: RichSqlInsert => rewriteInsert(r)// 调用rewriteInsert方法处理RichSqlInsert对象
+          case _ => // 如果不是RichSqlInsert类型，则不执行任何操作（do nothing）
         }
+      // 如果call直接就是RichSqlInsert类型或其子类型
       case r: RichSqlInsert => rewriteInsert(r)
       case _ => // do nothing
     }

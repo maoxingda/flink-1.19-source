@@ -751,13 +751,28 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
         return false;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     *
+     * 验证 SQL 节点
+     *
+     * @param topNode 需要验证的 SQL 节点
+     * @return 验证后的 SQL 节点
+     */
     @Override
     public SqlNode validate(SqlNode topNode) {
+        // 创建一个空的 SqlValidatorScope 对象，用于存储验证过程中的作用域信息
         SqlValidatorScope scope = new EmptyScope(this);
+        // 在空的作用域基础上，创建一个 CatalogScope 对象，并设置其包含的 catalog 列表为 "CATALOG"
         scope = new CatalogScope(scope, ImmutableList.of("CATALOG"));
+        // 使用给定的作用域（scope）对传入的 SQL 节点（topNode）进行验证，并返回验证后的节点
         final SqlNode topNode2 = validateScopedExpression(topNode, scope);
+        // 获取验证后的节点的数据类型，但在本方法中并未使用此类型，只是调用了 Util.discard 方法将其丢弃
         final RelDataType type = getValidatedNodeType(topNode2);
         Util.discard(type);
+        // 返回验证后的 SQL 节点
         return topNode2;
     }
 
@@ -998,21 +1013,42 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
         return validateScopedExpression(topNode, scope);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     *
+     * 验证带有作用域的 SQL 表达式
+     * @param topNode 需要验证的 SQL 节点
+     * @param scope SQL 验证的作用域
+     * @return 验证后的 SQL 节点
+     */
     private SqlNode validateScopedExpression(SqlNode topNode, SqlValidatorScope scope) {
+        // 首先对传入的 SQL 执行无条件表达式重写。将表达式树转换为标准形式
         SqlNode outermostNode = performUnconditionalRewrites(topNode, false);
+        // 将重写后的节点添加到 cursorSet 中（cursorSet 可能是用于跟踪验证过程中的节点）
         cursorSet.add(outermostNode);
+        // 更新 top 引用为重写后的节点（top 可能是类中的一个字段，用于存储当前验证的顶层节点）
         top = outermostNode;
+        // 跟踪日志输出，显示无条件重写后的节点
         TRACER.trace("After unconditional rewrite: {}", outermostNode);
+        // 如果重写后的节点是顶级节点（比如一个完整的查询）
         if (outermostNode.isA(SqlKind.TOP_LEVEL)) {
+            // 在作用域中注册查询（可能是用于后续的作用域查找或解析）
             registerQuery(scope, null, outermostNode, outermostNode, null, false);
         }
+        // 对重写后的节点进行验证（使用当前的验证器和作用域）
         outermostNode.validate(this, scope);
+        // 如果重写后的节点不是顶级节点（可能是一个子表达式或片段）
         if (!outermostNode.isA(SqlKind.TOP_LEVEL)) {
             // force type derivation so that we can provide it to the
             // caller later without needing the scope
+            // 强制推导类型，以便稍后可以无需作用域即可向调用者提供该类型
             deriveType(scope, outermostNode);
         }
+        // 跟踪日志输出，显示验证后的节点
         TRACER.trace("After validation: {}", outermostNode);
+        // 返回验证后的节点
         return outermostNode;
     }
 
@@ -1276,64 +1312,105 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
      * @param underFrom whether node appears directly under a FROM clause
      * @return rewritten expression, or null if the original expression is null
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 执行无条件表达式重写。这些重写将表达式树转换为标准形式，以便后续的验证逻辑可以更简单。
+     * @param node 要重写的表达式
+     * @param underFrom 节点是否直接出现在FROM子句下
+     * @return 重写后的表达式，如果原始表达式为null则返回null
+     */
     protected @PolyNull SqlNode performUnconditionalRewrites(
             @PolyNull SqlNode node, boolean underFrom) {
         if (node == null) {
+            // 如果原始节点为null，则直接返回null
             return null;
         }
 
         // first transform operands and invoke generic call rewrite
+        // 首先转换操作数并调用通用的调用重写 如果节点是一个SqlCall（即函数调用或SQL操作）
         if (node instanceof SqlCall) {
             if (node instanceof SqlMerge) {
+                // 如果节点是SqlMerge类型，则设置validatingSqlMerge为true（可能是为了标记当前正在验证SqlMerge）
                 validatingSqlMerge = true;
             }
+            // 将Node节点转换转换为SqlCall
             SqlCall call = (SqlCall) node;
+            // 获取SqlCall的类型
             final SqlKind kind = call.getKind();
+            // 获取SqlCall的操作数列表
             final List<SqlNode> operands = call.getOperandList();
+            //遍历操作数列表
             for (int i = 0; i < operands.size(); i++) {
                 SqlNode operand = operands.get(i);
+                // 根据当前SqlCall的类型和位置，确定子节点是否出现在FROM子句下
                 boolean childUnderFrom;
                 if (kind == SqlKind.SELECT) {
+                    // 如果是SELECT操作，并且当前操作数是FROM子句的操作数
                     childUnderFrom = i == SqlSelect.FROM_OPERAND;
                 } else if (kind == SqlKind.AS && (i == 0)) {
                     // for an aliased expression, it is under FROM if
                     // the AS expression is under FROM
+                    // 如果是AS操作（别名），并且AS操作数是第一个操作数（即被别名的表达式）
+                    // 那么它是否出现在FROM子句下取决于其父节点是否出现在FROM子句下
                     childUnderFrom = underFrom;
                 } else {
+                    // 其他情况，默认子节点不出现在FROM子句下
                     childUnderFrom = false;
                 }
+                // 对子节点进行无条件重写
                 SqlNode newOperand = performUnconditionalRewrites(operand, childUnderFrom);
+                // 如果新的操作数不为null且与原操作数不同，则更新SqlCall的操作数
                 if (newOperand != null && newOperand != operand) {
                     call.setOperand(i, newOperand);
                 }
             }
 
+            // 如果 SqlCall 的操作符是一个未解析的函数
             if (call.getOperator() instanceof SqlUnresolvedFunction) {
+                // 断言该 SqlCall 实际上是一个 SqlBasicCall 的实例
+                // 因为只有 SqlBasicCall 会有操作符（operator）的概念
                 assert call instanceof SqlBasicCall;
+                // 获取未解析的函数
                 final SqlUnresolvedFunction function = (SqlUnresolvedFunction) call.getOperator();
                 // This function hasn't been resolved yet.  Perform
                 // a half-hearted resolution now in case it's a
                 // builtin function requiring special casing.  If it's
                 // not, we'll handle it later during overload resolution.
+                // 这个函数还没有被解析。现在进行一个初步的解析，
+                // 如果它是一个需要特殊处理的内置函数的话。
+                // 如果不是，我们将在后面的重载解析过程中处理它。
                 final List<SqlOperator> overloads = new ArrayList<>();
+                // 在操作符表（opTab）中查找函数名称对应的操作符重载，
+                // 就是查早对应的函数是否存在，查找SQL语句使用的函数是否有对应的实现
                 opTab.lookupOperatorOverloads(
-                        function.getNameAsId(),
-                        function.getFunctionType(),
-                        SqlSyntax.FUNCTION,
-                        overloads,
-                        catalogReader.nameMatcher());
+                        function.getNameAsId(),// 函数名称
+                        function.getFunctionType(),// 函数类型
+                        SqlSyntax.FUNCTION,// 语法类型，这里是函数
+                        overloads,// 重载列表
+                        catalogReader.nameMatcher());// 名称匹配器
+                // 如果找到了唯一的一个重载
                 if (overloads.size() == 1) {
+                    // 将 SqlBasicCall 的操作符设置为找到的重载操作符
                     ((SqlBasicCall) call).setOperator(overloads.get(0));
                 }
             }
+            // 如果配置中启用了调用重写
             if (config.callRewrite()) {
+                // 调用操作符的 rewriteCall 方法，可能会进一步重写 SqlCall
                 node = call.getOperator().rewriteCall(this, call);
             }
+            // 如果节点是一个 SqlNodeList（表示一个节点的列表，如 SQL 中的 IN 子句）
         } else if (node instanceof SqlNodeList) {
             final SqlNodeList list = (SqlNodeList) node;
+            // 遍历 SqlNodeList 中的每个节点
             for (int i = 0; i < list.size(); i++) {
+                // 获取当前节点
                 SqlNode operand = list.get(i);
+                // 对当前节点进行无条件重写
                 SqlNode newOperand = performUnconditionalRewrites(operand, false);
+                // 如果新的节点不为 null，则替换旧的节点
                 if (newOperand != null) {
                     list.set(i, newOperand);
                 }
@@ -1341,7 +1418,9 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
         }
 
         // now transform node itself
+        // 获取节点的 SqlKind 类型
         final SqlKind kind = node.getKind();
+        // 根据 SqlKind 类型进行不同的处理
         switch (kind) {
             case VALUES:
                 // Do not rewrite VALUES clauses.
@@ -1350,64 +1429,97 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
                 // in various cases such as FROM (VALUES(...)) [ AS alias ]
                 // where the rewrite was invoked over and over making the
                 // expression grow indefinitely.
+                // 不重写 VALUES 子句。
+                // 在某些时候，我们曾经将 VALUES(...) 子句重写为 (SELECT * FROM VALUES(...))，
+                // 但这在各种情况下都存在问题，比如 FROM (VALUES(...)) [ AS alias ]，
+                // 在这种情况下，重写会被反复调用，导致表达式无限增长。
                 return node;
+            // 如果节点是 ORDER BY 子句
             case ORDER_BY:
                 {
                     SqlOrderBy orderBy = (SqlOrderBy) node;
+                    // 处理 OFFSET 和 FETCH 子句（如果存在）
                     handleOffsetFetch(orderBy.offset, orderBy.fetch);
+                    // 如果 ORDER BY 的查询是一个 SqlSelect
                     if (orderBy.query instanceof SqlSelect) {
                         SqlSelect select = (SqlSelect) orderBy.query;
 
                         // Don't clobber existing ORDER BY.  It may be needed for
                         // an order-sensitive function like RANK.
+                        // 不要覆盖现有的 ORDER BY 子句。它可能对于像 RANK 这样的顺序敏感函数是必要的。
                         if (select.getOrderList() == null) {
                             // push ORDER BY into existing select
+                            // 将 ORDER BY 子句推入现有的 SELECT 语句中
                             select.setOrderBy(orderBy.orderList);
                             select.setOffset(orderBy.offset);
                             select.setFetch(orderBy.fetch);
+                            // 返回修改后的 SqlSelect 节点
                             return select;
                         }
                     }
+                    // 如果 ORDER BY 的查询是一个 SqlWith，并且 SqlWith 的主体是一个 SqlSelect
                     if (orderBy.query instanceof SqlWith
                             && ((SqlWith) orderBy.query).body instanceof SqlSelect) {
+                        // 将查询强制转换为 SqlWith 类型
                         SqlWith with = (SqlWith) orderBy.query;
+                        // 将 SqlWith 的主体强制转换为 SqlSelect 类型
                         SqlSelect select = (SqlSelect) with.body;
 
                         // Don't clobber existing ORDER BY.  It may be needed for
                         // an order-sensitive function like RANK.
+                        // 不要覆盖现有的 ORDER BY 子句。它可能对于像 RANK 这样的顺序敏感函数是必要的。
+                        // 检查 SqlSelect 是否没有现有的 ORDER BY 子句
                         if (select.getOrderList() == null) {
                             // push ORDER BY into existing select
+                            // 将外部的 ORDER BY 子句推入到现有的 SqlSelect 语句中
                             select.setOrderBy(orderBy.orderList);
-                            select.setOffset(orderBy.offset);
-                            select.setFetch(orderBy.fetch);
+                            select.setOffset(orderBy.offset);// 设置 OFFSET（如果有）
+                            select.setFetch(orderBy.fetch);// 设置 FETCH（如果有）
+                            // 因为我们修改了 SqlWith 的主体 SqlSelect，所以直接返回修改后的 SqlWith
                             return with;
                         }
                     }
+                    // 创建一个新的 SqlNodeList，用于构建新的 SELECT 查询的字段列表
+                    // 这里默认使用 "*" 作为字段，表明选择所有字段
                     final SqlNodeList selectList = new SqlNodeList(SqlParserPos.ZERO);
                     selectList.add(SqlIdentifier.star(SqlParserPos.ZERO));
+                    // 定义一个 SqlNodeList 类型的变量 orderList，
                     final SqlNodeList orderList;
+                    // 调用方法 getInnerSelect 来获取内部的 SqlSelect 节点
                     SqlSelect innerSelect = getInnerSelect(node);
+                    // 检查是否成功获取到了内部 SqlSelect 节点，并且该 SqlSelect 是否包含聚合函数
                     if (innerSelect != null && isAggregate(innerSelect)) {
+                        // 复制原始的 ORDER BY 子句列表，避免直接修改原始对象
                         orderList = SqlNode.clone(orderBy.orderList);
                         // We assume that ORDER BY item does not have ASC etc.
                         // We assume that ORDER BY item is present in SELECT list.
+                        // 假设 ORDER BY 子句中的项没有 ASC、DESC 等排序关键字
+                        // 假设 ORDER BY 子句中的项都存在于 SELECT 列表中
                         for (int i = 0; i < orderList.size(); i++) {
+                            // 遍历 ORDER BY 子句中的每一项
                             SqlNode sqlNode = orderList.get(i);
+                            // 获取内部 SqlSelect 的 SELECT 列表
                             SqlNodeList selectList2 =
                                     SqlNonNullableAccessors.getSelectList(innerSelect);
+                            // 遍历内部 SqlSelect 的 SELECT 列表中的每一项，并且跟踪其索引位置
                             for (Ord<SqlNode> sel : Ord.zip(selectList2)) {
+                                // 忽略可能的别名（AS 关键字后的部分），并比较两个 SqlNode 是否相等
                                 if (stripAs(sel.e).equalsDeep(sqlNode, Litmus.IGNORE)) {
+                                    // 如果找到了匹配的项，则将 ORDER BY 子句中的该项替换为对应在 SELECT 列表中的索引位置（从1开始）
+                                    // 这通常用于在聚合查询中根据 SELECT 列表中的列位置进行排序
                                     orderList.set(
                                             i,
                                             SqlLiteral.createExactNumeric(
-                                                    Integer.toString(sel.i + 1),
+                                                    Integer.toString(sel.i + 1),// 注意索引是从0开始的，所以+1来转换为从1开始
                                                     SqlParserPos.ZERO));
                                 }
                             }
                         }
                     } else {
+                        // 如果内部 SqlSelect 不包含聚合函数，或者没有成功获取到内部 SqlSelect，则直接使用原始的 ORDER BY 子句
                         orderList = orderBy.orderList;
                     }
+                    // 创建一个新的 SqlSelect 节点，并设置其各个属性
                     return new SqlSelect(
                             SqlParserPos.ZERO,
                             null,
@@ -1426,9 +1538,14 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
             case EXPLICIT_TABLE:
                 {
                     // (TABLE t) is equivalent to (SELECT * FROM t)
-                    SqlCall call = (SqlCall) node;
+                    // EXPLICIT_TABLE 情况，即形如 (TABLE t) 的表达式，这等价于 (SELECT * FROM t)
+                    // 将其转换为一个 SqlSelect 表达式
+                    SqlCall call = (SqlCall) node;// 将节点强制转换为 SqlCall 类型
+                    // 创建一个新的 SqlNodeList，用于存储 SELECT 列表中的项
                     final SqlNodeList selectList = new SqlNodeList(SqlParserPos.ZERO);
+                    // 添加一个 "*" 到 SELECT 列表中，表示选择所有列
                     selectList.add(SqlIdentifier.star(SqlParserPos.ZERO));
+                    // 创建一个新的 SqlSelect 表达式，表示 SELECT * FROM [给定的表]
                     return new SqlSelect(
                             SqlParserPos.ZERO,
                             null,
@@ -1446,22 +1563,28 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
 
             case DELETE:
                 {
-                    SqlDelete call = (SqlDelete) node;
+                    // DELETE 情况，处理 DELETE 语句
+                    SqlDelete call = (SqlDelete) node;// 将节点强制转换为 SqlDelete 类型
+                    // 创建一个用于 DELETE 语句的源 SELECT 表达式
                     SqlSelect select = createSourceSelectForDelete(call);
+                    // 将创建的源 SELECT 表达式设置到 DELETE 语句中
                     call.setSourceSelect(select);
                     break;
                 }
-
+            // 根据节点的类型进行不同的处理
             case UPDATE:
                 {
-                    SqlUpdate call = (SqlUpdate) node;
-                    SqlSelect select = createSourceSelectForUpdate(call);
-                    call.setSourceSelect(select);
+                    // 处理 UPDATE 语句
+                    SqlUpdate call = (SqlUpdate) node;// 将节点强制转换为 SqlUpdate 类型
+                    SqlSelect select = createSourceSelectForUpdate(call);// 为 UPDATE 语句创建源 SELECT 表达式
+                    call.setSourceSelect(select); // 将源 SELECT 表达式设置到 UPDATE 语句中
 
                     // See if we're supposed to rewrite UPDATE to MERGE
                     // (unless this is the UPDATE clause of a MERGE,
                     // in which case leave it alone).
-                    if (!validatingSqlMerge) {
+                    // 检查是否需要将 UPDATE 语句重写为 MERGE 语句
+                    // （除非这个 UPDATE 语句是 MERGE 语句中的一部分，如果是的话则保持原样）
+                    if (!validatingSqlMerge) {// 如果当前不是在验证 MERGE 语句
                         SqlNode selfJoinSrcExpr =
                                 getSelfJoinExprForUpdate(call.getTargetTable(), UPDATE_SRC_ALIAS);
                         if (selfJoinSrcExpr != null) {
@@ -1473,13 +1596,16 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
 
             case MERGE:
                 {
-                    SqlMerge call = (SqlMerge) node;
-                    rewriteMerge(call);
+                    // 处理 MERGE 语句
+                    SqlMerge call = (SqlMerge) node;// 将节点强制转换为 SqlMerge 类型
+                    rewriteMerge(call);// 重写 MERGE 语句（可能是添加一些默认行为、优化等）
                     break;
                 }
             default:
+                // 对于其他类型的节点，不进行任何处理
                 break;
         }
+        //返回Node
         return node;
     }
 
@@ -2220,19 +2346,34 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
      * @param ns Namespace
      * @param forceNullable Whether to force the type of namespace to be nullable
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 注册一个新的命名空间，并将其作为其父作用域的子节点添加。派生类可以重写此方法以在创建命名空间时对其进行修改。
+     *
+     * @param usingScope 父作用域（该作用域希望在此命名空间中查找事物）
+     * @param alias 别名，父作用域将使用该别名引用此命名空间
+     * @param ns 命名空间
+     * @param forceNullable 是否强制命名空间的类型为可为空
+     */
     protected void registerNamespace(
             @Nullable SqlValidatorScope usingScope,
             @Nullable String alias,
             SqlValidatorNamespace ns,
             boolean forceNullable) {
+        // 将命名空间添加到命名空间集合中，使用命名空间节点的唯一标识作为键
         namespaces.put(requireNonNull(ns.getNode(), () -> "ns.getNode() for " + ns), ns);
+        // 如果提供了父作用域
         if (usingScope != null) {
+            // 如果别名为空，则抛出异常并显示错误消息
             assert alias != null
                     : "Registering namespace "
                             + ns
                             + ", into scope "
                             + usingScope
                             + ", so alias must not be null";
+            // 将命名空间作为子节点添加到父作用域中，并使用指定的别名和是否可空标记
             usingScope.addChild(ns, alias, forceNullable);
         }
     }
@@ -2262,6 +2403,24 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
      *     tree are visible in the scope
      * @return registered node, usually the same as {@code node}
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 作用域和命名空间隐含了FROM子句中的关系表达式。
+     * 注册FROM子句中的节点，并可能为其添加别名。
+     *
+     * @param parentScope 父作用域
+     * @param usingScope USING子句的作用域（如果存在）
+     * @param register 是否需要注册该节点
+     * @param node 需要注册的SQL节点
+     * @param enclosingNode 包含此节点的外部节点（如SELECT语句）
+     * @param alias 节点别名，可能为null
+     * @param extendList 扩展列表（如LATERAL JOIN的扩展条件），可能为null
+     * @param forceNullable 是否强制节点为可空
+     * @param lateral 是否为LATERAL JOIN
+     * @return 注册后的SQL节点（可能包含别名）
+     */
     private SqlNode registerFrom(
             SqlValidatorScope parentScope,
             SqlValidatorScope usingScope,
@@ -2278,20 +2437,36 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
         SqlNode newExpr;
 
         // Add an alias if necessary.
+        // 如果需要，为节点添加别名。
         SqlNode newNode = node;
         if (alias == null) {
             switch (kind) {
-                case IDENTIFIER:
-                case OVER:
+                case IDENTIFIER:// 如果节点是标识符（如表名或列名）
+                case OVER:// 如果节点是OVER子句（如窗口函数）
+                    // 尝试从节点本身推导出别名
                     alias = deriveAlias(node, -1);
+                    // 如果无法推导出别名，则使用自动生成的ID作为别名
                     if (alias == null) {
                         alias = deriveAliasNonNull(node, nextGeneratedId++);
                     }
+                    // 如果配置要求标识符扩展，则为节点添加别名
                     if (config.identifierExpansion()) {
                         newNode = SqlValidatorUtil.addAlias(node, alias);
                     }
                     break;
 
+                // 当节点是以下类型之一时：
+                // SELECT：选择语句
+                // UNION：联合查询
+                // INTERSECT：交集查询
+                // EXCEPT：差集查询
+                // VALUES：值构造器
+                // UNNEST：展开集合（常用于将数组展开成行）
+                // OTHER_FUNCTION：其他函数（可能是某个特定的函数节点类型）
+                // COLLECTION_TABLE：集合表（例如，一个表值函数返回的集合）
+                // PIVOT：透视操作（将行转换为列）
+                // UNPIVOT：取消透视操作（将列转换为行）
+                // MATCH_RECOGNIZE：模式识别（用于在流或表中识别复杂事件模式）
                 case SELECT:
                 case UNION:
                 case INTERSECT:
@@ -2306,50 +2481,70 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
 
                     // give this anonymous construct a name since later
                     // query processing stages rely on it
+
+                    // 使用自动生成的ID作为别名
                     alias = deriveAliasNonNull(node, nextGeneratedId++);
                     if (config.identifierExpansion()) {
                         // Since we're expanding identifiers, we should make the
                         // aliases explicit too, otherwise the expanded query
                         // will not be consistent if we convert back to SQL, e.g.
                         // "select EXPR$1.EXPR$2 from values (1)".
+                        // 展开的查询将不一致，例如："select EXPR$1.EXPR$2 from values (1)"。
                         newNode = SqlValidatorUtil.addAlias(node, alias);
                     }
                     break;
                 default:
+                    // 其他情况，不进行特别处理
                     break;
             }
         }
-
+        // 如果该节点是LATERAL JOIN的一部分
         if (lateral) {
+            // 从usingScope开始，向上遍历作用域链，直到找到非JoinScope的作用域
             SqlValidatorScope s = usingScope;
             while (s instanceof JoinScope) {
                 s = ((JoinScope) s).getUsingScope();
             }
+            // 获取最终作用域s对应的节点，如果s为空，则使用原始节点node
             final SqlNode node2 = s != null ? s.getNode() : node;
+            // 创建一个新的TableScope，该作用域以parentScope为父作用域，并关联节点node2
             final TableScope tableScope = new TableScope(parentScope, node2);
+            // 如果usingScope是ListScope类型（可能包含多个子作用域）
             if (usingScope instanceof ListScope) {
+                // 遍历ListScope的子作用域，并将它们的namespace、name和nullable添加到新的TableScope中
                 for (ScopeChild child : ((ListScope) usingScope).children) {
                     tableScope.addChild(child.namespace, child.name, child.nullable);
                 }
             }
+            // 将parentScope更新为新的TableScope，后续处理将使用这个新的作用域
             parentScope = tableScope;
         }
 
-        SqlCall call;
-        SqlNode operand;
-        SqlNode newOperand;
-
+        SqlCall call; // SQL调用对象，表示一个SQL函数调用或SQL操作（如SELECT, AS等）
+        SqlNode operand;  // 操作数节点，表示SQL操作中的某个参数或子表达式
+        SqlNode newOperand; // 新的操作数节点，可能是在处理过程中生成或修改的
+        // 根据kind（操作类型）进行不同的处理
         switch (kind) {
-            case AS:
+            case AS: // 如果是AS操作
+                // 将节点强制转换为SqlCall类型，因为AS通常是一个函数调用或操作
                 call = (SqlCall) node;
+                // 如果别名alias尚未设置，则从call的第二个操作数中获取别名
                 if (alias == null) {
-                    alias = String.valueOf(call.operand(1));
+                    alias = String.valueOf(call.operand(1));// 获取AS操作后的别名
                 }
+                // 获取AS操作前的表达式（即需要设置别名的原始表达式）
                 expr = call.operand(0);
+                // 判断是否需要为别名添加命名空间
+                // 需要添加的情况包括：
+                // 1. 操作数数量大于2（AS后可能还有其他参数）
+                // 2. 原始表达式是VALUES类型（如VALUES子句）
+                // 3. 原始表达式是UNNEST类型（如UNNEST函数）
                 final boolean needAliasNamespace =
                         call.operandCount() > 2
                                 || expr.getKind() == SqlKind.VALUES
                                 || expr.getKind() == SqlKind.UNNEST;
+                // 调用registerFrom方法处理原始表达式，并尝试为其注册一个别名
+                // 参数包括父作用域、当前作用域、是否需要别名命名空间、原始表达式、封闭节点、别名等
                 newExpr =
                         registerFrom(
                                 parentScope,
@@ -2361,19 +2556,26 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
                                 extendList,
                                 forceNullable,
                                 lateral);
+                // 如果处理后的新表达式与原始表达式不同，则更新SqlCall中的操作数
                 if (newExpr != expr) {
-                    call.setOperand(0, newExpr);
+                    call.setOperand(0, newExpr);// 将AS操作前的表达式替换为新的表达式
                 }
 
                 // If alias has a column list, introduce a namespace to translate
                 // column names. We skipped registering it just now.
+                // 如果别名alias包含了列列表（如子查询中的列），则需要引入一个命名空间来转换列名。
+                // 我们刚才并没有直接注册它（因为别名可能是通过AS操作引入的）。
                 if (needAliasNamespace) {
+                    // 注册一个命名空间，将别名alias与一个新的AliasNamespace对象关联起来。
+                    // AliasNamespace对象可能包含了一些用于解析列名的逻辑和上下文信息。
+                    // 参数包括：当前作用域usingScope、别名alias、新创建的AliasNamespace对象、是否强制设置为可为空forceNullable。
                     registerNamespace(
                             usingScope,
                             alias,
                             new AliasNamespace(this, call, enclosingNode),
                             forceNullable);
                 }
+                // 返回原始的节点node
                 return node;
 
             case MATCH_RECOGNIZE:
@@ -2676,6 +2878,16 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
      * @param enclosingNode Enclosing node
      * @return Select namespace
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 为<code>SELECT</code>节点创建一个命名空间。派生类可以覆盖此工厂方法。
+     *
+     * @param select SELECT节点
+     * @param enclosingNode 包围节点（即包含此SELECT节点的上级节点）
+     * @return SELECT命名空间对象
+     */
     protected SelectNamespace createSelectNamespace(SqlSelect select, SqlNode enclosingNode) {
         return new SelectNamespace(this, select, enclosingNode);
     }
@@ -2700,6 +2912,19 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
      * @param node Query node
      * @param alias Name of this query within its parent. Must be specified if usingScope != null
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 在父作用域中注册一个查询。
+     *
+     * @param parentScope 父作用域，此作用域在解析对象时会转向的父作用域
+     * @param usingScope 使用的作用域，此作用域的子列表应添加当前作用域。如果不需要将当前作用域添加到任何子列表中，则为null
+     * @param node 查询节点
+     * @param enclosingNode 包含查询节点的节点（通常用于解析上下文）
+     * @param alias 在其父作用域中此查询的名称。如果使用作用域（usingScope）不为null，则必须指定此别名
+     * @param forceNullable 是否强制将此查询的结果设为可为空（nullable）。这可能会影响查询结果的类型推断
+     */
     private void registerQuery(
             SqlValidatorScope parentScope,
             @Nullable SqlValidatorScope usingScope,
@@ -2707,7 +2932,9 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
             SqlNode enclosingNode,
             @Nullable String alias,
             boolean forceNullable) {
+        // 验证参数，确保如果使用作用域（usingScope）不为null，则别名（alias）必须被指定
         Preconditions.checkArgument(usingScope == null || alias != null);
+        // 调用另一个重载版本的registerQuery方法，增加了一个额外的参数，可能用于控制额外的注册行为
         registerQuery(parentScope, usingScope, node, enclosingNode, alias, forceNullable, true);
     }
 
@@ -2721,6 +2948,20 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
      * @param checkUpdate if true, validate that the update feature is supported if validating the
      *     update statement
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 在父作用域中注册一个查询。
+     *
+     * @param parentScope 父作用域，此作用域在解析对象时会转向的父作用域
+     * @param usingScope 使用的作用域，此作用域的子列表应添加当前作用域。如果不需要将当前作用域添加到任何子列表中，则为null
+     * @param node 查询节点
+     * @param enclosingNode 包含查询节点的节点（通常用于解析上下文）
+     * @param alias 在其父作用域中此查询的名称。如果使用作用域（usingScope）不为null，则必须指定此别名
+     * @param forceNullable 是否强制将此查询的结果设为可为空（nullable）。这可能会影响查询结果的类型推断
+     * @param checkUpdate 如果为true，则在验证更新语句时验证是否支持更新功能
+     */
     private void registerQuery(
             SqlValidatorScope parentScope,
             @Nullable SqlValidatorScope usingScope,
@@ -2729,35 +2970,53 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
             @Nullable String alias,
             boolean forceNullable,
             boolean checkUpdate) {
+        // 检查查询节点和包含查询节点的节点是否非空
         requireNonNull(node, "node");
         requireNonNull(enclosingNode, "enclosingNode");
+        // 验证参数，确保如果使用作用域（usingScope）不为null，则别名（alias）必须被指定
         Preconditions.checkArgument(usingScope == null || alias != null);
 
         SqlCall call;
         List<SqlNode> operands;
+        // 根据node的类型进行判断和处理
         switch (node.getKind()) {
             case SELECT:
+                // 如果node是一个SqlSelect类型的节点
                 final SqlSelect select = (SqlSelect) node;
+                // 创建一个SelectNamespace对象，用于在验证和解析过程中存储关于SELECT语句的信息
                 final SelectNamespace selectNs = createSelectNamespace(select, enclosingNode);
+                // 在使用作用域中注册此查询的命名空间，如果usingScope为null，则使用parentScope
                 registerNamespace(usingScope, alias, selectNs, forceNullable);
+                // 设置窗口函数的父作用域，如果usingScope不为null，则使用usingScope，否则使用parentScope
                 final SqlValidatorScope windowParentScope =
                         (usingScope != null) ? usingScope : parentScope;
+                // 创建一个SelectScope对象，用于在验证和解析过程中存储关于SELECT语句的作用域信息
                 SelectScope selectScope = new SelectScope(parentScope, windowParentScope, select);
+                // 将SelectScope对象存储到scopes映射中，以SqlSelect节点为键
                 scopes.put(select, selectScope);
 
                 // Start by registering the WHERE clause
+                // 首先注册WHERE子句的作用域
+                // clauseScopes映射存储了子句和它们对应的作用域信息
                 clauseScopes.put(IdPair.of(select, Clause.WHERE), selectScope);
+                // 注册WHERE子句中的子查询
                 registerOperandSubQueries(selectScope, select, SqlSelect.WHERE_OPERAND);
 
                 // Register FROM with the inherited scope 'parentScope', not
                 // 'selectScope', otherwise tables in the FROM clause would be
                 // able to see each other.
+                // 注册FROM子句时，使用继承的父作用域'parentScope'，而不是'selectScope'。
+                // 这是因为如果使用'selectScope'，FROM子句中的表将能够相互看到对方，
+                // 这在SQL的语义中是不正确的，因为FROM子句中的表是独立的。
+                // 因此，我们需要确保它们各自在父作用域中独立注册。
+
+                //获取From对应的 SQLNode
                 final SqlNode from = select.getFrom();
                 if (from != null) {
                     final SqlNode newFrom =
                             registerFrom(
-                                    parentScope,
-                                    selectScope,
+                                    parentScope,// 使用父作用域
+                                    selectScope,// 提供selectScope作为上下文（可能用于某些特殊处理）
                                     true,
                                     from,
                                     from,
@@ -2766,6 +3025,7 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
                                     false,
                                     false);
                     if (newFrom != from) {
+                        // 如果FROM子句在注册过程中被修改（例如，通过别名替换等），则更新select节点的FROM子句
                         select.setFrom(newFrom);
                     }
                 }
@@ -2773,41 +3033,66 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
                 // If this is an aggregating query, the SELECT list and HAVING
                 // clause use a different scope, where you can only reference
                 // columns which are in the GROUP BY clause.
+
+                // 如果这是一个聚合查询（即包含GROUP BY子句或聚合函数），
+                // 则SELECT列表和HAVING子句将使用不同的作用域，
+                // 在这个作用域中，你只能引用GROUP BY子句中的列。
                 SqlValidatorScope aggScope = selectScope;
                 if (isAggregate(select)) {
+                    // 创建一个AggregatingSelectScope对象，用于处理聚合查询中的SELECT和HAVING子句
                     aggScope = new AggregatingSelectScope(selectScope, select, false);
+                    // 将SELECT子句的作用域设置为aggScope
                     clauseScopes.put(IdPair.of(select, Clause.SELECT), aggScope);
                 } else {
+                    // 如果不是聚合查询，则直接使用selectScope作为SELECT子句的作用域
                     clauseScopes.put(IdPair.of(select, Clause.SELECT), selectScope);
                 }
+                // 如果SELECT语句包含GROUP BY子句
                 if (select.getGroup() != null) {
+                    // 创建一个GroupByScope对象，用于处理GROUP BY子句
                     GroupByScope groupByScope =
                             new GroupByScope(selectScope, select.getGroup(), select);
+                    // 将GROUP BY子句的作用域设置为groupByScope
                     clauseScopes.put(IdPair.of(select, Clause.GROUP_BY), groupByScope);
+                    // 注册GROUP BY子句中的子查询
                     registerSubQueries(groupByScope, select.getGroup());
                 }
+                // 注册HAVING子句中的子查询（如果有的话）
                 registerOperandSubQueries(aggScope, select, SqlSelect.HAVING_OPERAND);
+                // 注册SELECT语句中的子查询
                 registerSubQueries(aggScope, SqlNonNullableAccessors.getSelectList(select));
+                // 获取SELECT语句的ORDER BY子句
                 final SqlNodeList orderList = select.getOrderList();
                 if (orderList != null) {
                     // If the query is 'SELECT DISTINCT', restrict the columns
                     // available to the ORDER BY clause.
+                    // 如果查询是'SELECT DISTINCT'，则限制在ORDER BY子句中可用的列。
+                    // 这意味着DISTINCT查询的ORDER BY子句只能引用DISTINCT列表中的列。
                     if (select.isDistinct()) {
                         aggScope = new AggregatingSelectScope(selectScope, select, true);
                     }
+                    // 创建一个OrderByScope对象，用于处理ORDER BY子句
                     OrderByScope orderScope = new OrderByScope(aggScope, orderList, select);
+                    // 将ORDER BY子句的作用域设置为orderScope
                     clauseScopes.put(IdPair.of(select, Clause.ORDER), orderScope);
+                    // 注册ORDER BY子句中的子查询（如果有的话）
                     registerSubQueries(orderScope, orderList);
 
                     if (!isAggregate(select)) {
                         // Since this is not an aggregating query,
                         // there cannot be any aggregates in the ORDER BY clause.
+
+                        // 因为这不是一个聚合查询，
+                        // 所以ORDER BY子句中不能有任何聚合函数。
+                        // 查找ORDER BY子句中的聚合函数
                         SqlNode agg = aggFinder.findAgg(orderList);
                         if (agg != null) {
+                            // 如果找到了聚合函数，则抛出验证错误
                             throw newValidationError(agg, RESOURCE.aggregateIllegalInOrderBy());
                         }
                     }
                 }
+                // 结束处理当前SELECT语句
                 break;
 
             case INTERSECT:
@@ -3079,40 +3364,72 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
         return aggFinder.findAgg(selectNode) != null;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 验证给定SQL节点的特性。
+     *
+     * @param node 需要验证特性的SQL节点
+     */
     private void validateNodeFeature(SqlNode node) {
+        // 根据节点的类型进行特性验证
         switch (node.getKind()) {
+            // 如果节点是多重集值构造器，则验证其特性
             case MULTISET_VALUE_CONSTRUCTOR:
                 validateFeature(RESOURCE.sQLFeature_S271(), node.getParserPosition());
                 break;
             default:
+                // 对于其他类型的节点，不进行特性验证
                 break;
         }
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 注册给定节点及其子节点中的所有子查询。
+     *
+     * @param parentScope 父作用域
+     * @param node SQL节点，可能为null
+     */
     private void registerSubQueries(SqlValidatorScope parentScope, @Nullable SqlNode node) {
+        // 如果节点为空，则直接返回
         if (node == null) {
             return;
         }
+        // 如果节点是查询类型、多重集查询构造器或多重集值构造器
         if (node.getKind().belongsTo(SqlKind.QUERY)
                 || node.getKind() == SqlKind.MULTISET_QUERY_CONSTRUCTOR
                 || node.getKind() == SqlKind.MULTISET_VALUE_CONSTRUCTOR) {
+            // 注册该查询
             registerQuery(parentScope, null, node, node, null, false);
         } else if (node instanceof SqlCall) {
-            validateNodeFeature(node);
+            // 如果节点是SQL调用（如函数或操作符）
+            validateNodeFeature(node);// 验证节点的特性
             SqlCall call = (SqlCall) node;
+            // 遍历调用中的每个操作数
             for (int i = 0; i < call.operandCount(); i++) {
+                // 注册操作数中的子查询
                 registerOperandSubQueries(parentScope, call, i);
             }
         } else if (node instanceof SqlNodeList) {
+            // 如果节点是SQL节点列表（如SELECT语句中的列列表）
             SqlNodeList list = (SqlNodeList) node;
+            // 遍历列表中的每个节点
             for (int i = 0, count = list.size(); i < count; i++) {
                 SqlNode listNode = list.get(i);
+                // 如果列表中的节点是查询类型
                 if (listNode.getKind().belongsTo(SqlKind.QUERY)) {
+                    // 将该查询包装为一个scalar子查询
                     listNode =
                             SqlStdOperatorTable.SCALAR_QUERY.createCall(
                                     listNode.getParserPosition(), listNode);
+                    // 将包装后的scalar子查询设置回列表中
                     list.set(i, listNode);
                 }
+                // 递归注册列表节点的子查询
                 registerSubQueries(parentScope, listNode);
             }
         } else {
@@ -3129,19 +3446,36 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
      * @param operandOrdinal Ordinal of operand within call
      * @see SqlOperator#argumentMustBeScalar(int)
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 注册给定调用操作数内的任何子查询，并在操作符需要时将该操作数转换为 scalar 子查询。
+     *
+     * @param parentScope 父作用域
+     * @param call 调用对象（SqlCall）
+     * @param operandOrdinal 调用中操作数的序数（位置索引）
+     * @see SqlOperator#argumentMustBeScalar(int) 用于判断操作数是否必须为 scalar 的方法
+     */
     private void registerOperandSubQueries(
             SqlValidatorScope parentScope, SqlCall call, int operandOrdinal) {
+        // 获取指定序号的操作数
         SqlNode operand = call.operand(operandOrdinal);
         if (operand == null) {
+            // 如果操作数为空，则直接返回
             return;
         }
+        // 如果操作数是查询类型（SqlKind.QUERY），并且调用该操作符时要求该操作数必须为 scalar
         if (operand.getKind().belongsTo(SqlKind.QUERY)
                 && call.getOperator().argumentMustBeScalar(operandOrdinal)) {
+            // 将该操作数包装为一个 scalar 子查询
             operand =
                     SqlStdOperatorTable.SCALAR_QUERY.createCall(
                             operand.getParserPosition(), operand);
+            // 将包装后的 scalar 子查询设置回调用对象的操作数中
             call.setOperand(operandOrdinal, operand);
         }
+        // 注册操作数中的子查询
         registerSubQueries(parentScope, operand);
     }
 

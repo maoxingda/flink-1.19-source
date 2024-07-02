@@ -51,6 +51,11 @@ import static org.apache.flink.connectors.hive.HiveOptions.TABLE_EXEC_HIVE_NATIV
 import static org.apache.flink.util.Preconditions.checkArgument;
 
 /** Module to provide Hive built-in metadata. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 提供 Hive 内置元数据的模块
+*/
 public class HiveModule implements Module {
 
     // a set of functions that shouldn't be overridden by HiveModule

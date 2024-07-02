@@ -63,6 +63,12 @@ import static org.apache.flink.table.planner.plan.type.FlinkReturnTypes.VARCHAR_
 import static org.apache.flink.table.planner.plan.type.FlinkReturnTypes.VARCHAR_NOT_NULL;
 
 /** Operator table that contains only Flink-specific functions and operators. */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 包含Flink特定函数和运算符的运算符表
+ */
 public class FlinkSqlOperatorTable extends ReflectiveSqlOperatorTable {
 
     /** The table of contains Flink-specific operators. */

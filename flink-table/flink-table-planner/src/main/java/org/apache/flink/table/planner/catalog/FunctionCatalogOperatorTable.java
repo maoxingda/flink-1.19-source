@@ -76,6 +76,18 @@ public class FunctionCatalogOperatorTable implements SqlOperatorTable {
         this.rexFactory = rexFactory;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 查找操作符重载。
+     *
+     * @param opName 操作符的名称。
+     * @param category 函数或过程的类别。
+     * @param syntax SQL语法，这里可能用于确定如何解析或处理操作符。
+     * @param operatorList 用于存储找到的操作符的列表。
+     * @param nameMatcher 名称匹配器，尽管在这个方法体内未直接使用，但可能用于更复杂的匹配逻辑
+     */
     @Override
     public void lookupOperatorOverloads(
             SqlIdentifier opName,
@@ -83,20 +95,23 @@ public class FunctionCatalogOperatorTable implements SqlOperatorTable {
             SqlSyntax syntax,
             List<SqlOperator> operatorList,
             SqlNameMatcher nameMatcher) {
+        // 如果操作符名称是星号（*），则直接返回，因为星号通常用于通配符匹配，而不是特定操作符的查找。
         if (opName.isStar()) {
             return;
         }
-
+        // 将SqlIdentifier转换为UnresolvedIdentifier，以便进行后续的查找操作。
         final UnresolvedIdentifier identifier = UnresolvedIdentifier.of(opName.names);
-
+        // 根据函数类别处理查找逻辑
         if (category == SqlFunctionCategory.USER_DEFINED_PROCEDURE) {
+            // 如果是用户定义的过程，则在函数目录中查找过程
             functionCatalog
-                    .lookupProcedure(identifier)
+                    .lookupProcedure(identifier)// 在函数目录中查找过程
                     .flatMap(this::convertToSqlProcedure)
                     .ifPresent(operatorList::add);
         } else {
+            // 否则，在函数目录中查找函数
             functionCatalog
-                    .lookupFunction(identifier)
+                    .lookupFunction(identifier)// 在函数目录中查找过程
                     .flatMap(resolvedFunction -> convertToSqlFunction(category, resolvedFunction))
                     .ifPresent(operatorList::add);
         }
@@ -107,22 +122,37 @@ public class FunctionCatalogOperatorTable implements SqlOperatorTable {
         return Optional.of(BridgingSqlProcedure.of(dataTypeFactory, resolvedProcedure));
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 转换SQLFunction
+     */
     private Optional<SqlFunction> convertToSqlFunction(
             @Nullable SqlFunctionCategory category, ContextResolvedFunction resolvedFunction) {
+        // 获取函数的定义
         final FunctionDefinition definition = resolvedFunction.getDefinition();
+        // 获取函数的标识符，如果不存在则返回null
         final FunctionIdentifier identifier = resolvedFunction.getIdentifier().orElse(null);
         // legacy
+        // 处理旧有逻辑
+        // 如果函数定义是聚合函数定义
         if (definition instanceof AggregateFunctionDefinition) {
+            // 转换为SQL聚合函数
             return convertAggregateFunction(identifier, (AggregateFunctionDefinition) definition);
         } else if (definition instanceof ScalarFunctionDefinition) {
             ScalarFunctionDefinition def = (ScalarFunctionDefinition) definition;
+            // 如果函数定义是标量函数定义
             return convertScalarFunction(identifier, def);
         } else if (definition instanceof TableFunctionDefinition
                 && category != null
                 && category.isTableFunction()) {
+            // 如果函数定义是表函数定义
             return convertTableFunction(identifier, (TableFunctionDefinition) definition);
         }
         // new stack
+        // 处理新逻辑栈
+        // 如果以上旧有逻辑都不匹配，则尝试使用新的方式转换函数
         return convertToBridgingSqlFunction(category, resolvedFunction);
     }
 
@@ -175,11 +205,18 @@ public class FunctionCatalogOperatorTable implements SqlOperatorTable {
      * Verifies which kinds of functions are allowed to be returned from the catalog given the
      * context information.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 根据上下文信息验证从目录中返回的函数类型是否被允许。
+     */
     private boolean verifyFunctionKind(
             @Nullable SqlFunctionCategory category, ContextResolvedFunction resolvedFunction) {
         final FunctionDefinition definition = resolvedFunction.getDefinition();
 
         // built-in functions without implementation are handled separately
+       // 内置函数且没有运行时实现的情况需要单独处理
         if (definition instanceof BuiltInFunctionDefinition) {
             final BuiltInFunctionDefinition builtInFunction =
                     (BuiltInFunctionDefinition) definition;
@@ -187,23 +224,27 @@ public class FunctionCatalogOperatorTable implements SqlOperatorTable {
                 return false;
             }
         }
-
+        // 获取函数的种类
         final FunctionKind kind = definition.getKind();
-
+        // 如果是表函数，则直接允许
         if (kind == FunctionKind.TABLE) {
             return true;
+            // 如果是标量函数、异步标量函数、聚合函数或表聚合函数
         } else if (kind == FunctionKind.SCALAR
                 || kind == FunctionKind.ASYNC_SCALAR
                 || kind == FunctionKind.AGGREGATE
                 || kind == FunctionKind.TABLE_AGGREGATE) {
+            // 如果指定了函数类别且该类别为表函数，但当前函数并非表函数，则抛出异常
             if (category != null && category.isTableFunction()) {
                 throw new ValidationException(
                         String.format(
                                 "Function '%s' cannot be used as a table function.",
                                 resolvedFunction));
             }
+            // 否则，这些函数类型是被允许的
             return true;
         }
+        // 其他函数种类不被允许
         return false;
     }
 

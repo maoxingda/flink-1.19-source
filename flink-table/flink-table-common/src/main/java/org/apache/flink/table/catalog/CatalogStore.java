@@ -32,6 +32,11 @@ import java.util.Set;
  * <p>It can be used in {@code CatalogManager} to retrieve, save and remove catalog in {@link
  * CatalogDescriptor} format at the external storage system.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 存储所有的Catalog
+*/
 @PublicEvolving
 public interface CatalogStore {
 

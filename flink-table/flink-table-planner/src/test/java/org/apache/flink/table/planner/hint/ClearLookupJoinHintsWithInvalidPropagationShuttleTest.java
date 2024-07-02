@@ -78,8 +78,7 @@ class ClearLookupJoinHintsWithInvalidPropagationShuttleTest
         util.tableEnv()
                 .createTemporarySystemFunction(
                         "MockOffset",
-                        new ClearLookupJoinHintsWithInvalidPropagationShuttleTest
-                                .MockOffsetTableFunction());
+                        new MockOffsetTableFunction());
     }
 
     @Test

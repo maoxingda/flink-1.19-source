@@ -32,6 +32,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /** Module of default core metadata in Flink. */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * “Flink 中默认核心元数据的模块
+*/
 @PublicEvolving
 public class CoreModule implements Module {
 

@@ -267,54 +267,81 @@ public class SqlNodeToOperationConversion {
         // validate the query
         // 验证查询
         final SqlNode validated = flinkPlanner.validate(sqlNode);
+        //将SqlNode转换为Operation
         return convertValidatedSqlNode(flinkPlanner, catalogManager, validated);
     }
 
     /** Convert a validated sql node to Operation. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将已验证的 SQL 节点转换为 Operation。
+    */
     private static Optional<Operation> convertValidatedSqlNode(
             FlinkPlannerImpl flinkPlanner, CatalogManager catalogManager, SqlNode validated) {
+        // 在转换之前执行一些前置操作  清除上下文环境中的ThreadLocal中的数据
         beforeConversion();
 
         // delegate conversion to the registered converters first
+        // 首先将转换任务委托给已注册的转换器
         SqlNodeConvertContext context = new SqlNodeConvertContext(flinkPlanner, catalogManager);
+        //validated转换为Operation，create database得到的为空Optional.empty()
         Optional<Operation> operation = SqlNodeConverters.convertSqlNode(validated, context);
         if (operation.isPresent()) {
+            // 如果转换器返回了有效的 Operation，则直接返回
             return operation;
         }
 
         // TODO: all the below conversion logic should be migrated to SqlNodeConverters
+        // 创建一个 SQL 节点到 Operation 的转换器
         SqlNodeToOperationConversion converter =
                 new SqlNodeToOperationConversion(flinkPlanner, catalogManager);
+        // 根据 SQL 节点的类型执行不同的转换逻辑
         if (validated instanceof SqlDropCatalog) {
+            // 如果 SQL 节点是删除 Catalog 的语句，则调用相应的转换方法
             return Optional.of(converter.convertDropCatalog((SqlDropCatalog) validated));
         } else if (validated instanceof SqlLoadModule) {
+            // 如果 SQL 节点是加载模块的语句，则调用相应的转换方法
             return Optional.of(converter.convertLoadModule((SqlLoadModule) validated));
         } else if (validated instanceof SqlShowCatalogs) {
+            // 如果 SQL 节点是显示所有 Catalog 的语句，则调用相应的转换方法
             return Optional.of(converter.convertShowCatalogs((SqlShowCatalogs) validated));
         } else if (validated instanceof SqlShowCurrentCatalog) {
+            // 如果 SQL 节点是显示当前 Catalog 的语句，则调用相应的转换方法
             return Optional.of(
                     converter.convertShowCurrentCatalog((SqlShowCurrentCatalog) validated));
         } else if (validated instanceof SqlShowModules) {
+            // 如果 SQL 节点是显示所有模块的语句，则调用相应的转换方法
             return Optional.of(converter.convertShowModules((SqlShowModules) validated));
         } else if (validated instanceof SqlUnloadModule) {
+            // 如果 SQL 节点是卸载模块的语句，则调用相应的转换方法
             return Optional.of(converter.convertUnloadModule((SqlUnloadModule) validated));
         } else if (validated instanceof SqlUseCatalog) {
+            // 如果 SQL 节点是设置使用 Catalog 的语句，则调用相应的转换方法
             return Optional.of(converter.convertUseCatalog((SqlUseCatalog) validated));
         } else if (validated instanceof SqlUseModules) {
+            // 调用converter的convertUseModules方法转换validated，并返回一个包含转换结果的Optional对象
             return Optional.of(converter.convertUseModules((SqlUseModules) validated));
         } else if (validated instanceof SqlCreateDatabase) {
+            // 调用converter的convertCreateDatabase方法转换validated，并返回一个包含转换结果的Optional对象
             return Optional.of(converter.convertCreateDatabase((SqlCreateDatabase) validated));
         } else if (validated instanceof SqlDropDatabase) {
+            // 调用converter的convertDropDatabase方法转换validated，并返回一个包含转换结果的Optional对象
             return Optional.of(converter.convertDropDatabase((SqlDropDatabase) validated));
         } else if (validated instanceof SqlAlterDatabase) {
+            // 调用converter的convertAlterDatabase方法转换validated，并返回一个包含转换结果的Optional对象
             return Optional.of(converter.convertAlterDatabase((SqlAlterDatabase) validated));
         } else if (validated instanceof SqlShowCurrentDatabase) {
+            // 调用converter的convertShowCurrentDatabase方法转换validated，并返回一个包含转换结果的Optional对象
             return Optional.of(
                     converter.convertShowCurrentDatabase((SqlShowCurrentDatabase) validated));
         } else if (validated instanceof SqlUseDatabase) {
+            // 调用converter的convertUseDatabase方法转换validated，并返回一个包含转换结果的Optional对象
             return Optional.of(converter.convertUseDatabase((SqlUseDatabase) validated));
         } else if (validated instanceof SqlCreateTable) {
+            // 如果validated同时也是SqlCreateTableAs的实例（这通常表示它是一个更具体的类型）
             if (validated instanceof SqlCreateTableAs) {
+                // 调用converter的createTableConverter的convertCreateTable方法转换validated，并返回一个包含转换结果的Optional对象
                 return Optional.of(
                         converter.createTableConverter.convertCreateTableAS(
                                 flinkPlanner, (SqlCreateTableAs) validated));
@@ -322,71 +349,103 @@ public class SqlNodeToOperationConversion {
             return Optional.of(
                     converter.createTableConverter.convertCreateTable((SqlCreateTable) validated));
         } else if (validated instanceof SqlDropTable) {
+            // 调用converter的convertDropTable方法转换validated，并返回一个包含转换结果的Optional对象
             return Optional.of(converter.convertDropTable((SqlDropTable) validated));
         } else if (validated instanceof SqlAlterTable) {
+            // 调用converter的convertAlterTable方法转换validated，并返回一个包含转换结果的Optional对象
             return Optional.of(converter.convertAlterTable((SqlAlterTable) validated));
         } else if (validated instanceof SqlShowTables) {
+            // 调用converter的convertShowTables方法转换validated，并返回一个包含转换结果的Optional对象
             return Optional.of(converter.convertShowTables((SqlShowTables) validated));
         } else if (validated instanceof SqlShowColumns) {
+            // 调用converter的convertShowColumns方法转换validated，并返回一个包含转换结果的Optional对象
             return Optional.of(converter.convertShowColumns((SqlShowColumns) validated));
         } else if (validated instanceof SqlDropView) {
+            // 调用 converter 的 convertDropView 方法进行转换，并返回 Optional 包装的对象
             return Optional.of(converter.convertDropView((SqlDropView) validated));
         } else if (validated instanceof SqlShowViews) {
+            // 调用 converter 的 convertShowViews 方法进行转换，并返回 Optional 包装的对象
             return Optional.of(converter.convertShowViews((SqlShowViews) validated));
         } else if (validated instanceof SqlCreateFunction) {
+            // 调用 converter 的 convertCreateFunction 方法进行转换，并返回 Optional 包装的对象
             return Optional.of(converter.convertCreateFunction((SqlCreateFunction) validated));
         } else if (validated instanceof SqlDropFunction) {
+            // 调用 converter 的 convertDropFunction 方法进行转换，并返回 Optional 包装的对象
             return Optional.of(converter.convertDropFunction((SqlDropFunction) validated));
         } else if (validated instanceof SqlAlterFunction) {
+            // 调用 converter 的 convertAlterFunction 方法进行转换，并返回 Optional 包装的对象
             return Optional.of(converter.convertAlterFunction((SqlAlterFunction) validated));
         } else if (validated instanceof SqlShowCreateTable) {
+            // 调用 converter 的 convertShowCreateTable 方法进行转换，并返回 Optional 包装的对象
             return Optional.of(converter.convertShowCreateTable((SqlShowCreateTable) validated));
         } else if (validated instanceof SqlShowCreateView) {
+            // 调用 converter 的 convertShowCreateView 方法进行转换，并返回 Optional 包装的对象
             return Optional.of(converter.convertShowCreateView((SqlShowCreateView) validated));
         } else if (validated instanceof SqlRichExplain) {
+            // 调用 converter 的 convertRichExplain 方法进行转换，并返回 Optional 包装的对象
             return Optional.of(converter.convertRichExplain((SqlRichExplain) validated));
         } else if (validated instanceof SqlRichDescribeTable) {
+            // 调用 converter 的 convertDescribeTable 方法进行转换（注意这里方法名可能与类型名不完全匹配，但假设它是正确的）
             return Optional.of(converter.convertDescribeTable((SqlRichDescribeTable) validated));
         } else if (validated instanceof SqlAddJar) {
+            // 调用 converter 的 convertAddJar 方法进行转换，并返回 Optional 包装的对象
             return Optional.of(converter.convertAddJar((SqlAddJar) validated));
         } else if (validated instanceof SqlRemoveJar) {
+            // 调用 converter 的 convertRemoveJar 方法进行转换，并返回 Optional 包装的对象
             return Optional.of(converter.convertRemoveJar((SqlRemoveJar) validated));
         } else if (validated instanceof SqlShowJars) {
+            // 调用 converter 的 convertShowJars 方法进行转换，并返回 Optional 包装的对象
             return Optional.of(converter.convertShowJars((SqlShowJars) validated));
         } else if (validated instanceof SqlShowJobs) {
+            // 调用 converter 的 convertShowJobs 方法进行转换，并返回 Optional 包装的对象
             return Optional.of(converter.convertShowJobs((SqlShowJobs) validated));
         } else if (validated instanceof RichSqlInsert) {
+            // 调用converter的convertSqlInsert方法，将RichSqlInsert转换为对应的结果，并包装为Optional返回
             return Optional.of(converter.convertSqlInsert((RichSqlInsert) validated));
         } else if (validated instanceof SqlBeginStatementSet) {
+            // 调用converter的convertBeginStatementSet方法，将SqlBeginStatementSet转换为对应的结果，并包装为Optional返回
             return Optional.of(
                     converter.convertBeginStatementSet((SqlBeginStatementSet) validated));
         } else if (validated instanceof SqlEndStatementSet) {
+            // 调用converter的convertEndStatementSet方法，将SqlEndStatementSet转换为对应的结果，并包装为Optional返回
             return Optional.of(converter.convertEndStatementSet((SqlEndStatementSet) validated));
         } else if (validated instanceof SqlSet) {
+            // 调用converter的convertSet方法，将SqlSet转换为对应的结果，并包装为Optional返回
             return Optional.of(converter.convertSet((SqlSet) validated));
         } else if (validated instanceof SqlReset) {
+            // 调用converter的convertReset方法，将SqlReset转换为对应的结果，并包装为Optional返回
             return Optional.of(converter.convertReset((SqlReset) validated));
         } else if (validated instanceof SqlStatementSet) {
+            // 调用converter的convertSqlStatementSet方法，将SqlStatementSet转换为对应的结果，并包装为Optional返回
             return Optional.of(converter.convertSqlStatementSet((SqlStatementSet) validated));
         } else if (validated instanceof SqlExecute) {
+            // 调用convertValidatedSqlNode方法，并传入flinkPlanner、catalogManager和SqlExecute的statement作为参数
             return convertValidatedSqlNode(
                     flinkPlanner, catalogManager, ((SqlExecute) validated).getStatement());
         } else if (validated instanceof SqlExecutePlan) {
+            // 调用converter的convertExecutePlan方法，将SqlExecutePlan转换为对应的结果，并包装为Optional返回
             return Optional.of(converter.convertExecutePlan((SqlExecutePlan) validated));
         } else if (validated instanceof SqlCompilePlan) {
+            // 调用converter的convertCompilePlan方法，将SqlCompilePlan转换为对应的结果，并包装为Optional返回
             return Optional.of(converter.convertCompilePlan((SqlCompilePlan) validated));
         } else if (validated instanceof SqlCompileAndExecutePlan) {
+            // 调用converter的convertCompileAndExecutePlan方法，将SqlCompileAndExecutePlan转换为对应的结果，并包装为Optional返回
             return Optional.of(
                     converter.convertCompileAndExecutePlan((SqlCompileAndExecutePlan) validated));
         } else if (validated instanceof SqlAnalyzeTable) {
+            // 调用converter的convertAnalyzeTable方法，将SqlAnalyzeTable转换为对应的结果，并包装为Optional返回
             return Optional.of(converter.convertAnalyzeTable((SqlAnalyzeTable) validated));
         } else if (validated instanceof SqlStopJob) {
+            // 调用converter的convertStopJob方法，将SqlStopJob转换为对应的结果，并包装为Optional返回
             return Optional.of(converter.convertStopJob((SqlStopJob) validated));
         } else if (validated instanceof SqlDelete) {
+            // 如果是，则使用converter的convertDelete方法将其转换为对应的类型，并包装在Optional中返回
             return Optional.of(converter.convertDelete((SqlDelete) validated));
         } else if (validated instanceof SqlUpdate) {
+            // 如果是，则使用converter的convertUpdate方法将其转换为对应的类型，并包装在Optional中返回
             return Optional.of(converter.convertUpdate((SqlUpdate) validated));
         } else {
+            // 则返回一个空的Optional对象
             return Optional.empty();
         }
     }
@@ -801,25 +860,37 @@ public class SqlNodeToOperationConversion {
     }
 
     /** Convert CREATE DATABASE statement. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     *  转换CREATE DATABASE语句。
+    */
     private Operation convertCreateDatabase(SqlCreateDatabase sqlCreateDatabase) {
+        // 解析完整的数据库名称
         String[] fullDatabaseName = sqlCreateDatabase.fullDatabaseName();
+        // 如果完整的数据库名称长度超过2，则抛出验证异常
         if (fullDatabaseName.length > 2) {
             throw new ValidationException("create database identifier format error");
         }
+        // 根据完整的数据库名称长度，确定catalogName和databaseName
         String catalogName =
                 (fullDatabaseName.length == 1)
-                        ? catalogManager.getCurrentCatalog()
-                        : fullDatabaseName[0];
+                        ? catalogManager.getCurrentCatalog() // 数据库名没有携带catalogName，则使用当前目录作为catalogName
+                        : fullDatabaseName[0];// 如果有两部分，则第一部分为catalogName
+        //获取databasename
         String databaseName =
                 (fullDatabaseName.length == 1) ? fullDatabaseName[0] : fullDatabaseName[1];
+        // 是否忽略已存在的数据库
         boolean ignoreIfExists = sqlCreateDatabase.isIfNotExists();
+        // 获取并处理数据库注释
         String databaseComment =
                 sqlCreateDatabase
                         .getComment()
                         .map(comment -> comment.getValueAs(NlsString.class).getValue())
-                        .orElse(null);
+                        .orElse(null);// 如果没有注释，则为null
         // set with properties
         Map<String, String> properties = new HashMap<>();
+        // 设置数据库属性
         sqlCreateDatabase
                 .getPropertyList()
                 .getList()
@@ -828,7 +899,9 @@ public class SqlNodeToOperationConversion {
                                 properties.put(
                                         ((SqlTableOption) p).getKeyString(),
                                         ((SqlTableOption) p).getValueString()));
+        // 创建CatalogDatabase对象
         CatalogDatabase catalogDatabase = new CatalogDatabaseImpl(properties, databaseComment);
+        // 返回CreateDatabaseOperation对象
         return new CreateDatabaseOperation(
                 catalogName, databaseName, catalogDatabase, ignoreIfExists);
     }

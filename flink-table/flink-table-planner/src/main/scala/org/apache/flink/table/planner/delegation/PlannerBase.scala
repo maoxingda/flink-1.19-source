@@ -146,24 +146,47 @@ abstract class PlannerBase(
     executor.asInstanceOf[DefaultExecutor].getExecutionEnvironment
   }
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 构建ParserFactory
+   */
   def getParserFactory: ParserFactory = {
+    // 如果parserFactory为空或者当前表的配置中的SQL方言与当前方言不一致
     if (parserFactory == null || getTableConfig.getSqlDialect != currentDialect) {
+      // 获取当前SQL方言的名称，并将其转换为小写
       val factoryIdentifier = getTableConfig.getSqlDialect.name().toLowerCase
+      // 使用FactoryUtil工具类发现（或加载）与指定方言标识符相匹配的ParserFactory
+      // 参数包括：类加载器（用于加载类），ParserFactory的类类型，以及方言标识符
       parserFactory = FactoryUtil.discoverFactory(
         getClass.getClassLoader,
         classOf[ParserFactory],
         factoryIdentifier)
+      // 更新当前方言为表的配置中的SQL方言
       currentDialect = getTableConfig.getSqlDialect
+      // 方言已经改变，重置parser为null，以便下次调用getParser时重新创建
       parser = null
     }
+    // 返回parserFactory对象
     parserFactory
   }
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 定义一个覆盖（override）的def方法，返回一个Parser对象
+   */
   override def getParser: Parser = {
     if (parser == null || getTableConfig.getSqlDialect != currentDialect) {
+      // 获取Parser的工厂（Factory）
       parserFactory = getParserFactory
+      // 使用Parser工厂创建一个新的Parser对象，传入一个DefaultCalciteContext对象，
+      // 该对象基于catalogManager和plannerContext构建
       parser = parserFactory.create(new DefaultCalciteContext(catalogManager, plannerContext))
     }
+    // 返回parser对象
     parser
   }
 

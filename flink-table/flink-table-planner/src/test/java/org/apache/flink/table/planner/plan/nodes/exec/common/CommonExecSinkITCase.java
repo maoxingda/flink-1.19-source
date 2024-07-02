@@ -159,7 +159,7 @@ class CommonExecSinkITCase {
                                 new TableFactoryHarness.SinkBase() {
                                     @Override
                                     public DataStreamSinkProvider getSinkRuntimeProvider(
-                                            DynamicTableSink.Context context) {
+                                            Context context) {
                                         return new DataStreamSinkProvider() {
                                             @Override
                                             public DataStreamSink<?> consumeDataStream(
@@ -459,7 +459,7 @@ class CommonExecSinkITCase {
                                 new TableFactoryHarness.SinkBase() {
                                     @Override
                                     public DataStreamSinkProvider getSinkRuntimeProvider(
-                                            DynamicTableSink.Context context) {
+                                            Context context) {
                                         return new DataStreamSinkProvider() {
                                             @Override
                                             public DataStreamSink<?> consumeDataStream(
@@ -607,9 +607,9 @@ class CommonExecSinkITCase {
         }
 
         @Override
-        public ScanTableSource.ScanRuntimeProvider getScanRuntimeProvider(
-                ScanTableSource.ScanContext context) {
-            final DynamicTableSource.DataStructureConverter converter =
+        public ScanRuntimeProvider getScanRuntimeProvider(
+                ScanContext context) {
+            final DataStructureConverter converter =
                     context.createDataStructureConverter(
                             getFactoryContext().getPhysicalRowDataType());
 

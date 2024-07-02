@@ -70,11 +70,22 @@ final class ChannelState {
         }
         sequenceNumberInAnnouncedChannels.clear();
     }
-
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 解锁所有被阻塞的通道。
+     *
+     * @throws IOException 如果在解锁通道过程中发生I/O错误
+     */
     public void unblockAllChannels() throws IOException {
+        // 遍历所有被阻塞的通道信息
         for (InputChannelInfo blockedChannel : blockedChannels) {
+            // 调用对应输入通道（由gateIdx索引）的resumeConsumption方法，传入被阻塞的通道信息
+            // 此方法用于恢复通道的消费能力，即允许其继续接收或处理数据
             inputs[blockedChannel.getGateIdx()].resumeConsumption(blockedChannel);
         }
+        // 清空阻塞通道列表，表示这些通道已经不再处于阻塞状态
         blockedChannels.clear();
     }
 

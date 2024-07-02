@@ -56,18 +56,37 @@ public class ManagedTableListener {
     }
 
     /** Notify for creating managed table. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 通知表创建事件，并可能根据需要进行一些额外的处理。
+     *
+     * @param catalog          关联的Catalog，可能为null
+     * @param identifier       表的完全限定标识符
+     * @param table            要创建的已解析表
+     * @param isTemporary      是否是一个临时表
+     * @param ignoreIfExists   如果表已存在，是否忽略
+     * @return 可能是经过处理的已解析表，或者直接返回传入的表
+    */
     public ResolvedCatalogBaseTable<?> notifyTableCreation(
             @Nullable Catalog catalog,
             ObjectIdentifier identifier,
             ResolvedCatalogBaseTable<?> table,
             boolean isTemporary,
             boolean ignoreIfExists) {
+        // 检查该表是否是需要管理的表
         if (isManagedTable(catalog, table)) {
+            // 丰富表的选项（可能包括添加额外的元数据、属性等）
             ResolvedCatalogTable managedTable = enrichOptions(identifier, table, isTemporary);
+            // 调用表工厂以发现和处理表的创建事件
+            // 这可能包括触发额外的初始化步骤、验证或记录日志等
             discoverManagedTableFactory(classLoader)
                     .onCreateTable(
+                            // 创建一个用于表工厂上下文的对象
                             createTableFactoryContext(identifier, managedTable, isTemporary),
+                            // 传递是否忽略已存在的表标志
                             ignoreIfExists);
+            // 返回经过处理的表
             return managedTable;
         }
         return table;

@@ -70,13 +70,26 @@ class SqlCreateTableConverter {
     }
 
     /** Convert the {@link SqlCreateTable} node. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将 {@link SqlCreateTable} 节点转换为操作。
+     *
+     * @param sqlCreateTable 要转换的 SqlCreateTable 对象
+     * @return 转换后的 CreateTableOperation 操作
+    */
     Operation convertCreateTable(SqlCreateTable sqlCreateTable) {
+        // 根据 SqlCreateTable 节点创建一个 CatalogTable 对象
         CatalogTable catalogTable = createCatalogTable(sqlCreateTable);
-
+        // 从 SqlCreateTable 中获取完整的表名，并创建一个 UnresolvedIdentifier 对象
         UnresolvedIdentifier unresolvedIdentifier =
                 UnresolvedIdentifier.of(sqlCreateTable.fullTableName());
+        // 使用 CatalogManager 将 UnresolvedIdentifier 解析为 ObjectIdentifier
+        // ObjectIdentifier 是已解析的、具有完整命名空间信息的标识符
         ObjectIdentifier identifier = catalogManager.qualifyIdentifier(unresolvedIdentifier);
 
+        // 创建一个 CreateTableOperation 对象，并传入解析后的标识符、CatalogTable 对象
+        // 以及 SqlCreateTable 节点中的 ifNotExists 和 temporary 标志
         return new CreateTableOperation(
                 identifier,
                 catalogTable,
@@ -122,57 +135,78 @@ class SqlCreateTableConverter {
                 createTableOperation, Collections.emptyMap(), query, false);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建表
+     */
     private CatalogTable createCatalogTable(SqlCreateTable sqlCreateTable) {
 
+        // 源表的模式（Schema），用于创建新表时使用
         final Schema sourceTableSchema;
+        // 源表的分区键列表，用于创建新表时使用
         final List<String> sourcePartitionKeys;
+        // 类似表（LIKE）的选项列表，如包括注释、权限等
         final List<SqlTableLike.SqlTableLikeOption> likeOptions;
+        // 源表的属性，如存储格式、压缩等
         final Map<String, String> sourceProperties;
+        // 判断 SqlCreateTable 是否是 SqlCreateTableLike 的实例
+        // 如果是，表示该创建表语句是基于另一个已存在的表来创建的
         if (sqlCreateTable instanceof SqlCreateTableLike) {
+            // 强制转换为 SqlTableLike，因为已确认是 SqlCreateTableLike 的实例
             SqlTableLike sqlTableLike = ((SqlCreateTableLike) sqlCreateTable).getTableLike();
+            // 查找并获取类似表（LIKE）的源表
             CatalogTable table = lookupLikeSourceTable(sqlTableLike);
+            // 获取源表的未解析模式（Schema）
             sourceTableSchema = table.getUnresolvedSchema();
+            // 获取源表的分区键
             sourcePartitionKeys = table.getPartitionKeys();
+            // 获取类似表（LIKE）的选项
             likeOptions = sqlTableLike.getOptions();
+            // 获取源表的属性
             sourceProperties = table.getOptions();
         } else {
-            sourceTableSchema = Schema.newBuilder().build();
-            sourcePartitionKeys = Collections.emptyList();
-            likeOptions = Collections.emptyList();
-            sourceProperties = Collections.emptyMap();
+            // 如果不是 SqlCreateTableLike 的实例，则使用默认的空模式、分区键列表、选项列表和属性映射
+            sourceTableSchema = Schema.newBuilder().build();// 创建一个空的 Schema
+            sourcePartitionKeys = Collections.emptyList();// 空的分区键列表
+            likeOptions = Collections.emptyList();// 空的选项列表
+            sourceProperties = Collections.emptyMap();// 空的属性映射
         }
-
+        // 创建一个 Map 来存储合并策略，键为 FeatureOption，值为 MergingStrategy 将水位线、分区等转换为Map结构
         Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> mergingStrategies =
                 mergeTableLikeUtil.computeMergingStrategies(likeOptions);
-
+        // 合并选项，将 sqlCreateTable 中的选项与源表的属性合并,也就是转换成Map结构
         Map<String, String> mergedOptions =
                 mergeOptions(sqlCreateTable, sourceProperties, mergingStrategies);
 
+        // 从 sqlCreateTable 的所有约束中查找主键约束（如果存在）
         Optional<SqlTableConstraint> primaryKey =
                 sqlCreateTable.getFullConstraints().stream()
                         .filter(SqlTableConstraint::isPrimaryKey)
                         .findAny();
-
+        // 合并源表模式与目标表列列表、水印和主键约束（如果存在），并应用合并策略
         Schema mergedSchema =
                 mergeTableLikeUtil.mergeTables(
                         mergingStrategies,
-                        sourceTableSchema,
-                        sqlCreateTable.getColumnList().getList(),
+                        sourceTableSchema,// 源表模式
+                        sqlCreateTable.getColumnList().getList(),// 目标表列列表
                         sqlCreateTable
-                                .getWatermark()
-                                .map(Collections::singletonList)
-                                .orElseGet(Collections::emptyList),
-                        primaryKey.orElse(null));
+                                .getWatermark()// 水印（如果存在）
+                                .map(Collections::singletonList)// 将单个水印封装为列表
+                                .orElseGet(Collections::emptyList),// 如果没有水印，则返回空列表
+                        primaryKey.orElse(null)); // 主键约束（如果存在）
 
+        // 合并分区键，将源表的分区键与目标表的分区键列表合并，并应用合并策略
         List<String> partitionKeys =
                 mergePartitions(
-                        sourcePartitionKeys,
-                        sqlCreateTable.getPartitionKeyList(),
-                        mergingStrategies);
+                        sourcePartitionKeys, // 源表的分区键
+                        sqlCreateTable.getPartitionKeyList(),// 目标表的分区键列表
+                        mergingStrategies); // 合并策略
+        // 验证合并后的模式中是否包含所有分区键
         verifyPartitioningColumnsExist(mergedSchema, partitionKeys);
-
+         // 获取表的注释（如果存在）
         String tableComment = OperationConverterUtils.getTableComment(sqlCreateTable.getComment());
-
+        // 解析并返回 CatalogTable 对象
         return catalogManager.resolveCatalogTable(
                 CatalogTable.of(
                         mergedSchema, tableComment, partitionKeys, new HashMap<>(mergedOptions)));

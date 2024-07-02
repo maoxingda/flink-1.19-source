@@ -44,9 +44,21 @@ public class DefaultParserFactory implements ParserFactory {
         return Collections.emptySet();
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 创建Parser接口具体实现类
+     */
     @Override
     public Parser create(Context context) {
+        // 将传入的Context强制转换为DefaultCalciteContext类型
         DefaultCalciteContext defaultCalciteContext = (DefaultCalciteContext) context;
+        // 创建一个新的ParserImpl对象，并传入以下参数：
+        // 1. CatalogManager：从DefaultCalciteContext中获取CatalogManager
+        // 2. 方法引用：用于创建FlinkPlanner的方法，从PlannerContext中获取
+        // 3. 方法引用：用于创建CalciteParser的方法，从PlannerContext中获取
+        // 4. RexFactory：从PlannerContext中获取RexFactory
         return new ParserImpl(
                 defaultCalciteContext.getCatalogManager(),
                 defaultCalciteContext.getPlannerContext()::createFlinkPlanner,

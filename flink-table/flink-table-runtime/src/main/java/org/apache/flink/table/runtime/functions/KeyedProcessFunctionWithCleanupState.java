@@ -60,6 +60,12 @@ public abstract class KeyedProcessFunctionWithCleanupState<K, IN, OUT>
         }
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 注册清理事件
+     */
     protected void registerProcessingCleanupTimer(Context ctx, long currentTime) throws Exception {
         if (stateCleaningEnabled) {
             registerProcessingCleanupTimer(

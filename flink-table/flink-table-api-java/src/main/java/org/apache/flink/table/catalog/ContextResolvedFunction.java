@@ -76,11 +76,23 @@ public final class ContextResolvedFunction {
         return new ContextResolvedFunction(false, functionIdentifier, functionDefinition);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 创建一个临时的 ContextResolvedFunction 对象。
+     *
+     * @param functionIdentifier 函数的标识符，不能为空，因为对于临时函数来说标识符是必须的。
+     * @param functionDefinition 函数的定义，包含函数的实现细节。
+     * @return 一个临时的 ContextResolvedFunction 对象。
+     * @throws NullPointerException 如果函数标识符为 null，则抛出空指针异常。
+     */
     public static ContextResolvedFunction temporary(
             FunctionIdentifier functionIdentifier, FunctionDefinition functionDefinition) {
         Preconditions.checkNotNull(
                 functionIdentifier,
                 "Function identifier should not be null for a temporary function.");
+        //构建ContextResolvedFunction返回
         return new ContextResolvedFunction(true, functionIdentifier, functionDefinition);
     }
 

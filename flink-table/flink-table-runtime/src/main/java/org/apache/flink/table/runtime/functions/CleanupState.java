@@ -38,14 +38,18 @@ public interface CleanupState {
             throws Exception {
 
         // last registered timer
+        // 获取最新的Cleanup事件
         Long curCleanupTime = cleanupTimeState.value();
 
         // check if a cleanup timer is registered and
         // that the current cleanup timer won't delete state we need to keep
+        // 判断curCleanupTime是否为空，满足触发条件则注册定时器
         if (curCleanupTime == null || (currentTime + minRetentionTime) > curCleanupTime) {
             // we need to register a new (later) timer
+            // 判断curCleanupTime是否为空，满足触发条件则注册定时器
             long cleanupTime = currentTime + maxRetentionTime;
             // register timer and remember clean-up time
+            // 判断curCleanupTime是否为空，满足触发条件则注册定时器
             timerService.registerProcessingTimeTimer(cleanupTime);
             // delete expired timer
             if (curCleanupTime != null) {

@@ -743,7 +743,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
         }
         // 获取列表中的第一个操作
         Operation operation = operations.get(0);
-
+        //执行Operator
         return executeInternal(operation);
     }
     // 执行内部操作并返回结果
@@ -1112,10 +1112,17 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
         }
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 执行语句比如Create Table
+    */
     @Override
     public TableResultInternal executeInternal(Operation operation) {
         // delegate execution to Operation if it implements ExecutableOperation
+        // 如果 Operation 实现了 ExecutableOperation 接口，则将执行委托给 Operation
         if (operation instanceof ExecutableOperation) {
+            // 将 operation 强制转型为 ExecutableOperation，并调用其 execute 方法，传入 operationCtx 作为参数
             return ((ExecutableOperation) operation).execute(operationCtx);
         }
 

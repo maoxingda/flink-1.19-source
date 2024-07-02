@@ -25,7 +25,7 @@ import org.apache.flink.types.Row;
 
 /**
  * {@link TableTestProgram} definitions for testing {@link
- * org.apache.flink.table.planner.plan.nodes.exec.stream.StreamExecSortLimit}.
+ * StreamExecSortLimit}.
  */
 public class SortTestPrograms {
 

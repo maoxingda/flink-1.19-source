@@ -325,12 +325,24 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
         }
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 触发检查点。
+     *
+     * @param trigger 触发检查点的检查点屏障对象
+     * @throws IOException 如果在触发检查点过程中发生I/O错误
+     */
     private void triggerCheckpoint(CheckpointBarrier trigger) throws IOException {
+        // 使用日志记录器（LOG）记录触发检查点的相关信息
+        // 包括任务名称（taskName）、检查点ID（trigger.getId()）和触发时间戳（trigger.getTimestamp()）
         LOG.debug(
                 "{}: Triggering checkpoint {} on the barrier announcement at {}.",
                 taskName,
                 trigger.getId(),
                 trigger.getTimestamp());
+        // 调用 notifyCheckpoint 方法来通知相关组件或系统执行检查点操作
         notifyCheckpoint(trigger);
     }
 
@@ -529,6 +541,12 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
     }
 
     private final class ControllerImpl implements BarrierHandlerState.Controller {
+        /**
+         * @授课老师: 码界探索
+         * @微信: 252810631
+         * @版权所有: 请尊重劳动成果
+         * 触发检查点
+         */
         @Override
         public void triggerGlobalCheckpoint(CheckpointBarrier checkpointBarrier)
                 throws IOException {

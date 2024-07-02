@@ -160,6 +160,12 @@ public interface SourceFunction<T> extends Function, Serializable {
      *
      * @param <T> The type of the elements produced by the source.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 源函数用来发射元素的接口，可能还有水印
+     */
     @Public // Interface might be extended in the future with additional methods.
     interface SourceContext<T> {
 
@@ -183,6 +189,12 @@ public interface SourceFunction<T> extends Function, Serializable {
          * @param element The element to emit
          * @param timestamp The timestamp in milliseconds since the Epoch
          */
+        /**
+         * @授课老师: 码界探索
+         * @微信: 252810631
+         * @版权所有: 请尊重劳动成果
+         * 从源中发出一个元素，并附加给定的时间戳
+         */
         @PublicEvolving
         void collectWithTimestamp(T element, long timestamp);
 
@@ -192,6 +204,13 @@ public interface SourceFunction<T> extends Function, Serializable {
          * will be emitted, those elements are considered <i>late</i>.
          *
          * @param mark The Watermark to emit
+         */
+        /**
+         * @授课老师: 码界探索
+         * @微信: 252810631
+         * @版权所有: 请尊重劳动成果
+         * 发出给定的｛Watermark｝。值为｛t｝的水印声明不再出现时间戳为｛<=t｝。
+         * 如果将发射更多这样的元素，则这些元素被视为 迟到数据。
          */
         @PublicEvolving
         void emitWatermark(Watermark mark);

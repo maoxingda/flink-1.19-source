@@ -56,7 +56,7 @@ import static org.apache.flink.table.planner.plan.nodes.exec.serde.JsonSerdeTest
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Tests for {@link org.apache.calcite.rel.core.AggregateCall} serialization and deserialization.
+ * Tests for {@link AggregateCall} serialization and deserialization.
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class AggregateCallSerdeTest {

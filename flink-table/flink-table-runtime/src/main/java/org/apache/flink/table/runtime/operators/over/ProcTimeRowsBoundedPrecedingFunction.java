@@ -88,14 +88,23 @@ public class ProcTimeRowsBoundedPrecedingFunction<K>
         this.precedingOffset = precedingOffset;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 初始化状态等操作
+     */
     @Override
     public void open(OpenContext openContext) throws Exception {
+        // 使用运行时上下文的类加载器来实例化一个函数处理器（可能是聚合处理器）
         function = genAggsHandler.newInstance(getRuntimeContext().getUserCodeClassLoader());
+        // 为函数处理器提供一个基于每个key的状态视图存储
         function.open(new PerKeyStateDataViewStore(getRuntimeContext()));
-
+        // 创建一个新的用于输出的JoinedRowData对象
         output = new JoinedRowData();
 
         // input element are all binary row as they are came from network
+        // 创建输入元素的InternalTypeInfo，基于字段类型
         InternalTypeInfo<RowData> inputType = InternalTypeInfo.ofFields(inputFieldTypes);
         // We keep the elements received in a Map state keyed
         // by the ingestion time in the operator.
@@ -105,24 +114,34 @@ public class ProcTimeRowsBoundedPrecedingFunction<K>
         MapStateDescriptor<Long, List<RowData>> mapStateDescriptor =
                 new MapStateDescriptor<Long, List<RowData>>(
                         "inputState", BasicTypeInfo.LONG_TYPE_INFO, rowListTypeInfo);
+        // 获取或创建Map状态
         inputState = getRuntimeContext().getMapState(mapStateDescriptor);
 
         InternalTypeInfo<RowData> accTypeInfo = InternalTypeInfo.ofFields(accTypes);
         ValueStateDescriptor<RowData> stateDescriptor =
                 new ValueStateDescriptor<RowData>("accState", accTypeInfo);
+        // 获取或创建累加器的Value状态
         accState = getRuntimeContext().getState(stateDescriptor);
 
         ValueStateDescriptor<Long> processedCountDescriptor =
                 new ValueStateDescriptor<Long>("processedCountState", Types.LONG);
+        // 获取或创建计数器的Value状态
         counterState = getRuntimeContext().getState(processedCountDescriptor);
 
         ValueStateDescriptor<Long> smallestTimestampDescriptor =
                 new ValueStateDescriptor<Long>("smallestTSState", Types.LONG);
+        // 获取或创建最小时间戳的Value状态
         smallestTsState = getRuntimeContext().getState(smallestTimestampDescriptor);
-
+        // 初始化清理时间状态（可能是用于处理基于处理时间的超时或清理逻辑）
         initCleanupTimeState("ProcTimeBoundedRowsOverCleanupTime");
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 处理元素
+     */
     @Override
     public void processElement(
             RowData input,
@@ -131,6 +150,7 @@ public class ProcTimeRowsBoundedPrecedingFunction<K>
             throws Exception {
         long currentTime = ctx.timerService().currentProcessingTime();
         // register state-cleanup timer
+        // 注册状态数据清理的 Timer
         registerProcessingCleanupTimer(ctx, currentTime);
 
         // initialize state for the processed element
@@ -215,14 +235,26 @@ public class ProcTimeRowsBoundedPrecedingFunction<K>
         out.collect(output);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 触发清理
+     * @param timestamp 触发定时器的时间戳
+     * @param ctx   定时器上下文，包含当前key等信息
+     * @param out 用于收集并输出结果的收集器
+     */
     @Override
     public void onTimer(
             long timestamp,
             KeyedProcessFunction<K, RowData, RowData>.OnTimerContext ctx,
             Collector<RowData> out)
             throws Exception {
+        // 如果状态清理功能已启用
         if (stateCleaningEnabled) {
+            // 清理各种状态（假设inputState, accState, counterState, smallestTsState是定义好的状态）
             cleanupState(inputState, accState, counterState, smallestTsState);
+            // 这个函数可能用于执行一些额外的清理逻辑
             function.cleanup();
         }
     }

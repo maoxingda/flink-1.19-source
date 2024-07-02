@@ -90,17 +90,30 @@ public class GenericInMemoryCatalog extends AbstractCatalog {
 
     // ------ databases ------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个数据库。
+     *
+     * @param databaseName 数据库名称
+     * @param db           数据库的CatalogDatabase对象
+     * @param ignoreIfExists 如果数据库已存在，是否忽略并继续执行（不抛出异常）
+     */
     @Override
     public void createDatabase(String databaseName, CatalogDatabase db, boolean ignoreIfExists)
             throws DatabaseAlreadyExistException {
+        // 验证数据库名称不为空或仅包含空白字符
         checkArgument(!StringUtils.isNullOrWhitespaceOnly(databaseName));
+        // 验证CatalogDatabase对象不为空
         checkNotNull(db);
-
+        // 检查数据库是否已存在
         if (databaseExists(databaseName)) {
+            // 如果数据库已存在且ignoreIfExists为false，则抛出异常
             if (!ignoreIfExists) {
                 throw new DatabaseAlreadyExistException(getName(), databaseName);
             }
         } else {
+            // 如果数据库不存在，则将CatalogDatabase对象复制到databases集合中
             databases.put(databaseName, db.copy());
         }
     }
@@ -207,24 +220,42 @@ public class GenericInMemoryCatalog extends AbstractCatalog {
 
     // ------ tables ------
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个表。
+     *
+     * @param tablePath 表的路径，包含数据库名和表名
+     * @param table     要创建的表对象
+     * @param ignoreIfExists 如果表已存在，是否忽略此异常
+     * @throws TableAlreadyExistException 如果表已存在且ignoreIfExists为false时抛出
+     * @throws DatabaseNotExistException 如果数据库不存在时抛出
+    */
     @Override
     public void createTable(ObjectPath tablePath, CatalogBaseTable table, boolean ignoreIfExists)
             throws TableAlreadyExistException, DatabaseNotExistException {
+        // 检查表路径是否为空
         checkNotNull(tablePath);
+        // 检查表对象是否为空
         checkNotNull(table);
-
+        // 检查数据库是否存在
         if (!databaseExists(tablePath.getDatabaseName())) {
+            // 如果数据库不存在，则抛出数据库不存在异常
             throw new DatabaseNotExistException(getName(), tablePath.getDatabaseName());
         }
-
+        // 检查表是否已存在
         if (tableExists(tablePath)) {
+            // 如果表已存在
             if (!ignoreIfExists) {
+                // 且ignoreIfExists为false，则抛出表已存在异常
                 throw new TableAlreadyExistException(getName(), tablePath);
             }
-        } else {
+        } else { // 如果表不存在
+            // 将表添加到表的映射中，并复制表对象以避免直接修改原始对象
             tables.put(tablePath, table.copy());
-
+            // 检查表是否为分区表
             if (isPartitionedTable(tablePath)) {
+                // 如果是分区表，则初始化分区映射、分区统计和分区列统计的映射
                 partitions.put(tablePath, new LinkedHashMap<>());
                 partitionStats.put(tablePath, new LinkedHashMap<>());
                 partitionColumnStats.put(tablePath, new LinkedHashMap<>());

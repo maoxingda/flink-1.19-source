@@ -196,24 +196,36 @@ public final class FlinkCalciteSqlValidator extends SqlValidatorImpl {
             SqlValidatorNamespace ns,
             boolean forceNullable) {
 
+        // 为时间旅行场景生成一个新的验证器命名空间。
+        // 因为时间旅行仅支持常量表达式，我们需要确保快照的时间段不是一个标识符。
+
         // Generate a new validator namespace for time travel scenario.
         // Since time travel only supports constant expressions, we need to ensure that the period
         // of
         // snapshot is not an identifier.
+
         Optional<SqlSnapshot> snapshot = getSnapShotNode(ns);
+        // 如果父作用域存在、快照存在，并且快照的时间段不是一个SqlIdentifier类型的节点
         if (usingScope != null
                 && snapshot.isPresent()
                 && !(snapshot.get().getPeriod() instanceof SqlIdentifier)) {
+            // 获取快照对象
             SqlSnapshot sqlSnapshot = snapshot.get();
+            // 获取快照的时间段节点
             SqlNode periodNode = sqlSnapshot.getPeriod();
+            // 创建一个SqlToRelConverter对象，用于将SqlNode转换为RexNode
             SqlToRelConverter sqlToRelConverter = this.createSqlToRelConverter();
+            // 将时间段节点转换为RexNode
             RexNode rexNode = sqlToRelConverter.convertExpression(periodNode);
+            // 对RexNode进行简化
             RexNode simplifiedRexNode =
                     FlinkRexUtil.simplify(
                             sqlToRelConverter.getRexBuilder(),
                             rexNode,
                             relOptCluster.getPlanner().getExecutor());
+            // 用于存储简化后的RexNode的列表
             List<RexNode> reducedNodes = new ArrayList<>();
+            // 使用优化器的执行器对简化后的RexNode进行进一步减少（可能是消除冗余操作）
             relOptCluster
                     .getPlanner()
                     .getExecutor()
@@ -222,22 +234,33 @@ public final class FlinkCalciteSqlValidator extends SqlValidatorImpl {
                             Collections.singletonList(simplifiedRexNode),
                             reducedNodes);
             // check whether period is the unsupported expression
+            // 检查时间段是否是不支持的表达式（即，是否不能被简化为常量）
             if (!(reducedNodes.get(0) instanceof RexLiteral)) {
+                // 如果时间段表达式不能被简化为一个常量，则抛出异常
                 throw new UnsupportedOperationException(
                         String.format(
                                 "Unsupported time travel expression: %s for the expression can not be reduced to a constant by Flink.",
                                 periodNode));
             }
-
+            // 从简化的节点列表中获取第一个RexNode，并假设它是一个RexLiteral（常量）
             RexLiteral rexLiteral = (RexLiteral) (reducedNodes).get(0);
+            // 将RexLiteral的值尝试作为TimestampString类型获取
+           // TimestampString可能是Flink内部用于表示时间戳的字符串类
             TimestampString timestampString = rexLiteral.getValueAs(TimestampString.class);
+
+            // 检查是否成功获取了有效的TimestampString
             checkNotNull(
                     timestampString,
                     "The time travel expression %s can not reduce to a valid timestamp string. This is a bug. Please file an issue.",
                     periodNode);
-
+            // 从relOptCluster的上下文中获取TableConfig
+            // TableConfig包含了Flink表操作的一些配置信息
             TableConfig tableConfig = ShortcutUtils.unwrapContext(relOptCluster).getTableConfig();
+            // 从TableConfig中获取本地时区设置
             ZoneId zoneId = tableConfig.getLocalTimeZone();
+
+            // 将TimestampString转换为毫秒时间戳，并转换为本地时区对应的LocalDateTime
+           // 然后将其转换为Instant，并再次转换为毫秒时间戳
             long timeTravelTimestamp =
                     TimestampData.fromEpochMillis(timestampString.getMillisSinceEpoch())
                             .toLocalDateTime()
@@ -245,14 +268,18 @@ public final class FlinkCalciteSqlValidator extends SqlValidatorImpl {
                             .toInstant()
                             .toEpochMilli();
 
+            // 使用时间戳创建一个SchemaVersion对象
+            // SchemaVersion可能表示数据库或表在某个时间点的快照版本
             SchemaVersion schemaVersion = TimestampSchemaVersion.of(timeTravelTimestamp);
+            // 将其转换为IdentifierSnapshotNamespace，表示一个带有时间旅行快照的命名空间
+           // 同时传入schemaVersion和usingScope的父作用域作为参数
             IdentifierNamespace identifierNamespace = (IdentifierNamespace) ns;
             ns =
                     new IdentifierSnapshotNamespace(
                             identifierNamespace,
                             schemaVersion,
                             ((DelegatingScope) usingScope).getParent());
-
+            // 更新sqlSnapshot的第二个操作数（索引为1，因为索引可能从0开始）
             sqlSnapshot.setOperand(
                     1,
                     SqlLiteral.createTimestamp(
@@ -260,7 +287,7 @@ public final class FlinkCalciteSqlValidator extends SqlValidatorImpl {
                             rexLiteral.getType().getPrecision(),
                             sqlSnapshot.getPeriod().getParserPosition()));
         }
-
+        // 调用父类的registerNamespace方法，注册更新后的命名空间和其他相关信息
         super.registerNamespace(usingScope, alias, ns, forceNullable);
     }
 
@@ -336,6 +363,12 @@ public final class FlinkCalciteSqlValidator extends SqlValidatorImpl {
         super.addToSelectList(list, aliases, fieldList, exp, scope, includeSystemVars);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 首先对传入的 SQL 执行无条件表达式重写。将表达式树转换为标准形式
+     */
     @Override
     protected @PolyNull SqlNode performUnconditionalRewrites(
             @PolyNull SqlNode node, boolean underFrom) {
@@ -348,43 +381,60 @@ public final class FlinkCalciteSqlValidator extends SqlValidatorImpl {
         // for this column. Therefore, explicit table expressions (for window TVFs at most one)
         // are captured before rewriting and replaced with a "marker" SqlSelect that contains the
         // descriptor information. The "marker" SqlSelect is considered during column expansion.
+
+        // 对于窗口表值函数（TVF）的特殊情况，例如：
+        // TUMBLE(TABLE t, DESCRIPTOR(metadata_virtual), INTERVAL '1' MINUTE)
+        //
+        // 在这种情况下，"TABLE t" 被翻译成一个隐式的 "SELECT * FROM t"。但是，这样的隐式选择可能会忽略默认不会扩展的列。
+        // 然而，描述符明确指定了需要这个列。因此，在重写之前，会捕获窗口 TVF 中的显式表表达式（最多一个），
+        // 并用一个包含描述符信息的“标记”SqlSelect替换它。这个“标记”SqlSelect 在列扩展时会被考虑。
+
         final List<SqlIdentifier> explicitTableArgs = getExplicitTableOperands(node);
 
+        // 调用父类的无条件重写方法，可能进行了一些通用的重写或验证
         final SqlNode rewritten = super.performUnconditionalRewrites(node, underFrom);
 
+        // 如果节点不是 SqlBasicCall 类型的，则直接返回重写后的节点
         if (!(node instanceof SqlBasicCall)) {
             return rewritten;
         }
+        // 将节点强制转换为 SqlBasicCall 类型，并获取其操作符
         final SqlBasicCall call = (SqlBasicCall) node;
         final SqlOperator operator = call.getOperator();
-
+        // 如果操作符是 SqlWindowTableFunction 类型（例如 TUMBLE、HOP 等窗口表函数）
         if (operator instanceof SqlWindowTableFunction) {
+            // 如果所有明确指定的表参数都是 null，则不需要进一步处理，直接返回重写后的节点
             if (explicitTableArgs.stream().allMatch(Objects::isNull)) {
                 return rewritten;
             }
-
+            // 提取出所有描述符（可能是别名、列名等）
             final List<SqlIdentifier> descriptors =
                     call.getOperandList().stream()
                             .flatMap(FlinkCalciteSqlValidator::extractDescriptors)
                             .collect(Collectors.toList());
-
+            // 遍历操作数列表
             for (int i = 0; i < call.operandCount(); i++) {
                 final SqlIdentifier tableArg = explicitTableArgs.get(i);
+                // 如果当前操作数是明确指定的表参数
                 if (tableArg != null) {
+                    // 创建一个 ExplicitTableSqlSelect 节点，用于替换原始的操作数
                     final SqlNode opReplacement = new ExplicitTableSqlSelect(tableArg, descriptors);
                     if (call.operand(i).getKind() == SqlKind.ARGUMENT_ASSIGNMENT) {
                         // for TUMBLE(DATA => TABLE t3, ...)
+                        // 判断当前操作数是否是 ARGUMENT_ASSIGNMENT 类型的（例如 DATA => TABLE t3）
                         final SqlCall assignment = call.operand(i);
+                        // 如果是，则将 ARGUMENT_ASSIGNMENT 的第一个操作数替换为 ExplicitTableSqlSelect
                         assignment.setOperand(0, opReplacement);
                     } else {
                         // for TUMBLE(TABLE t3, ...)
+                        // 如果不是 ARGUMENT_ASSIGNMENT 类型，则直接替换操作数
                         call.setOperand(i, opReplacement);
                     }
                 }
                 // for TUMBLE([DATA =>] SELECT ..., ...)
             }
         }
-
+        // 返回重写后的节点
         return rewritten;
     }
 

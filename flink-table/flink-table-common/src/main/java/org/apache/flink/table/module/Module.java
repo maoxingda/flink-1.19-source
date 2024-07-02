@@ -32,6 +32,12 @@ import java.util.Set;
  * Metadata from modules are regarded as built-in or system metadata that users can take advantages
  * of.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 模块定义了一组元数据，包括函数、用户定义的类型、操作符、规则等。
+ * 模块的元数据被视为内置或系统元数据，用户可以利用这些元数据。
+*/
 @PublicEvolving
 public interface Module {
 

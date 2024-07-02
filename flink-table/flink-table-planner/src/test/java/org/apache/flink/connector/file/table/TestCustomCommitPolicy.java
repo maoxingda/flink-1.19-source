@@ -45,7 +45,7 @@ public class TestCustomCommitPolicy implements PartitionCommitPolicy {
     private static Set<String> committedPartitionPaths = new HashSet<>();
 
     @Override
-    public void commit(PartitionCommitPolicy.Context context) throws Exception {
+    public void commit(Context context) throws Exception {
         TestCustomCommitPolicy.committedPartitionPaths.add(context.partitionPath().getPath());
         TestCustomCommitPolicy.committedPartitionPaths.add(param1 + param2);
     }

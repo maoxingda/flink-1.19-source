@@ -75,6 +75,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * A manager for dealing with catalog objects such as tables, views, functions, and types. It
  * encapsulates all available catalogs and stores temporary objects.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 用于处理目录对象（如表、视图、函数和类型）的管理器。
+*/
 @Internal
 public final class CatalogManager implements CatalogRegistry, AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(CatalogManager.class);
@@ -945,11 +950,22 @@ public final class CatalogManager implements CatalogRegistry, AutoCloseable {
      * @param objectIdentifier The fully qualified path where to put the table.
      * @param ignoreIfExists If false exception will be thrown if a table exists in the given path.
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 在给定的完全限定路径中创建一个表。
+     *
+     * @param table 要放入给定路径的表。
+     * @param objectIdentifier 完全限定的路径，用于放置表。
+     * @param ignoreIfExists 如果为false，则当给定路径中已存在表时，将抛出异常。
+    */
     public void createTable(
             CatalogBaseTable table, ObjectIdentifier objectIdentifier, boolean ignoreIfExists) {
         execute(
                 (catalog, path) -> {
+                    // 解析传入的表对象
                     ResolvedCatalogBaseTable<?> resolvedTable = resolveCatalogBaseTable(table);
+                    // 通知表创建监听器
                     ResolvedCatalogBaseTable<?> resolvedListenedTable =
                             managedTableListener.notifyTableCreation(
                                     catalog,
@@ -957,19 +973,21 @@ public final class CatalogManager implements CatalogRegistry, AutoCloseable {
                                     resolvedTable,
                                     false,
                                     ignoreIfExists);
-
+                    // 在catalog中创建表
                     catalog.createTable(path, resolvedListenedTable, ignoreIfExists);
+                    // 如果监听后的表是CatalogTable的实例
                     if (resolvedListenedTable instanceof CatalogTable) {
+                        // 通知所有catalog修改监听器表已创建的事件
                         catalogModificationListeners.forEach(
                                 listener ->
                                         listener.onEvent(
                                                 CreateTableEvent.createEvent(
                                                         CatalogContext.createContext(
-                                                                objectIdentifier.getCatalogName(),
-                                                                catalog),
-                                                        objectIdentifier,
-                                                        resolvedListenedTable,
-                                                        ignoreIfExists,
+                                                                objectIdentifier.getCatalogName(),// 表的catalog名称
+                                                                catalog),// catalog对象
+                                                        objectIdentifier,// 表的完全限定路径
+                                                        resolvedListenedTable,// 创建后的表对象
+                                                        ignoreIfExists,// 是否忽略已存在的表
                                                         false)));
                     }
                 },
@@ -1322,23 +1340,39 @@ public final class CatalogManager implements CatalogRegistry, AutoCloseable {
     }
 
     /** Resolves a {@link CatalogTable} to a validated {@link ResolvedCatalogTable}. */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 解析 CatalogTable 对象，将其转换为 ResolvedCatalogTable。
+     *
+     * @param table 要解析的 CatalogTable 对象
+     * @return 解析后的 ResolvedCatalogTable 对象
+     * @throws ValidationException 如果分区键无效（即分区键在物理列中不存在）
+    */
     public ResolvedCatalogTable resolveCatalogTable(CatalogTable table) {
+        // 检查 schemaResolver 是否已初始化
         Preconditions.checkNotNull(schemaResolver, "Schema resolver is not initialized.");
+        // 如果传入的 table 已经是 ResolvedCatalogTable 类型，则直接返回
         if (table instanceof ResolvedCatalogTable) {
             return (ResolvedCatalogTable) table;
         }
-
+        // 使用 schemaResolver 解析 CatalogTable 中的未解析模式
         final ResolvedSchema resolvedSchema = table.getUnresolvedSchema().resolve(schemaResolver);
 
         // Validate partition keys are included in physical columns
+        // 验证分区键是否包含在物理列中
+        // 提取物理列的名称列表
         final List<String> physicalColumns =
                 resolvedSchema.getColumns().stream()
-                        .filter(Column::isPhysical)
-                        .map(Column::getName)
-                        .collect(Collectors.toList());
+                        .filter(Column::isPhysical)// 过滤出物理列
+                        .map(Column::getName) // 提取列名
+                        .collect(Collectors.toList()); // 收集到列表中
+
+        // 遍历分区键列表，检查每个分区键是否在物理列中存在
         table.getPartitionKeys()
                 .forEach(
                         partitionKey -> {
+                            // 如果分区键不在物理列中，则抛出异常
                             if (!physicalColumns.contains(partitionKey)) {
                                 throw new ValidationException(
                                         String.format(
@@ -1348,7 +1382,7 @@ public final class CatalogManager implements CatalogRegistry, AutoCloseable {
                                                 partitionKey, physicalColumns));
                             }
                         });
-
+        // 创建一个新的 ResolvedCatalogTable 对象并返回
         return new ResolvedCatalogTable(table, resolvedSchema);
     }
 
@@ -1375,13 +1409,23 @@ public final class CatalogManager implements CatalogRegistry, AutoCloseable {
      *     is false
      * @throws CatalogException in case of any runtime exception
      */
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 创建一个数据库。
+     *
+     * @param catalogName catalog名称
+     * @param databaseName 数据库名称
+    */
     public void createDatabase(
             String catalogName,
             String databaseName,
             CatalogDatabase database,
             boolean ignoreIfExists)
             throws DatabaseAlreadyExistException, CatalogException {
+        // 验证catalog是否存在
         Catalog catalog = getCatalogOrThrowException(catalogName);
+        // 创建数据库。
         catalog.createDatabase(databaseName, database, ignoreIfExists);
         catalogModificationListeners.forEach(
                 listener ->

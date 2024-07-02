@@ -77,14 +77,26 @@ public class CreateTableOperation implements CreateOperation {
                 "CREATE TABLE", params, Collections.emptyList(), Operation::asSummaryString);
     }
 
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 执行创建表的操作，并返回执行结果。
+     *
+     * @param ctx 上下文对象，用于获取CatalogManager等组件
+     * @return 表的执行结果，如果成功则返回TableResultImpl.TABLE_RESULT_OK
+    */
     @Override
     public TableResultInternal execute(Context ctx) {
+        // 判断是否为临时表
         if (isTemporary) {
+            // 如果是临时表，则调用CatalogManager的createTemporaryTable方法来创建
             ctx.getCatalogManager()
                     .createTemporaryTable(catalogTable, tableIdentifier, ignoreIfExists);
         } else {
+            // 如果不是临时表，则调用CatalogManager的createTable方法来创建
             ctx.getCatalogManager().createTable(catalogTable, tableIdentifier, ignoreIfExists);
         }
+        // 无论是否成功，都返回TableResultImpl.TABLE_RESULT_OK作为执行结果
         return TableResultImpl.TABLE_RESULT_OK;
     }
 }

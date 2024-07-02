@@ -826,8 +826,8 @@ public class TestUpdateDeleteTableFactory
         public SupportsDeleteSink(
                 ObjectIdentifier tableIdentifier,
                 ResolvedCatalogTable resolvedCatalogTable,
-                SupportsRowLevelDelete.RowLevelDeleteMode deleteMode,
-                SupportsRowLevelUpdate.RowLevelUpdateMode updateMode,
+                RowLevelDeleteMode deleteMode,
+                RowLevelUpdateMode updateMode,
                 String dataId,
                 List<String> requireColumnsForDelete,
                 List<String> requireColumnsForUpdate,

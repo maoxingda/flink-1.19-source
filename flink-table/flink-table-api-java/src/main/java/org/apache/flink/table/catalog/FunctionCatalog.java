@@ -69,6 +69,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * FLIP-65. In the long-term, the class should be a part of catalog manager similar to {@link
  * DataTypeFactory}.
  */
+/**
+ * @授课老师(微信): yi_locus
+ * email: 156184212@qq.com
+ * 简单的函数目录，用于在目录中存储 FunctionDefinition
+*/
 @Internal
 public final class FunctionCatalog {
     private final ReadableConfig config;
@@ -436,12 +441,24 @@ public final class FunctionCatalog {
         return Optional.empty();
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     *  查找Function
+     */
     public Optional<ContextResolvedFunction> lookupFunction(UnresolvedIdentifier identifier) {
         // precise function reference
+        // 如果标识符包含了数据库名（即函数引用是精确的）
         if (identifier.getDatabaseName().isPresent()) {
+            // 使用目录管理器（catalogManager）对标识符进行限定（即添加必要的上下文信息），
+            // 然后解析精确的函数引用
             return resolvePreciseFunctionReference(catalogManager.qualifyIdentifier(identifier));
         } else {
             // ambiguous function reference
+            // 模糊的函数引用
+            // 如果标识符没有包含数据库名（即函数引用可能是模糊的），
+            // 则根据函数名进行模糊的函数引用解析
             return resolveAmbiguousFunctionReference(identifier.getObjectName());
         }
     }
@@ -673,23 +690,34 @@ public final class FunctionCatalog {
         // 2. System functions
         // 3. Temporary catalog functions
         // 4. Catalog functions
+        // 解析函数引用的顺序：
+        // 1. 临时系统函数
+        // 2. 系统函数（虽然这里未直接展示，但逻辑上会在找不到临时系统函数后考虑）
+        // 3. 临时目录（catalog）函数
+        // 4. 目录（catalog）函数
 
+        // 对函数名进行标准化处理
         String normalizedName = FunctionIdentifier.normalizeName(funcName);
+        // 检查临时系统函数是否存在
         if (tempSystemFunctions.containsKey(normalizedName)) {
+            // 从临时系统函数中获取函数
             CatalogFunction function = tempSystemFunctions.get(normalizedName);
+            // 注册与该函数相关的JAR资源
             registerFunctionJarResources(funcName, function.getFunctionResources());
+            // 返回临时系统函数的ContextResolvedFunction对象
             return Optional.of(
                     ContextResolvedFunction.temporary(
                             FunctionIdentifier.of(funcName),
                             getFunctionDefinition(normalizedName, function)));
         }
-
+        // 尝试从模块管理器中获取函数定义
         Optional<FunctionDefinition> candidate =
                 moduleManager.getFunctionDefinition(normalizedName);
-
+        // 如果模块管理器中找到了函数定义
         return candidate
                 .map(
                         fd ->
+                                // 将找到的FunctionDefinition包装为永久的ContextResolvedFunction对象
                                 Optional.of(
                                         ContextResolvedFunction.permanent(
                                                 FunctionIdentifier.of(funcName), fd)))

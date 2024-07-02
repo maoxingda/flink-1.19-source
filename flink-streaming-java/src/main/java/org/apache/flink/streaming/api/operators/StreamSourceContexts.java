@@ -521,33 +521,53 @@ public class StreamSourceContexts {
             }
         }
 
+        /**
+         * @授课老师: 码界探索
+         * @微信: 252810631
+         * @版权所有: 请尊重劳动成果
+         * 获取timestamp
+         */
         @Override
         public final void collectWithTimestamp(T element, long timestamp) {
+            // 使用checkpointLock对象作为锁，确保在多线程环境下，对当前方法内部的操作进行同步处理
             synchronized (checkpointLock) {
+                // 处理并发出水印状态为ACTIVE，表示数据仍在活跃处理中
                 processAndEmitWatermarkStatus(WatermarkStatus.ACTIVE);
 
+                // 检查nextCheck是否非空，即是否已有下一个检查任务被安排
                 if (nextCheck != null) {
+                    // 如果已有检查任务，则重置failOnNextCheck标志为false
                     this.failOnNextCheck = false;
                 } else {
+                    // 如果没有安排下一个检查任务，则调用此方法安排一个空闲检测任务
                     scheduleNextIdleDetectionTask();
                 }
-
+                //抽取Timestamp信息
                 processAndCollectWithTimestamp(element, timestamp);
             }
         }
 
+        /**
+         * @授课老师: 码界探索
+         * @微信: 252810631
+         * @版权所有: 请尊重劳动成果
+         * emit水位线
+         */
         @Override
         public final void emitWatermark(Watermark mark) {
+            // 首先检查是否允许当前的水印被发出
             if (allowWatermark(mark)) {
+                // 使用checkpointLock作为锁，确保并发安全
                 synchronized (checkpointLock) {
+                    // 处理并发出水印状态为ACTIVE，表示数据流仍在活跃处理中
                     processAndEmitWatermarkStatus(WatermarkStatus.ACTIVE);
-
+                    // 检查是否有下一个检查任务已经安排
                     if (nextCheck != null) {
                         this.failOnNextCheck = false;
                     } else {
                         scheduleNextIdleDetectionTask();
                     }
-
+                    //处理并发送Watermark至下游算子
                     processAndEmitWatermark(mark);
                 }
             }

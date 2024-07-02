@@ -139,21 +139,40 @@ public class PlannerContext {
         return context.getRexFactory();
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 构建Calcite框架配置FrameworkConfig
+     */
     public FrameworkConfig createFrameworkConfig() {
+        // 使用Frameworks的newConfigBuilder方法创建一个新的FrameworkConfig的构建器
         return Frameworks.newConfigBuilder()
+                // 设置默认的schema为rootSchema的扩展版本
                 .defaultSchema(rootSchema.plus())
+                // 设置SQL解析器的配置
                 .parserConfig(getSqlParserConfig())
+                // 设置成本工厂为FlinkCostFactory的实例，用于计算查询计划的成本
                 .costFactory(new FlinkCostFactory())
+                // 设置类型系统
                 .typeSystem(typeSystem)
+                // 设置转换表为FlinkConvertletTable的实例，用于在SQL和关系代数之间进行转换
                 .convertletTable(FlinkConvertletTable.INSTANCE)
+                // 设置SQL到关系代数的转换器配置
                 .sqlToRelConverterConfig(getSqlToRelConverterConfig())
+                // 设置SQL操作符表，根据Calcite配置获取
                 .operatorTable(getSqlOperatorTable(getCalciteConfig()))
                 // set the executor to evaluate constant expressions
+                // 设置表达式评估器为ExpressionReducer的实例，用于评估常量表达式
+                // ExpressionReducer需要传入TableConfig、ClassLoader和一个布尔值（这里为false）
                 .executor(
                         new ExpressionReducer(
                                 context.getTableConfig(), context.getClassLoader(), false))
+                // 设置上下文为传入的context
                 .context(context)
+                // 设置特性定义集合（traitDefs），这些特性可能定义了某些操作符的额外属性或行为
                 .traitDefs(traitDefs)
+                // 构建并返回FrameworkConfig对象
                 .build();
     }
 
@@ -169,8 +188,19 @@ public class PlannerContext {
         final FlinkPlannerImpl planner = createFlinkPlanner();
         return createRelBuilder(planner);
     }
-
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 构建FlinkPlannerImpl对象该类对SqlNode进行校验
+     */
     public FlinkPlannerImpl createFlinkPlanner() {
+        // 创建一个新的FlinkPlannerImpl对象，并传入以下参数：
+        // 1. createFrameworkConfig() 的返回结果：调用此方法生成Flink框架的配置信息
+        // 2. this::createCatalogReader：方法引用，指向当前类中的createCatalogReader方法，
+        //    该方法用于创建CatalogReader对象（可能是用来读取catalog信息的）
+        // 3. typeFactory：类型工厂（可能是RelDataTypeFactory的实例），用于创建和管理SQL类型
+        // 4. cluster：可能是Flink的集群信息或者相关的配置/上下文
         return new FlinkPlannerImpl(
                 createFrameworkConfig(), this::createCatalogReader, typeFactory, cluster);
     }
@@ -179,33 +209,52 @@ public class PlannerContext {
         return new CalciteParser(getSqlParserConfig());
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 构建FlinkCalciteCatalogReader
+     */
     public FlinkCalciteCatalogReader createCatalogReader(boolean lenientCaseSensitivity) {
+        // 获取SQL解析器的配置
         final SqlParser.Config sqlParserConfig = getSqlParserConfig();
-
+        // 判断是否使用宽松的大小写敏感性
         final boolean caseSensitive;
+        // 如果使用宽松的大小写敏感性，则不区分大小写
         if (lenientCaseSensitivity) {
+            // 如果使用宽松的大小写敏感性，则不区分大小写
             caseSensitive = false;
         } else {
+            // 否则使用SQL解析器配置中设置的大小写敏感性
             caseSensitive = sqlParserConfig.caseSensitive();
         }
-
+        // 使用新的大小写敏感性设置来创建一个新的SQL解析器配置
         final SqlParser.Config newSqlParserConfig =
                 sqlParserConfig.withCaseSensitive(caseSensitive);
-
+        // 获取最终的根schema（可能是对rootSchema进行了一些扩展或修改）
         final SchemaPlus finalRootSchema = getRootSchema(rootSchema.plus());
-
+        // 获取CatalogManager，它负责管理catalog和database
         final CatalogManager catalogManager = context.getCatalogManager();
+        // 创建一个列表来保存catalog和database的路径
         final List<List<String>> paths = new ArrayList<>();
+        // 如果当前catalog不是空的
         if (!StringUtils.isNullOrWhitespaceOnly(catalogManager.getCurrentCatalog())) {
+            // 如果当前database也不是空的
             if (!StringUtils.isNullOrWhitespaceOnly(catalogManager.getCurrentDatabase())) {
+                // 添加catalog和database的路径到paths列表中
                 paths.add(
                         asList(
                                 catalogManager.getCurrentCatalog(),
                                 catalogManager.getCurrentDatabase()));
             }
+            // 添加只有catalog的路径到paths列表中
             paths.add(singletonList(catalogManager.getCurrentCatalog()));
         }
-
+        // 创建一个新的FlinkCalciteCatalogReader对象，并传入以下参数：
+        // 1. 从finalRootSchema转换得到的CalciteSchema
+        // 2. catalog和database的路径列表
+        // 3. 类型工厂
+        // 4. 使用新的SQL解析器配置创建的Calcite连接配置
         return new FlinkCalciteCatalogReader(
                 CalciteSchema.from(finalRootSchema),
                 paths,

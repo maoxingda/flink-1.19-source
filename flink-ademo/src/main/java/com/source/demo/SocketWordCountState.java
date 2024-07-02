@@ -43,6 +43,7 @@ public class SocketWordCountState {
         // 3. 使用 map 函数将字符串拆分为单词，并输出 (word, 1) 的元组
         fileStream
                 .map(new Tokenizer())
+                .setParallelism(2)
                 .keyBy(0) // 按单词进行分组
                 .flatMap(new CountAverageWithValueState()).map(vale -> vale.f1).print(); // 使用自定义的 KeyedProcessFunction 来处理状态
 

@@ -32,7 +32,7 @@ import java.time.LocalDateTime;
 
 /**
  * {@link TableTestProgram} definitions for testing {@link
- * org.apache.flink.table.planner.plan.nodes.exec.stream.StreamExecCalc}.
+ * StreamExecCalc}.
  */
 public class CalcTestPrograms {
 

@@ -177,11 +177,26 @@ public class ModuleManager {
      * @param name name of the function
      * @return an optional of {@link FunctionDefinition}
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 通过给定的名称获取一个可选的 {@link FunctionDefinition}。函数将按照使用的模块顺序进行解析，
+     * 并返回第一个匹配的函数定义。如果在所有模块中都没有找到匹配项，则返回一个空的 Optional。
+     *
+     * @param name 函数的名称
+     * @return 一个包含 {@link FunctionDefinition} 的 Optional，如果未找到则返回空的 Optional
+     */
     public Optional<FunctionDefinition> getFunctionDefinition(String name) {
+        // 遍历已使用的模块列表
         for (String moduleName : usedModules) {
+            // 获取当前模块的函数列表，包括隐藏函数
             if (loadedModules.get(moduleName).listFunctions(true).stream()
+                    // 使用流操作检查是否存在名称匹配的函数
                     .anyMatch(name::equalsIgnoreCase)) {
+                // 如果找到匹配的函数，记录日志并返回该函数的定义
                 LOG.debug("Got FunctionDefinition '{}' from '{}' module.", name, moduleName);
+                // 如果没有在任何模块中找到匹配的函数定义，记录日志并返回一个空的 Optional
                 return loadedModules.get(moduleName).getFunctionDefinition(name);
             }
         }

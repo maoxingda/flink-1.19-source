@@ -52,6 +52,12 @@ import java.util.Set;
  * <p>NOTE: A logical type is just a description of a type, a planner or runtime might not support
  * every type in every logical precision yet!
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 一种逻辑类型，用于描述值的数据类型。它并不意味着传输或存储的具体物理表示，而是定义了基于JVM的语言和表生态系统之间的边界。
+ */
 @PublicEvolving
 public abstract class LogicalType implements Serializable {
     private static final long serialVersionUID = 1L;

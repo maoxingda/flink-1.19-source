@@ -60,19 +60,35 @@ public class SqlNodeConverters {
      * node.
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
+    /**
+     * @授课老师(微信): yi_locus
+     * email: 156184212@qq.com
+     * 将给定的经过验证的 SqlNode 转换为 Operation，如果存在为该节点注册的转换器。
+     *
+     * @param validatedSqlNode 已经过验证的 SqlNode 对象
+     * @param context          转换上下文
+     * @return 转换后的 Operation 对象（如果存在相应的转换器），否则返回一个空的 Optional
+    */
     public static Optional<Operation> convertSqlNode(
             SqlNode validatedSqlNode, ConvertContext context) {
         // match by class first
+        // 首先按类匹配转换器
+        // 从CLASS_CONVERTERS映射中根据SqlNode的类获取转换器
         SqlNodeConverter classConverter = CLASS_CONVERTERS.get(validatedSqlNode.getClass());
         if (classConverter != null) {
+            // 如果找到了类转换器，则使用它进行转换并返回结果
             return Optional.of(classConverter.convertSqlNode(validatedSqlNode, context));
         }
 
         // match by kind if no matching items in class converters
+        // 如果没有找到类转换器，则按种类匹配转换器
+        // 从SQLKIND_CONVERTERS映射中根据SqlNode的种类获取转换器
         SqlNodeConverter sqlKindConverter = SQLKIND_CONVERTERS.get(validatedSqlNode.getKind());
         if (sqlKindConverter != null) {
+            // 如果找到了种类转换器，则使用它进行转换并返回结果
             return Optional.of(sqlKindConverter.convertSqlNode(validatedSqlNode, context));
         } else {
+            // 如果没有找到任何转换器，则返回空的 Optional
             return Optional.empty();
         }
     }

@@ -54,6 +54,12 @@ abstract class DeduplicateFunctionBase<T, K, IN, OUT> extends KeyedProcessFuncti
         this.serializer = serializer;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     *
+     */
     @Override
     public void open(OpenContext openContext) throws Exception {
         super.open(openContext);
