@@ -560,13 +560,25 @@ public final class CatalogManager implements CatalogRegistry, AutoCloseable {
      * @param objectIdentifier full path of the table to retrieve
      * @return table that the path points to.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 检索一个完全限定的表
+     *
+     * @param objectIdentifier 要检索的表的完整路径
+     */
     public Optional<ContextResolvedTable> getTable(ObjectIdentifier objectIdentifier) {
+        // 首先检查临时表集合中是否存在该路径对应的表
         CatalogBaseTable temporaryTable = temporaryTables.get(objectIdentifier);
         if (temporaryTable != null) {
+            // 如果存在，则解析该临时表为一个 ResolvedCatalogBaseTable 类型的对象
             final ResolvedCatalogBaseTable<?> resolvedTable =
                     resolveCatalogBaseTable(temporaryTable);
+            // 创建一个 ContextResolvedTable 实例，标记为临时表，并返回其 Optional 容器
             return Optional.of(ContextResolvedTable.temporary(objectIdentifier, resolvedTable));
         } else {
+            // 如果临时表集合中不存在，则尝试从永久表中检索
             return getPermanentTable(objectIdentifier, null);
         }
     }
@@ -579,6 +591,12 @@ public final class CatalogManager implements CatalogRegistry, AutoCloseable {
      * @param timestamp Timestamp of the table snapshot, which is milliseconds since 1970-01-01
      *     00:00:00 UTC
      * @return table at a specific time that the path points to.
+     */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     *
      */
     public Optional<ContextResolvedTable> getTable(
             ObjectIdentifier objectIdentifier, long timestamp) {
@@ -656,16 +674,29 @@ public final class CatalogManager implements CatalogRegistry, AutoCloseable {
         return Optional.empty();
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 检索一个永久表。
+     *
+     * @param objectIdentifier 表的完整路径标识
+     */
     private Optional<ContextResolvedTable> getPermanentTable(
             ObjectIdentifier objectIdentifier, @Nullable Long timestamp) {
+        // 尝试根据目录名获取 Catalog 实例
         Optional<Catalog> catalogOptional = getCatalog(objectIdentifier.getCatalogName());
+        // 提取对象路径
         ObjectPath objectPath = objectIdentifier.toObjectPath();
         if (catalogOptional.isPresent()) {
+            // 如果成功获取到 Catalog 实例
             Catalog currentCatalog = catalogOptional.get();
             try {
                 final CatalogBaseTable table;
+                // 如果提供了时间戳，则尝试使用时间旅行查询表
                 if (timestamp != null) {
                     table = currentCatalog.getTable(objectPath, timestamp);
+                    // 如果查询的是视图且尝试时间旅行
                     if (table.getTableKind() == CatalogBaseTable.TableKind.VIEW) {
                         throw new TableException(
                                 String.format(
@@ -673,9 +704,12 @@ public final class CatalogManager implements CatalogRegistry, AutoCloseable {
                                         objectIdentifier.asSummaryString()));
                     }
                 } else {
+                    // 如果没有提供时间戳，则直接查询表
                     table = currentCatalog.getTable(objectPath);
                 }
+                // 解析表为 ResolvedCatalogBaseTable 类型的对象
                 final ResolvedCatalogBaseTable<?> resolvedTable = resolveCatalogBaseTable(table);
+                // 创建一个表示永久表的 ContextResolvedTable 实例并返回
                 return Optional.of(
                         ContextResolvedTable.permanent(
                                 objectIdentifier, currentCatalog, resolvedTable));

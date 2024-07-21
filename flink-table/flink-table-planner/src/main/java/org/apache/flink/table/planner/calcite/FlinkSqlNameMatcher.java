@@ -74,8 +74,15 @@ public class FlinkSqlNameMatcher implements SqlNameMatcher {
      * <p>If the fields type is NOT NULL, but the enclosing ROW is nullable we still can produce
      * nulls.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 根据字段名获取行类型中的字段，并处理字段的可空性
+     */
     @Override
     public RelDataTypeField field(RelDataType rowType, String fieldName) {
+        // 尝试通过基础匹配器获取字段
         RelDataTypeField field = baseMatcher.field(rowType, fieldName);
         if (field != null && rowType.isNullable() && !field.getType().isNullable()) {
             RelDataType typeWithNullability =
@@ -83,7 +90,7 @@ public class FlinkSqlNameMatcher implements SqlNameMatcher {
             return new RelDataTypeFieldImpl(field.getName(), field.getIndex(), typeWithNullability);
         }
 
-        return field;
+        return field;//返回字段
     }
 
     @Override

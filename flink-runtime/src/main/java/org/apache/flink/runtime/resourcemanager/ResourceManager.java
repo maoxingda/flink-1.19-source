@@ -617,6 +617,7 @@ public abstract class ResourceManager<WorkerType extends ResourceIDRetrievable>
                         .thenApply(
                                 acknowledge -> {
                                     validateRunsInMainThread();
+                                    // todo 流转给SlotManager处理申请请求
                                     slotManager.processResourceRequirements(resourceRequirements);
                                     return null;
                                 });

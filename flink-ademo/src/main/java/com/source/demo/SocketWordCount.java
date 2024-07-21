@@ -21,17 +21,27 @@ public class SocketWordCount {
         /**
          * 创建StreamExecutionEnvironment
          */
+        //0123456789abcdef0123456789abcdef
+        //0123456789abcdef0123456789abcde1
+        //0123456789abcdef0123456789abcde2
+        //0123456789abcdef0123456789abcde3
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         /** 读取socket数据 */
         DataStreamSource<String> fileStream =   env.socketTextStream("127.0.0.1",9999);
+        fileStream.uid("socket").setUidHash("0123456789abcdef0123456789abcdef");
         /** 将数据转成小写 */
         SingleOutputStreamOperator<String> mapStream = fileStream.map(String :: toLowerCase);
+        mapStream.uid("mapStream").setUidHash("0123456789abcdef0123456789abcde1");
         /** 按照空格切分字符串*/
         SingleOutputStreamOperator<Tuple2<String,Integer>> flatMapStream = mapStream.flatMap(new Split());
+        flatMapStream.uid("flatMapStream").setUidHash("0123456789abcdef0123456789abcde2");
+
         /** 分组聚合*/
         KeyedStream<Tuple2<String,Integer>,String> keyStream = flatMapStream.keyBy(value -> value.f0);
         /** 聚合*/
         SingleOutputStreamOperator<Tuple2<String,Integer>> sumStream = keyStream.sum(1);
+        sumStream.uid("sumStream").setUidHash("0123456789abcdef0123456789abcde3");
+
         /** 打印 */
         DataStreamSink<Tuple2<String,Integer>> sink = sumStream.print();
         /** 执行任务 */

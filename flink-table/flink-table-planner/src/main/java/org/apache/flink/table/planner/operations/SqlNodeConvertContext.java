@@ -64,8 +64,17 @@ public class SqlNodeConvertContext implements SqlNodeConverter.ConvertContext {
         return catalogManager;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将SQL节点转换为关系型表达式根节点（RelRoot）
+     *
+     * @param sqlNode SQL语句的抽象表示，即SqlNode对象，它代表了SQL查询的一个部分或整体
+     */
     @Override
     public RelRoot toRelRoot(SqlNode sqlNode) {
+        //调用FlinkPlannerImpl.rel方法来进行转换
         return flinkPlanner.rel(sqlNode);
     }
 

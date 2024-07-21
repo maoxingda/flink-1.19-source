@@ -318,7 +318,7 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     *
+     * 向ResourceManager发送请求申请资源
     */
     @Override
     public void connectToResourceManager(ResourceManagerGateway resourceManagerGateway) {

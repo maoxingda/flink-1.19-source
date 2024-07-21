@@ -108,7 +108,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 
+     * 为Execution申请资源
     */
     @Override
     public Map<ExecutionAttemptID, ExecutionSlotAssignment> allocateSlotsFor(
@@ -135,7 +135,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                         .map(ExecutionAttemptID::getExecutionVertexId)
                         .collect(Collectors.toList());
         /**
-         * allocateSlotsForVertices 基于顶点进行slot申请 返回值List<SlotExecutionVertexAssignment>
+         * todo allocateSlotsForVertices 基于顶点进行slot申请 返回值List<SlotExecutionVertexAssignment>
          */
         return allocateSlotsForVertices(vertexIds).stream()
                 .collect(
@@ -181,7 +181,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
     /**
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
-     * 为ExecutionVertex进行Slot分配
+     * 为ExecutionVertex申请共享slot
     */
     private List<SlotExecutionVertexAssignment> allocateSlotsForVertices(
             List<ExecutionVertexID> executionVertexIds) {
@@ -203,7 +203,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
         Map<ExecutionSlotSharingGroup, SharedSlot> slots = new HashMap<>(executionsByGroup.size());
         // 尝试为已存在的共享组分配Slot
         Set<ExecutionSlotSharingGroup> groupsToAssign = new HashSet<>(executionsByGroup.keySet());
-        /** 尝试分配已存在的共享Slot */
+        /** todo 第一次启动没有 尝试分配已存在的共享Slot */
         Map<ExecutionSlotSharingGroup, SharedSlot> assignedSlots =
                 tryAssignExistingSharedSlots(groupsToAssign);
         // 将已分配的槽位加入总的槽位映射
@@ -212,7 +212,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
         groupsToAssign.removeAll(assignedSlots.keySet());
         // 如果还有未分配的组
         if (!groupsToAssign.isEmpty()) {
-            // 为剩余的组分配新的共享Slot
+            // todo 分配新的 为剩余的组分配新的共享Slot
             Map<ExecutionSlotSharingGroup, SharedSlot> allocatedSlots =
                     allocateSharedSlots(groupsToAssign, sharedSlotProfileRetriever);
             // 将新分配的槽位加入总的槽位映射
@@ -346,7 +346,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
             // 将物理槽请求ID映射到对应的物理资源配置文件
             requestToPhysicalResources.put(physicalSlotRequestId, physicalSlotResourceProfile);
         }
-        // 调用slotProvider分配物理槽，并获取分配结果（异步操作）
+        // todo 调用slotProvider分配物理槽，并获取分配结果（异步操作）
         Map<SlotRequestId, CompletableFuture<PhysicalSlotRequest.Result>> allocateResult =
                 slotProvider.allocatePhysicalSlots(slotRequests);
         // 遍历分配结果，对每个分配结果进行处理

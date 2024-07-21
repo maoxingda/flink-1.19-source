@@ -388,21 +388,43 @@ public class GenericInMemoryCatalog extends AbstractCatalog {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 根据表路径获取表对象。
+     *
+     * @param tablePath 表对象的路径，用于唯一标识表。
+     */
     @Override
     public CatalogBaseTable getTable(ObjectPath tablePath) throws TableNotExistException {
+        // 检查传入的表路径对象是否为null，如果是，则抛出NullPointerException
         checkNotNull(tablePath);
-
+        // 检查表是否存在。这里假设tableExists是一个方法，用于根据表路径判断表是否存在。
         if (!tableExists(tablePath)) {
+            // 如果表不存在，则抛出TableNotExistException异常。
             throw new TableNotExistException(getName(), tablePath);
         } else {
+            // 如果表存在，则从tables映射中获取对应的表对象，并调用其copy方法返回一个副本。
             return tables.get(tablePath).copy();
         }
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 检查表是否存在。
+     *
+     * @param tablePath 表对象的路径，包含了数据库名和表名，用于唯一标识表。
+     * @return 如果表存在，则返回true；如果表不存在，则返回false。
+     * 注意：此方法首先检查数据库是否存在，然后检查表是否存在于该数据库中。
+     */
     @Override
     public boolean tableExists(ObjectPath tablePath) {
+        // 检查传入的表路径对象是否为null，如果是，则抛出NullPointerException
         checkNotNull(tablePath);
-
+        //检查数据库是否存在，检查表是否存在
         return databaseExists(tablePath.getDatabaseName()) && tables.containsKey(tablePath);
     }
 

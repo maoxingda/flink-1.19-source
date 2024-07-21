@@ -45,6 +45,13 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * environment of job manager. Then it will be used to register local resources for task manager in
  * {@link Utils#createTaskExecutorContext}.
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+Yarn本地资源描述符由｛@link YarnClusterDescriptor｝生成，并设置为作业管理器的环境。然后，
+它将用于在{@link Utils#createTaskExecutorContext}中为任务管理器注册本地资源。
+ */
 class YarnLocalResourceDescriptor {
     private static final Logger LOG = LoggerFactory.getLogger(YarnLocalResourceDescriptor.class);
 

@@ -432,33 +432,55 @@ public class FineGrainedSlotManager implements SlotManager {
             return RegistrationResult.SUCCESS;
         }
     }
-
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 私有方法，用于延迟声明所需资源
+     */
     private void declareNeededResourcesWithDelay() {
+        // 使用Preconditions工具类检查资源分配器是否支持当前操作
         Preconditions.checkState(resourceAllocator.isSupported());
-
+        // 如果延迟时间小于等于0，则直接声明所需资源
         if (declareNeededResourceDelay.toMillis() <= 0) {
             declareNeededResources();
         } else {
+            // 如果当前没有正在执行的延迟任务，或者已有的延迟任务已经完成，则创建新的延迟任务
             if (declareNeededResourceFuture == null || declareNeededResourceFuture.isDone()) {
+                // 创建一个新的CompletableFuture对象，用于表示异步操作的结果
                 declareNeededResourceFuture = new CompletableFuture<>();
+                // 使用ScheduledExecutorService调度器安排一个任务，该任务将在指定的延迟时间后执行
                 scheduledExecutor.schedule(
+                        // 延迟时间到达后，使用主线程执行器来执行实际的任务
                         () ->
                                 mainThreadExecutor.execute(
                                         () -> {
+                                            // 在主线程中声明所需资源
                                             declareNeededResources();
+                                            // 声明资源完成后，完成CompletableFuture对象
                                             Preconditions.checkNotNull(declareNeededResourceFuture)
                                                     .complete(null);
                                         }),
+                        // 延迟时间
                         declareNeededResourceDelay.toMillis(),
+                        // 时间单位
                         TimeUnit.MILLISECONDS);
             }
         }
     }
 
     /** DO NOT call this method directly. Use {@link #declareNeededResourcesWithDelay()} instead. */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 私有方法用于声明需要的资源
+     */
     private void declareNeededResources() {
+        // 获取不再需要的TaskManager实例ID及其资源规格
         Map<InstanceID, WorkerResourceSpec> unWantedTaskManagers =
                 taskManagerTracker.getUnWantedTaskManager();
+        // 将不再需要的TaskManager按资源规格分组，并收集其对应的实例ID集合
         Map<WorkerResourceSpec, Set<InstanceID>> unWantedTaskManagerBySpec =
                 unWantedTaskManagers.entrySet().stream()
                         .collect(
@@ -467,6 +489,7 @@ public class FineGrainedSlotManager implements SlotManager {
                                         Collectors.mapping(Map.Entry::getKey, Collectors.toSet())));
 
         // registered TaskManagers except unwanted worker.
+        // 获取已注册的TaskManager（排除不再需要的）并转换为资源规格流
         Stream<WorkerResourceSpec> registeredTaskManagerStream =
                 taskManagerTracker.getRegisteredTaskManagers().stream()
                         .filter(t -> !unWantedTaskManagers.containsKey(t.getInstanceId()))
@@ -475,32 +498,36 @@ public class FineGrainedSlotManager implements SlotManager {
                                         WorkerResourceSpec.fromTotalResourceProfile(
                                                 t.getTotalResource(), t.getDefaultNumSlots()));
         // pending TaskManagers.
+        // 获取待处理的TaskManager并转换为资源规格流
         Stream<WorkerResourceSpec> pendingTaskManagerStream =
                 taskManagerTracker.getPendingTaskManagers().stream()
                         .map(
                                 t ->
                                         WorkerResourceSpec.fromTotalResourceProfile(
                                                 t.getTotalResourceProfile(), t.getNumSlots()));
-
+        // 将已注册和待处理的TaskManager资源规格流合并，并按资源规格分组统计所需的Worker数量
         Map<WorkerResourceSpec, Integer> requiredWorkers =
                 Stream.concat(registeredTaskManagerStream, pendingTaskManagerStream)
                         .collect(
                                 Collectors.groupingBy(
                                         Function.identity(), Collectors.summingInt(e -> 1)));
-
+        // 将所需的Worker资源规格集合和不再需要的TaskManager的资源规格集合合并
         Set<WorkerResourceSpec> workerResourceSpecs = new HashSet<>(requiredWorkers.keySet());
         workerResourceSpecs.addAll(unWantedTaskManagerBySpec.keySet());
 
+        // 初始化资源声明列表
         List<ResourceDeclaration> resourceDeclarations = new ArrayList<>();
+        // 遍历合并后的资源规格集合，为每个规格创建资源声明
         workerResourceSpecs.forEach(
                 spec ->
+                        // 对于每个资源规格，获取所需的Worker数量（如果未找到，则默认为0）
                         resourceDeclarations.add(
                                 new ResourceDeclaration(
                                         spec,
                                         requiredWorkers.getOrDefault(spec, 0),
                                         unWantedTaskManagerBySpec.getOrDefault(
                                                 spec, Collections.emptySet()))));
-
+        // todo 向资源分配器声明所需的资源
         resourceAllocator.declareResourceNeeded(resourceDeclarations);
     }
 

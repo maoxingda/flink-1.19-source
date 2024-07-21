@@ -11,10 +11,10 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.Collector;
 
 /**
- * @Author: 小Q
- * @Desctription: TODO
- * @Date: Created in 2024/4/14 1:51
- * @Version: 1.0
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ *
  */
 
 

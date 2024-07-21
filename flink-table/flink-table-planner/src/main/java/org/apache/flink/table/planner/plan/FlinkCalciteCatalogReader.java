@@ -84,40 +84,68 @@ public class FlinkCalciteCatalogReader extends CalciteCatalogReader {
                 config);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 获取表结构对象
+     */
     @Override
     public Prepare.PreparingTable getTable(List<String> names) {
+        // 调用父类的方法，根据给定的名称列表获取原始的表对象
         Prepare.PreparingTable originRelOptTable = super.getTable(names);
+        // 如果未找到对应的表，则返回null
         if (originRelOptTable == null) {
             return null;
         } else {
             // Wrap as FlinkPreparingTableBase to use in query optimization.
+            // 尝试将原始的表对象转换为CatalogSchemaTable类型，以便在查询优化中使用
             CatalogSchemaTable table = originRelOptTable.unwrap(CatalogSchemaTable.class);
+            // 如果成功转换，说明这是一个可以被Flink进一步处理的表
             if (table != null) {
+                // 调用toPreparingTable方法，将原始表对象、其schema、表的全名、行类型以及转换后的CatalogSchemaTable封装成一个新的PreparingTable对象
+                // 这个新的对象将用于Flink的查询优化过程中
                 return toPreparingTable(
                         originRelOptTable.getRelOptSchema(),
                         originRelOptTable.getQualifiedName(),
                         originRelOptTable.getRowType(),
                         table);
             } else {
+                // 如果转换失败，说明这个表可能不是Flink直接支持的类型，直接返回原始的PreparingTable对象
                 return originRelOptTable;
             }
         }
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将给定的{@link CatalogSchemaTable}转换为Flink的源表。
+     * @param relOptSchema Flink的RelOptSchema，表示逻辑优化中的Schema
+     * @param names  表的名称列表，用于定位表
+     * @param rowType 表的行类型，表示表中的数据结构
+     */
     /** Translate this {@link CatalogSchemaTable} into Flink source table. */
     private static FlinkPreparingTableBase toPreparingTable(
             RelOptSchema relOptSchema,
             List<String> names,
             RelDataType rowType,
             CatalogSchemaTable schemaTable) {
+        // 从CatalogSchemaTable中获取已解析的表对象
         final ResolvedCatalogBaseTable<?> resolvedBaseTable =
                 schemaTable.getContextResolvedTable().getResolvedTable();
+        // 从已解析的表对象中获取原始的表对象
         final CatalogBaseTable originTable = resolvedBaseTable.getOrigin();
+        // 根据原始表对象的类型进行不同的转换处理
         if (originTable instanceof QueryOperationCatalogView) {
+            // 如果原始表是一个查询操作视图，则进行相应的转换
             return convertQueryOperationView(
                     relOptSchema, names, rowType, (QueryOperationCatalogView) originTable);
         } else if (originTable instanceof ConnectorCatalogTable) {
+            // 如果原始表是一个连接器表
             ConnectorCatalogTable<?, ?> connectorTable = (ConnectorCatalogTable<?, ?>) originTable;
+            // 如果连接器表包含TableSource，则进行转换
             if ((connectorTable).getTableSource().isPresent()) {
                 return convertLegacyTableSource(
                         relOptSchema,
@@ -127,10 +155,12 @@ public class FlinkCalciteCatalogReader extends CalciteCatalogReader {
                         schemaTable.getStatistic(),
                         schemaTable.isStreamingMode());
             } else {
+                // 如果连接器表没有TableSource，则抛出异常
                 throw new ValidationException(
                         "Cannot convert a connector table " + "without source.");
             }
         } else if (originTable instanceof CatalogView) {
+            // 如果原始表是一个目录视图，则进行相应的转换
             return convertCatalogView(
                     relOptSchema,
                     names,
@@ -138,8 +168,10 @@ public class FlinkCalciteCatalogReader extends CalciteCatalogReader {
                     schemaTable.getStatistic(),
                     (CatalogView) originTable);
         } else if (originTable instanceof CatalogTable) {
+            // 如果原始表是一个普通的目录表，则进行相应的转换
             return convertCatalogTable(relOptSchema, names, rowType, schemaTable);
         } else {
+            // 如果原始表不是上述任何支持的类型，则抛出异常
             throw new ValidationException("Unsupported table type: " + originTable);
         }
     }
@@ -191,13 +223,26 @@ public class FlinkCalciteCatalogReader extends CalciteCatalogReader {
                 isStreamingMode,
                 table);
     }
-
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将目录表（CatalogTable）转换为Flink的源表表示，根据是否为旧版源选项进行区分。
+     *
+     * @param relOptSchema Flink的逻辑优化Schema
+     * @param names 表的名称列表
+     * @param rowType 表的行类型
+     * @param schemaTable 要转换的目录表对象
+     * @return 转换后的Flink源表表示
+     */
     private static FlinkPreparingTableBase convertCatalogTable(
             RelOptSchema relOptSchema,
             List<String> names,
             RelDataType rowType,
             CatalogSchemaTable schemaTable) {
+        // 检查目录表是否包含旧版的源选项
         if (isLegacySourceOptions(schemaTable)) {
+            // 如果是旧版源选项，则使用LegacyCatalogSourceTable进行转换
             return new LegacyCatalogSourceTable<>(
                     relOptSchema,
                     names,
@@ -205,6 +250,7 @@ public class FlinkCalciteCatalogReader extends CalciteCatalogReader {
                     schemaTable,
                     schemaTable.getContextResolvedTable().getResolvedTable());
         } else {
+            // 如果不是旧版源选项，则使用CatalogSourceTable进行转换
             return new CatalogSourceTable(relOptSchema, names, rowType, schemaTable);
         }
     }

@@ -98,23 +98,37 @@ public final class CatalogSourceTable extends FlinkPreparingTableBase {
                 catalogSchemaTable);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将SQLNode转换为RelNode
+     */
     @Override
     public RelNode toRel(ToRelContext toRelContext) {
+        // 获取Calcite的集群信息，它是构建查询计划时所需的基础环境
         final RelOptCluster cluster = toRelContext.getCluster();
+        // 获取表级别的提示信息，这些提示可以影响查询计划的生成
         final List<RelHint> hints = toRelContext.getTableHints();
+        // 从集群信息中解包出Flink的上下文信息
         final FlinkContext context = ShortcutUtils.unwrapContext(cluster);
+        // 创建一个Flink的RelBuilder，用于构建Calcite的RelNode
         final FlinkRelBuilder relBuilder = FlinkRelBuilder.of(cluster, relOptSchema);
 
         // finalize catalog table with option hints
+        // 使用表级别的提示信息来最终确定catalog表的选项
         final Map<String, String> hintedOptions = FlinkHints.getHintedOptions(hints);
+        // 根据Flink上下文和带有提示的选项，计算并解析出最终的catalog表
         final ContextResolvedTable catalogTable =
                 computeContextResolvedTable(context, hintedOptions);
 
         // create table source
+        // 根据解析后的catalog表信息，创建DynamicTableSource，这是Flink中用于表示表数据源的一种方式
         final DynamicTableSource tableSource =
                 createDynamicTableSource(context, catalogTable.getResolvedTable());
 
         // prepare table source and convert to RelNode
+        // 准备tableSource，并将其转换为Calcite的RelNode。
         return DynamicSourceUtils.convertSourceToRel(
                 !schemaTable.isStreamingMode(),
                 context.getTableConfig(),
@@ -150,9 +164,15 @@ public final class CatalogSourceTable extends FlinkPreparingTableBase {
                         hintedOptions, contextResolvedTable.getResolvedTable().getOptions()));
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 创建SourceTable
+     */
     private DynamicTableSource createDynamicTableSource(
             FlinkContext context, ResolvedCatalogTable catalogTable) {
-
+        // 尝试从catalog中获取DynamicTableSourceFactory
         final Optional<DynamicTableSourceFactory> factoryFromCatalog =
                 schemaTable
                         .getContextResolvedTable()
@@ -163,15 +183,17 @@ public final class CatalogSourceTable extends FlinkPreparingTableBase {
                                         f instanceof DynamicTableSourceFactory
                                                 ? (DynamicTableSourceFactory) f
                                                 : null);
-
+        // 尝试从模块管理器中获取DynamicTableSourceFactory
         final Optional<DynamicTableSourceFactory> factoryFromModule =
                 context.getModuleManager().getFactory(Module::getTableSourceFactory);
 
         // Since the catalog is more specific, we give it precedence over a factory provided by any
         // modules.
+        // 由于catalog提供的工厂更具体，因此它比模块提供的工厂具有更高的优先级
+        // 使用firstPresent方法从两个Optional中选择第一个非空的
         final DynamicTableSourceFactory factory =
                 firstPresent(factoryFromCatalog, factoryFromModule).orElse(null);
-
+        // 使用FactoryUtil的静态方法创建DynamicTableSource
         return FactoryUtil.createDynamicTableSource(
                 factory,
                 schemaTable.getContextResolvedTable().getIdentifier(),

@@ -559,94 +559,131 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
         return effectiveConfiguration;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 1.解析命令行参数，构建Configuration
+     * 2.构建ClusterDescriptor，比如yarn的描述符内部构造YarnClient
+     * 3.部署ClusterDescriptordeploySessionCluster部署集群
+     */
     public int run(String[] args) throws CliArgsException, FlinkException {
         //
         //	Command Line Options
         //
+        // 解析命令行选项
         final CommandLine cmd = parseCommandLineOptions(args, true);
 
+        // 如果用户请求了帮助信息
         if (cmd.hasOption(help.getOpt())) {
-            printUsage();
-            return 0;
+            printUsage(); // 打印使用说明
+            return 0;// 正常退出
         }
+        // 创建一个新的配置对象，初始化为传入的配置（可能是全局配置或默认配置）
         final Configuration effectiveConfiguration = new Configuration(configuration);
+        // 将命令行参数转换为配置对象
         final Configuration commandLineConfiguration = toConfiguration(cmd);
+        // 将命令行配置合并到有效配置中
         effectiveConfiguration.addAll(commandLineConfiguration);
+        // 记录有效配置（调试信息）
         LOG.debug("Effective configuration: {}", effectiveConfiguration);
-
+        // 根据有效配置获取Yarn集群客户端工厂
         final ClusterClientFactory<ApplicationId> yarnClusterClientFactory =
                 clusterClientServiceLoader.getClusterClientFactory(effectiveConfiguration);
+        // 设置部署目标为Yarn会话模式
         effectiveConfiguration.set(
                 DeploymentOptions.TARGET, YarnDeploymentTarget.SESSION.getName());
-
+        /**
+         *  ClusterDescriptor 内部构建YarnClient对象
+         *  使用Yarn集群客户端工厂创建Yarn集群描述器对象
+         */
         final YarnClusterDescriptor yarnClusterDescriptor =
                 (YarnClusterDescriptor)
                         yarnClusterClientFactory.createClusterDescriptor(effectiveConfiguration);
 
         try {
             // Query cluster for metrics
+            // 查询集群指标
             if (cmd.hasOption(query.getOpt())) {
+                // 如果用户请求查询集群描述
                 final String description = yarnClusterDescriptor.getClusterDescription();
-                System.out.println(description);
-                return 0;
+                System.out.println(description);// 打印集群描述
+                return 0;// 查询完成，正常退出
             } else {
+                // 集群客户端提供者
                 final ClusterClientProvider<ApplicationId> clusterClientProvider;
+                // Yarn 应用ID
                 final ApplicationId yarnApplicationId;
-
+                // 如果用户指定了应用ID
                 if (cmd.hasOption(applicationId.getOpt())) {
+                    // 从命令行参数中获取应用ID
                     yarnApplicationId =
                             ApplicationId.fromString(cmd.getOptionValue(applicationId.getOpt()));
-
+                    // 根据应用ID检索集群客户端提供者
                     clusterClientProvider = yarnClusterDescriptor.retrieve(yarnApplicationId);
                 } else {
+                    // 如果没有指定应用ID，则部署一个新的会话集群
                     final ClusterSpecification clusterSpecification =
                             yarnClusterClientFactory.getClusterSpecification(
                                     effectiveConfiguration);
-
+                    // todo 部署会话集群并获取集群客户端提供者
                     clusterClientProvider =
                             yarnClusterDescriptor.deploySessionCluster(clusterSpecification);
+                    // 获取集群客户端
                     ClusterClient<ApplicationId> clusterClient =
                             clusterClientProvider.getClusterClient();
 
                     // ------------------ ClusterClient deployed, handle connection details
+
+                    // 获取部署后的Yarn应用ID
                     yarnApplicationId = clusterClient.getClusterId();
 
                     try {
                         // Other threads use the Yarn properties file to connect to the YARN session
+                        // 将Yarn属性写入文件，以便其他线程通过该文件连接到YARN会话
                         writeYarnPropertiesFile(yarnApplicationId, dynamicPropertiesEncoded);
 
                         // Multiple tests match on the following output
+
+                        // 打印JobManager的Web界面URL，多个测试可能会用到这个输出
                         System.out.println(
                                 "JobManager Web Interface: " + clusterClient.getWebInterfaceURL());
                     } catch (Exception e) {
+                        // 如果在处理连接详情时发生异常，尝试关闭集群客户端
                         try {
-                            clusterClient.close();
+                            clusterClient.close(); // 关闭集群客户端以释放资源
                         } catch (Exception ex) {
                             LOG.info("Could not properly shutdown cluster client.", ex);
                         }
 
                         try {
+                            // 杀死指定的Yarn应用ID对应的Flink集群
                             yarnClusterDescriptor.killCluster(yarnApplicationId);
                         } catch (FlinkException fe) {
                             LOG.info("Could not properly terminate the Flink cluster.", fe);
                         }
-
+                        // 抛出异常，表示无法写入Yarn连接信息
                         throw new FlinkException(
                                 "Could not write the Yarn connection information.", e);
                     }
                 }
-
+                // 如果配置中未指定为附加模式（即非交互式模式）
                 if (!effectiveConfiguration.get(DeploymentOptions.ATTACHED)) {
+                    // 记录分离式集群的信息到日志
                     YarnClusterDescriptor.logDetachedClusterInformation(yarnApplicationId, LOG);
                 } else {
+                    // 如果是附加模式（即交互式模式）
+                    // 创建一个单线程的ScheduledExecutorService来执行周期性任务
                     ScheduledExecutorService scheduledExecutorService =
                             Executors.newSingleThreadScheduledExecutor();
 
+                    // 创建一个Yarn应用状态监视器，用于监控Yarn应用的状态
                     final YarnApplicationStatusMonitor yarnApplicationStatusMonitor =
                             new YarnApplicationStatusMonitor(
                                     yarnClusterDescriptor.getYarnClient(),
                                     yarnApplicationId,
                                     new ScheduledExecutorServiceAdapter(scheduledExecutorService));
+                    // 添加一个关闭钩子，以便在JVM关闭时执行集群关闭操作
                     Thread shutdownHook =
                             ShutdownHookUtil.addShutdownHook(
                                     () ->
@@ -657,6 +694,7 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
                                     getClass().getSimpleName(),
                                     LOG);
                     try {
+                        // 运行交互式CLI（命令行界面），这可能涉及到用户输入和集群状态反馈
                         runInteractiveCli(yarnApplicationStatusMonitor, acceptInteractiveInput);
                     } finally {
                         shutdownCluster(
@@ -843,34 +881,47 @@ public class FlinkYarnSessionCli extends AbstractYarnCli {
         }
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     *  读取配置、解析参数、调用run方法进行启动
+     */
     public static void main(final String[] args) {
+        // 从环境变量中获取配置目录
         final String configurationDirectory = CliFrontend.getConfigurationDirectoryFromEnv();
-
+        // 加载全局配置
         final Configuration flinkConfiguration = GlobalConfiguration.loadConfiguration();
 
-        int retCode;
+        int retCode;// 用于存储程序退出代码
 
         try {
+            // 创建一个Flink YARN会话的CLI实例
+            // 参数包括：Flink配置、配置目录、会话前缀（这里为空表示不使用前缀）
             final FlinkYarnSessionCli cli =
                     new FlinkYarnSessionCli(
                             flinkConfiguration,
                             configurationDirectory,
                             "",
                             ""); // no prefix for the YARN session
-
+            // 解析命令行参数
             final CommandLine commandLine = CliFrontendParser.parse(cli.allOptions, args, true);
-
+            // 复制Flink配置以用于安全配置
             final Configuration securityFlinkConfiguration = flinkConfiguration.clone();
+            // 将动态属性编码到安全配置中
             DynamicPropertiesUtil.encodeDynamicProperties(commandLine, securityFlinkConfiguration);
-
+            // 安装安全配置
             SecurityUtils.install(new SecurityConfiguration(securityFlinkConfiguration));
-
+            // 在安全上下文中运行CLI的run方法
             retCode = SecurityUtils.getInstalledContext().runSecured(() -> cli.run(args));
         } catch (CliArgsException e) {
+            // 处理命令行参数异常
             retCode = handleCliArgsException(e, LOG);
         } catch (Throwable t) {
+            // 捕获所有其他异常，并尝试去除可能的UndeclaredThrowableException包装
             final Throwable strippedThrowable =
                     ExceptionUtils.stripException(t, UndeclaredThrowableException.class);
+            // 处理错误
             retCode = handleError(strippedThrowable, LOG);
         }
 

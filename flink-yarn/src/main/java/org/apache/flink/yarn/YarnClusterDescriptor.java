@@ -489,14 +489,23 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         }
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 部署一个Flink会话集群。
+     * 核心点 getYarnSessionClusterEntrypoint YarnSessionClusterEntrypoint.class.getName();
+     */
     @Override
     public ClusterClientProvider<ApplicationId> deploySessionCluster(
             ClusterSpecification clusterSpecification) throws ClusterDeploymentException {
         try {
+            // 调用内部部署方法，该方法负责实际的集群部署逻辑
+            // todo getYarnSessionClusterEntrypoint YarnSessionClusterEntrypoint.class.getName();
             return deployInternal(
-                    clusterSpecification,
-                    "Flink session cluster",
-                    getYarnSessionClusterEntrypoint(),
+                    clusterSpecification,// 集群配置
+                    "Flink session cluster",// 集群描述，这里指定为Flink会话集群
+                    getYarnSessionClusterEntrypoint(),// 获取Yarn会话集群的入口点重点
                     null,
                     false);
         } catch (Exception e) {
@@ -611,6 +620,12 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
      * @param jobGraph A job graph which is deployed with the Flink cluster, {@code null} if none
      * @param detached True if the cluster should be started in detached mode
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 基于Yarn部署Flink集群
+     */
     private ClusterClientProvider<ApplicationId> deployInternal(
             ClusterSpecification clusterSpecification,
             String applicationName,
@@ -648,7 +663,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
                                 SecurityOptions.KERBEROS_HADOOP_FILESYSTEMS_TO_ACCESS.key()));
             }
         }
-
+        /**
+         * 核心点1.检查基础配置
+         */
         // 调用 isReadyForDeployment 方法确保集群规格已经准备好，可以进行部署
         isReadyForDeployment(clusterSpecification);
 
@@ -661,7 +678,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 
         // ------------------ Check if the YARN ClusterClient has the requested resources
         // --------------
-
+        /**
+         * 核心点2.创建Yarn客户端应用程序或者集群资源相关信息
+         */
         // Create application via yarnClient
         // 创建 YARN 客户端应用程序
         final YarnClientApplication yarnApplication = yarnClient.createApplication();
@@ -720,6 +739,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         // 将执行模式设置到 Flink 配置中，以便 Flink 集群知道应该以何种模式运行
         flinkConfiguration.set(
                 ClusterEntrypoint.INTERNAL_CLUSTER_EXECUTION_MODE, executionMode.toString());
+        /**
+         * 核心点3.启动ApplicationMaster
+         */
         // 启动 Application Master（AM），这是 YARN 集群中负责管理 Flink 作业的组件
         ApplicationReport report =
                 startAppMaster(
@@ -890,10 +912,10 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
      * @param configuration Flink 的配置对象
      * @param applicationName 应用程序的名称
      * @param yarnClusterEntrypoint YARN 集群的入口点（例如 Flink YARN Session 的主类）
-     * @param jobGraph // Flink 作业的图结构
-     * @param yarnClient // YARN 客户端
-     * @param yarnApplication // YARN 客户端应用程序
-     * @param clusterSpecification // 集群规格配置
+     * @param jobGraph  Flink 作业的图结构
+     * @param yarnClient  YARN 客户端
+     * @param yarnApplication  YARN 客户端应用程序
+     * @param clusterSpecification  集群规格配置
     */
     private ApplicationReport startAppMaster(
             Configuration configuration,
@@ -907,7 +929,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 
         // ------------------ Initialize the file systems -------------------------
         // ------------------ 初始化文件系统 -------------------------
-
+        /**
+         * 核心点1.初始化文件系统
+         */
         // 使用 Flink 配置和插件管理器来初始化文件系统
         // 这将确保文件系统相关的配置和插件被正确加载
         org.apache.flink.core.fs.FileSystem.initialize(
@@ -940,13 +964,15 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         final Optional<Path> providedUsrLibDir =
                 Utils.getQualifiedRemoteProvidedUsrLib(configuration, yarnConfiguration);
 
-        // todo 核心
+        /**
+         * 核心点2.创建临时目录，创建FileUploader文件上传实例
+         */
         // 获取 Flink 作业的临时目录路径，通常用于存储作业提交时需要上传到 YARN 的文件
         Path stagingDirPath = getStagingDir(fs);
         // 获取与 stagingDir 路径相关联的文件系统实例
         FileSystem stagingDirFs = stagingDirPath.getFileSystem(yarnConfiguration);
         // 创建一个 YarnApplicationFileUploader 实例，用于将必要的文件上传到 YARN 的 staging 目录
-        // 该实例使用 staging 目录的文件系统、路径、提供的库目录列表、应用程序 ID 和文件复制因子
+        // 该实例使用 staging 目录的文件系统、路径、提供的库目录列表、应用程序 ID
         final YarnApplicationFileUploader fileUploader =
                 YarnApplicationFileUploader.from(
                         stagingDirFs,
@@ -968,6 +994,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
             systemShipFiles.add(getPathFromLocalFilePathStr(logConfigFilePath));
         }
 
+        /**
+         * 核心点3.为应用程序设置提交的环境
+         */
         // Set-up ApplicationSubmissionContext for the application
         // 为应用程序设置 ApplicationSubmissionContext
 
@@ -993,6 +1022,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
             appContext.setMaxAppAttempts(
                     configuration.getInteger(YarnConfigOptions.APPLICATION_ATTEMPTS.key(), 1));
         }
+        /**
+         * 核心点4.构建用户存储jar等配置的路径
+         */
         // 创建一个HashSet用于存储用户提供的JAR文件路径
         final Set<Path> userJarFiles = new HashSet<>();
         // 如果jobGraph（作业图）不为空
@@ -1047,6 +1079,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 
         // 注册提供的本地资源，并将这些资源的路径添加到系统类路径列表中
         final List<String> systemClassPaths = fileUploader.registerProvidedLocalResources();
+        /**
+         * 核心点5.注册本地/远程资源，并将其添加到本地环境中
+         */
         // 注册多个本地资源（系统需要传输的文件），并将这些资源的路径添加到uploadedDependencies列表中
         final List<String> uploadedDependencies =
                 fileUploader.registerMultipleLocalResources(
@@ -1087,6 +1122,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         }
 
         // Upload and register user jars
+        //上传并注册用户的Jar
         final List<String> userClassPaths =
                 fileUploader.registerMultipleLocalResources(
                         userJarFiles,
@@ -1151,7 +1187,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         for (String classPath : systemClassPaths) {
             classPathBuilder.append(classPath).append(File.pathSeparator);
         }
-
+        /**
+         * 核心点6.上传Flink dist jar等并获取本地资源
+         */
         // Setup jar for ApplicationMaster
         // 使用fileUploader上传Flink的jar包，并获取其本地资源描述符
         final YarnLocalResourceDescriptor localResourceDescFlinkJar =
@@ -1160,7 +1198,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         classPathBuilder
                 .append(localResourceDescFlinkJar.getResourceKey())
                 .append(File.pathSeparator);
-
+        /**
+         * 核心点7.上传job.graph
+         */
         // write job graph to tmp file and add it to local resource
         // TODO: server use user main method to generate job graph
         // 将作业图写入临时文件，并将其添加到本地资源中
@@ -1203,10 +1243,12 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
                 }
             }
         }
-
+        /**
+         * 核心点7.创建上传存储Flink配置文件的临时文件
+         */
         // Upload the flink configuration
         // write out configuration file
-        // 创建一个用于存储Flink配置文件的临时文件
+        // todo 创建一个用于存储Flink配置文件的临时文件
         File tmpConfigurationFile = null;
         try {
             // 获取Flink配置文件的名称
@@ -1292,7 +1334,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
                         System.getProperty("java.security.krb5.conf"));
             }
         }
-
+        /**
+         * 核心点8.创建上传kerberos相关配置
+         */
         // 声明KRB5配置文件的远程路径变量
         Path remoteKrb5Path = null;
         // 标记是否存在KRB5配置文件
@@ -1360,8 +1404,10 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         final JobManagerProcessSpec processSpec =
                 JobManagerProcessUtils.processSpecFromConfigWithNewOptionToInterpretLegacyHeap(
                         flinkConfiguration, JobManagerOptions.TOTAL_PROCESS_MEMORY);
-        // todo 核心
-        // 设置Application Master容器的启动上下文
+        /**
+         * 核心点9.设置Application Master容器的启动上下文
+         */
+        // todo 核心 设置Application Master容器的启动上下文
         final ContainerLaunchContext amContainer =
                 setupApplicationMasterContainer(yarnClusterEntrypoint, hasKrb5, processSpec);
 
@@ -1382,9 +1428,11 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         fileUploader.close();
         // 为Application Master容器设置访问控制列表（ACLs）
         Utils.setAclsFor(amContainer, flinkConfiguration);
-
+        /**
+         * 核心点10.生成 ApplicationMaster 所需的环境变量映射
+         */
         // Setup CLASSPATH and environment variables for ApplicationMaster
-        // 核心 生成 ApplicationMaster 所需的环境变量映射
+        // todo 核心 生成 ApplicationMaster 所需的环境变量映射
         final Map<String, String> appMasterEnv =
                 generateApplicationMasterEnv(
                         fileUploader,// 文件上传器
@@ -1463,7 +1511,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         Thread deploymentFailureHook =
                 new DeploymentFailureHook(yarnApplication, fileUploader.getApplicationDir());
         Runtime.getRuntime().addShutdownHook(deploymentFailureHook);
-        // todo 核心
+        /**
+         * 核心点10.提交 ApplicationMaster 运行ApplicationMaster
+         */
         // 日志记录：提交 ApplicationMaster 运行ApplicationMaster
         LOG.info("Submitting application master " + appId);
         yarnClient.submitApplication(appContext);

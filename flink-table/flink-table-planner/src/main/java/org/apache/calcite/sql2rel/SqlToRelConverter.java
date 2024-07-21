@@ -611,25 +611,40 @@ public class SqlToRelConverter {
      * @param top Whether the query is top-level, say if its result will become a JDBC result set;
      *     <code>false</code> if the query will be part of a view.
      */
+
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将未经验证的查询的解析树转换为关系表达式。
+     *
+     * @param query 要转换的查询
+     */
     public RelRoot convertQuery(SqlNode query, final boolean needsValidation, final boolean top) {
+        // 如果需要验证，则先对查询进行验证
         if (needsValidation) {
             query = validator().validate(query);
         }
-
+        // 递归地转换查询为关系节点
         RelNode result = convertQueryRecursive(query, top, null).rel;
+        // 如果查询是顶层的并且符合流处理条件，则将其包装为LogicalDelta
         if (top) {
             if (isStream(query)) {
                 result = new LogicalDelta(cluster, result.getTraitSet(), result);
             }
         }
+        // 如果没有指定排序，则使用空排序
         RelCollation collation = RelCollations.EMPTY;
+        // 如果查询不是数据操纵语言（DML）类型的，并且是有序的，则计算所需的排序
         if (!query.isA(SqlKind.DML)) {
             if (isOrdered(query)) {
                 collation = requiredCollation(result);
             }
         }
+        // 检查转换后的类型是否与预期相符
         checkConvertedType(query, result);
 
+        // 如果开启了调试日志，则打印转换后的计划
         if (SQL2REL_LOGGER.isDebugEnabled()) {
             SQL2REL_LOGGER.debug(
                     RelOptUtil.dumpPlan(
@@ -638,9 +653,11 @@ public class SqlToRelConverter {
                             SqlExplainFormat.TEXT,
                             SqlExplainLevel.EXPPLAN_ATTRIBUTES));
         }
-
+        // 获取经过验证的查询结果的行类型
         final RelDataType validatedRowType = validator().getValidatedNodeType(query);
+        // 初始化提示列表
         List<RelHint> hints = new ArrayList<>();
+        // 如果查询是SELECT类型且包含提示，则解析这些提示
         if (query.getKind() == SqlKind.SELECT) {
             final SqlSelect select = (SqlSelect) query;
             if (select.hasHints()) {
@@ -648,6 +665,7 @@ public class SqlToRelConverter {
             }
         }
 
+        // 如果配置启用了添加JSON类型操作符的功能，则对结果应用NestedJsonFunctionRelRewriter
         if (config.isAddJsonTypeOperatorEnabled()) {
             result = result.accept(new NestedJsonFunctionRelRewriter());
         }
@@ -656,21 +674,28 @@ public class SqlToRelConverter {
         // propagate the hints.
         // The method FlinkRelOptUtil#propagateRelHints not only finds and propagates hints
         // throughout the entire rel tree but also within subqueries.
+        // 传播提示信息
+        // FlinkRelOptUtil#propagateRelHints方法不仅在整个关系树中查找并传播提示信息，还会在子查询中传播
         result = FlinkRelOptUtil.propagateRelHints(result, false);
 
         // replace all query hints with upper case
+        // 将所有查询提示转换为大写
         result = FlinkHints.capitalizeQueryHints(result);
 
         // clear query hints which are propagated into wrong query block
         // The hint QueryBlockAlias will be added when building a RelNode tree before. It is used to
         // distinguish the query block in the SQL.
+
+        // 清除传播到错误查询块的查询提示
+        // 在构建RelNode树之前，会添加QueryBlockAlias提示以区分SQL中的查询块。这里移除那些错误传播的提示
         result = result.accept(new ClearQueryHintsWithInvalidPropagationShuttle());
 
         // clear the hints on some nodes where these hints should not be attached
+        // 清除一些节点上的提示，这些节点上不应该附加这些提示
         result = FlinkHints.clearQueryHintsOnUnmatchedNodes(result);
 
         // ----- FLINK MODIFICATION END -----
-
+        // 返回转换后的RelRoot对象，包含处理后的RelNode、验证后的行类型、原始查询类型、排序信息和提示信息
         return RelRoot.of(result, validatedRowType, query.getKind())
                 .withCollation(collation)
                 .withHints(hints);
@@ -709,10 +734,20 @@ public class SqlToRelConverter {
     }
 
     /** Converts a SELECT statement's parse tree into a relational expression. */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将SqlSelect转换为RelNode（逻辑计划节点），可选地支持“TOP”操作
+     */
     public RelNode convertSelect(SqlSelect select, boolean top) {
+        // 通过验证器获取SqlSelect的WHERE子句的作用域
         final SqlValidatorScope selectScope = validator().getWhereScope(select);
+        // 创建一个Blackboard，用于存储转换过程中的中间结果和状态
         final Blackboard bb = createBlackboard(selectScope, null, top);
+        // 调用实现转换逻辑的私有方法，将SqlSelect转换为逻辑计划，并将结果存储在Blackboard中
         convertSelectImpl(bb, select);
+        // 将Blackboard的根节点（即转换后的逻辑计划）强制转换为非空的RelNode并返回
         return castNonNull(bb.root);
     }
 
@@ -2318,7 +2353,18 @@ public class SqlToRelConverter {
         }
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 从给定的SqlNode对象转换数据到Blackboard，但不附加任何额外的参数。
+     *
+     * @param bb 目标Blackboard对象，用于存储转换后的数据。
+     * @param from 可为null的SqlNode对象，表示数据来源的SQL节点。如果为null，则此方法可能执行空操作或特殊处理。
+
+     */
     protected void convertFrom(Blackboard bb, @Nullable SqlNode from) {
+        // 调用重载的convertFrom方法，传入空的List作为附加参数，表示没有额外的转换参数或条件。
         convertFrom(bb, from, Collections.emptyList());
     }
 
@@ -2358,22 +2404,43 @@ public class SqlToRelConverter {
      *
      * @param fieldNames Field aliases, usually come from AS clause, or null
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将FROM子句转换成关系表达式。
+     *
+     * @param bb 用于解析标识符的作用域
+     * @param from 查询的FROM子句。例子包括：
+     * <ul>
+     *   <li>单个表（"SALES.EMP"），
+     *   <li>带别名的表（"EMP AS E"），
+     *   <li>表列表（"EMP, DEPT"），
+     *   <li>ANSI连接表达式（"EMP JOIN DEPT ON EMP.DEPTNO = DEPT.DEPTNO"），
+     *   <li>VALUES子句（"VALUES ('Fred', 20)"），
+     *   <li>子查询（"(SELECT * FROM EMP WHERE GENDER = 'F')"），
+     *   <li>或上述任何组合。
+     * </ul>
+     */
     protected void convertFrom(
             Blackboard bb, @Nullable SqlNode from, @Nullable List<String> fieldNames) {
+        // 如果from为null，则设置一个只包含一行的LogicalValues作为根节点，并返回
         if (from == null) {
             bb.setRoot(LogicalValues.createOneRow(cluster), false);
             return;
         }
-
+        // 尝试将from转换为SqlCall类型，以便处理如AS子句等
         final SqlCall call;
         switch (from.getKind()) {
             case AS:
+                // 处理带别名的表或子查询
                 call = (SqlCall) from;
-                SqlNode firstOperand = call.operand(0);
+                SqlNode firstOperand = call.operand(0);// 获取别名前的原始节点
                 final List<String> fieldNameList =
                         call.operandCount() > 2
                                 ? SqlIdentifier.simpleNames(Util.skip(call.getOperandList(), 2))
-                                : null;
+                                : null;// 否则别名列表为null
+                // 递归调用，处理原始节点
                 convertFrom(bb, firstOperand, fieldNameList);
 
                 // ----- FLINK MODIFICATION BEGIN -----
@@ -2382,135 +2449,176 @@ public class SqlToRelConverter {
                 // Due to Calcite will expand the whole SQL Rel Node tree that contains query block,
                 // but sometimes the query block should be perceived such as query hint propagation.
                 // TODO add query-block alias hint in SqlNode instead of here
+
+                // Flink的修改：添加查询块别名提示，以区分不同的查询级别
+                // 由于Calcite会展开包含查询块的整个SQL Rel Node树，但有时需要感知查询块，如查询提示传播
+                // TODO 在SqlNode中而不是在这里添加查询块别名提示
                 if (containsQueryHints) {
                     RelNode root = bb.root;
-
+                    // 如果根节点是一个可以附加提示的节点（Hintable）
                     if (root instanceof Hintable) {
+                        // 创建一个查询块别名提示，使用别名作为提示选项
                         RelHint queryBlockAliasHint =
-                                RelHint.builder(FlinkHints.HINT_ALIAS)
-                                        .hintOption(call.operand(1).toString())
+                                RelHint.builder(FlinkHints.HINT_ALIAS)// 使用Flink的HINT_ALIAS作为提示类型
+                                        .hintOption(call.operand(1).toString())// 将AS子句中的别名作为提示选项
                                         .build();
+                        // 将查询块别名提示附加到根节点上，并获取新的根节点
                         RelNode newRoot =
                                 ((Hintable) root)
                                         .attachHints(
-                                                Collections.singletonList(queryBlockAliasHint));
+                                                Collections.singletonList(queryBlockAliasHint));// 将提示附加到根节点
+                        // 检查当前根节点是否是叶子节点（假设leaves是一个存储叶子节点的映射）
                         boolean isLeaf = leaves.containsKey(root);
                         if (isLeaf) {
                             // remove old root node
+                            // 如果是叶子节点，则从leaves映射中移除旧的根节点
                             leaves.remove(root);
                         }
-
+                        // 设置新的根节点，并标记是否为叶子节点
                         bb.setRoot(newRoot, isLeaf);
                     }
                 }
 
                 // ----- FLINK MODIFICATION END -----
                 return;
-
+             // 处理MATCH_RECOGNIZE子句
             case MATCH_RECOGNIZE:
                 convertMatchRecognize(bb, (SqlMatchRecognize) from);
                 return;
-
+             // 处理PIVOT子句
             case PIVOT:
                 convertPivot(bb, (SqlPivot) from);
                 return;
-
+            // 处理UNPIVOT子句
             case UNPIVOT:
                 convertUnpivot(bb, (SqlUnpivot) from);
                 return;
-
+            // 处理WITH_ITEM（WITH子句中的单个子项）
             case WITH_ITEM:
                 convertFrom(bb, ((SqlWithItem) from).query);
                 return;
-
+            // 处理WITH子句（整个WITH子句体）
             case WITH:
                 convertFrom(bb, ((SqlWith) from).body);
                 return;
-
+            // 处理TABLESAMPLE子句
             case TABLESAMPLE:
+                // 获取TABLESAMPLE调用的操作数列表
                 final List<SqlNode> operands = ((SqlCall) from).getOperandList();
+                // 从第二个操作数中获取采样规范（通常第一个操作数是表名，第二个操作数是采样参数）
                 SqlSampleSpec sampleSpec =
                         SqlLiteral.sampleValue(
-                                requireNonNull(operands.get(1), () -> "operand[1] of " + from));
+                                requireNonNull(operands.get(1), () -> "operand[1] of " + from));// 获取TABLESAMPLE子句的参数
+                // 根据采样规范的类型进行处理
                 if (sampleSpec instanceof SqlSampleSpec.SqlSubstitutionSampleSpec) {
+                    // 如果是替换采样规范，获取采样名称
                     String sampleName =
                             ((SqlSampleSpec.SqlSubstitutionSampleSpec) sampleSpec).getName();
+                    // 将采样名称压入datasetStack
                     datasetStack.push(sampleName);
+                    // 递归处理表名
                     convertFrom(bb, operands.get(0));
+                    // 弹出采样名称
                     datasetStack.pop();
                 } else if (sampleSpec instanceof SqlSampleSpec.SqlTableSampleSpec) {
+                    // 如果是表采样规范
                     SqlSampleSpec.SqlTableSampleSpec tableSampleSpec =
                             (SqlSampleSpec.SqlTableSampleSpec) sampleSpec;
+                    // 递归处理表名
                     convertFrom(bb, operands.get(0));
+                    // 创建采样参数
                     RelOptSamplingParameters params =
                             new RelOptSamplingParameters(
                                     tableSampleSpec.isBernoulli(),
                                     tableSampleSpec.getSamplePercentage(),
                                     tableSampleSpec.isRepeatable(),
                                     tableSampleSpec.getRepeatableSeed());
+                    // 设置新的根节点为采样节点
                     bb.setRoot(new Sample(cluster, bb.root(), params), false);
                 } else {
+                    // 如果采样规范类型未知，则抛出断言错误
                     throw new AssertionError("unknown TABLESAMPLE type: " + sampleSpec);
                 }
                 return;
-
+            // 处理TABLE_REF子句
             case TABLE_REF:
+                // 将from转换为SqlCall类型（假设它总是这样）
                 call = (SqlCall) from;
+                // 转换标识符（可能是表名加别名）
                 convertIdentifier(bb, call.operand(0), null, call.operand(1), null);
                 return;
-
+           // 处理IDENTIFIER子句
             case IDENTIFIER:
+                // 直接转换标识符
                 convertIdentifier(bb, (SqlIdentifier) from, null, null, null);
+                // 处理完IDENTIFIER后返回
                 return;
 
             case EXTEND:
+                // 将from转换为SqlCall类型
                 call = (SqlCall) from;
+                // 获取第一个操作数，它可能是一个表引用或其他标识符
                 final SqlNode operand0 = call.getOperandList().get(0);
+                // 根据操作数的类型，将其转换为SqlIdentifier（表名或列名）
                 final SqlIdentifier id =
                         operand0.getKind() == SqlKind.TABLE_REF
                                 ? ((SqlCall) operand0).operand(0)
                                 : (SqlIdentifier) operand0;
+                // 获取扩展的列
                 SqlNodeList extendedColumns = (SqlNodeList) call.getOperandList().get(1);
+                // 转换标识符（可能是表名）和扩展的列
                 convertIdentifier(bb, id, extendedColumns, null, null);
                 return;
 
             case SNAPSHOT:
+                // 处理时间表快照
                 convertTemporalTable(bb, (SqlCall) from);
                 return;
 
-            case JOIN:
+            case JOIN:// 处理JOIN操作
                 convertJoin(bb, (SqlJoin) from);
                 return;
 
+            // 处理SELECT、INTERSECT、EXCEPT、UNION等集合操作
             case SELECT:
             case INTERSECT:
             case EXCEPT:
             case UNION:
+                // 递归地转换查询，并获取转换后的RelNode
                 final RelNode rel = convertQueryRecursive(from, false, null).project();
+                // 将转换后的查询设置为根节点
                 bb.setRoot(rel, true);
                 return;
 
             case VALUES:
+                // 处理VALUES子句，通常用于生成静态数据
                 convertValuesImpl(bb, (SqlCall) from, null);
+                // 如果提供了字段名，则重命名输出字段
                 if (fieldNames != null) {
                     bb.setRoot(relBuilder.push(bb.root()).rename(fieldNames).build(), true);
                 }
                 return;
 
             case UNNEST:
+                // 处理UNNEST操作，通常用于展开数组或集合
                 convertUnnest(bb, (SqlCall) from, fieldNames);
                 return;
 
             case COLLECTION_TABLE:
+                // 处理COLLECTION_TABLE操作，这通常用于将集合表达式映射为表
                 call = (SqlCall) from;
 
                 // Dig out real call; TABLE() wrapper is just syntactic.
+                // 断言操作数列表大小为1，因为COLLECTION_TABLE通常只包裹一个表达式
                 assert call.getOperandList().size() == 1;
+                // 获取被包裹的表达式
                 final SqlCall call2 = call.operand(0);
+                // 转换集合表
                 convertCollectionTable(bb, call2);
                 return;
 
             default:
+                // 如果操作类型不是上述任何一种，则抛出断言错误
                 throw new AssertionError("not a join operator " + from);
         }
     }
@@ -2861,20 +2969,40 @@ public class SqlToRelConverter {
         bb.setRoot(relBuilder.build(), true);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 转换Identifier
+     * @param bb  查询构建或处理过程中的 Blackboard，用于存储和传递中间结果
+     * @param id // SQL标识符，可能是表名或列名（但在此上下文中更可能是表名
+     * @param extendedColumns // 可选的扩展列列表，用于在表的基础上添加额外的列
+     * @param tableHints // 可选的表提示列表，
+     * @param schemaVersion
+     */
     private void convertIdentifier(
             Blackboard bb,
             SqlIdentifier id,
             @Nullable SqlNodeList extendedColumns,
             @Nullable SqlNodeList tableHints,
             @Nullable SchemaVersion schemaVersion) {
+        // 根据SqlIdentifier解析命名空间，并获取其对应的节点
         final SqlValidatorNamespace fromNamespace = getNamespace(id).resolve();
+        // 如果命名空间已经解析为一个节点（可能是表或视图），则直接转换该节点
         if (fromNamespace.getNode() != null) {
             convertFrom(bb, fromNamespace.getNode());
             return;
         }
+        // 如果没有直接解析到节点，则尝试从数据集栈中获取数据集名称（如果可用）
         final String datasetName = datasetStack.isEmpty() ? null : datasetStack.peek();
+        // 用于标记是否使用了数据集名称的布尔数组
         final boolean[] usedDataset = {false};
         // ----- FLINK MODIFICATION BEGIN -----
+        // 使用Flink特定的逻辑来获取RelOptTable，这可能需要考虑架构版本和数据集名称
+        /**
+         * 1.namespace.unwrap:返回此命名空间或包装命名空间，将其转换为特定类。
+         * 2.getRelOptTable:RelOptTable
+         */
         RelOptTable table =
                 SqlValidatorUtil.getRelOptTable(
                         fromNamespace,
@@ -2887,7 +3015,9 @@ public class SqlToRelConverter {
                         datasetName,
                         usedDataset);
         // ----- FLINK MODIFICATION END -----
+        // 断言table不为null，确保我们能够继续处理
         assert table != null : "getRelOptTable returned null for " + fromNamespace;
+        // 如果存在扩展列，则将这些列添加到表中
         if (extendedColumns != null && extendedColumns.size() > 0) {
             final SqlValidatorTable validatorTable = table.unwrapOrThrow(SqlValidatorTable.class);
             final List<RelDataTypeField> extendedFields =
@@ -2896,17 +3026,20 @@ public class SqlToRelConverter {
         }
         // Review Danny 2020-01-13: hacky to construct a new table scan
         // in order to apply the hint strategies.
+        // 应用提示策略到表提示上，并基于这些提示和表信息创建一个新的表扫描RelNode
         final List<RelHint> hints =
                 hintStrategies.apply(
                         SqlUtil.getRelHint(hintStrategies, tableHints),
                         LogicalTableScan.create(cluster, table, ImmutableList.of()));
+        // 将表和提示转换为RelNode，这里假设toRel方法能够处理表和提示并生成相应的RelNode
         final RelNode tableRel = toRel(table, hints);
         bb.setRoot(tableRel, true);
-
+         // 如果当前根节点是一个纯排序操作（即没有其他逻辑操作，只有排序），并且满足某些条件（如子查询中可以移除排序），则移除排序
         if (RelOptUtil.isPureOrder(castNonNull(bb.root)) && removeSortInSubQuery(bb.top)) {
+            // 移除排序，将根节点设置为排序操作的输入节点
             bb.setRoot(castNonNull(bb.root).getInput(0), true);
         }
-
+        // 如果在处理过程中使用了数据集名称（通过usedDataset数组标记），则将数据集名称设置到黑板上
         if (usedDataset[0]) {
             bb.setDataset(datasetName);
         }
@@ -3871,30 +4004,43 @@ public class SqlToRelConverter {
      * @param targetRowType Target row type, or null
      * @return Relational expression
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 递归地将查询转换为关系表达式。
+     *
+     * @param query Query SQL节点，代表要转换的查询
+     * @param top 是否该查询是语句的顶层查询
+     * @param targetRowType 目标行类型，或者为null（如果不需要指定）
+     * @return 转换后的关系表达式
+     */
     protected RelRoot convertQueryRecursive(
             SqlNode query, boolean top, @Nullable RelDataType targetRowType) {
+        // 获取查询的类型
         final SqlKind kind = query.getKind();
+        // 根据查询类型进行分支处理
         switch (kind) {
-            case SELECT:
-                return RelRoot.of(convertSelect((SqlSelect) query, top), kind);
-            case INSERT:
-                return RelRoot.of(convertInsert((SqlInsert) query), kind);
-            case DELETE:
-                return RelRoot.of(convertDelete((SqlDelete) query), kind);
-            case UPDATE:
-                return RelRoot.of(convertUpdate((SqlUpdate) query), kind);
-            case MERGE:
-                return RelRoot.of(convertMerge((SqlMerge) query), kind);
-            case UNION:
-            case INTERSECT:
-            case EXCEPT:
-                return RelRoot.of(convertSetOp((SqlCall) query), kind);
-            case WITH:
-                return convertWith((SqlWith) query, top);
-            case VALUES:
-                return RelRoot.of(convertValues((SqlCall) query, targetRowType), kind);
-            default:
-                throw new AssertionError("not a query: " + query);
+            case SELECT:// SELECT查询
+                return RelRoot.of(convertSelect((SqlSelect) query, top), kind);// 调用convertSelect方法转换SELECT查询
+            case INSERT:// INSERT语句
+                return RelRoot.of(convertInsert((SqlInsert) query), kind);// 调用convertInsert方法转换INSERT语句
+            case DELETE:// DELETE语句
+                return RelRoot.of(convertDelete((SqlDelete) query), kind);// 调用convertDelete方法转换DELETE语句
+            case UPDATE:// UPDATE语句
+                return RelRoot.of(convertUpdate((SqlUpdate) query), kind);// 调用convertUpdate方法转换UPDATE语句
+            case MERGE:// MERGE语句
+                return RelRoot.of(convertMerge((SqlMerge) query), kind);// 调用convertMerge方法转换MERGE语句
+            case UNION:// UNION操作
+            case INTERSECT:// INTERSECT操作
+            case EXCEPT:// EXCEPT操作
+                return RelRoot.of(convertSetOp((SqlCall) query), kind);// 调用convertSetOp方法转换集合操作
+            case WITH:// WITH子句
+                return convertWith((SqlWith) query, top);// 调用convertWith方法转换WITH子句
+            case VALUES:// VALUES列表
+                return RelRoot.of(convertValues((SqlCall) query, targetRowType), kind);// 调用convertValues方法转换VALUES列表
+            default:// 其他未识别的查询类型
+                throw new AssertionError("not a query: " + query);// 抛出异常，表示传入的不是一个有效的查询
         }
     }
 
@@ -4030,12 +4176,15 @@ public class SqlToRelConverter {
     }
 
     public RelNode toRel(final RelOptTable table, final List<RelHint> hints) {
+        // 使用给定的hints创建一个转换上下文，并通过这个上下文将table转换为RelNode
         final RelNode scan = table.toRel(createToRelContext(hints));
 
+        // 尝试从table中解包出一个InitializerExpressionFactory，如果没有，则使用NullInitializerExpressionFactory的实例
+        // InitializerExpressionFactory用于生成表达式，特别是在处理虚拟字段时
         final InitializerExpressionFactory ief =
                 table.maybeUnwrap(InitializerExpressionFactory.class)
                         .orElse(NullInitializerExpressionFactory.INSTANCE);
-
+        // 检查表的行类型中是否包含任何虚拟字段
         boolean hasVirtualFields =
                 table.getRowType().getFieldList().stream()
                         .anyMatch(
@@ -4044,34 +4193,57 @@ public class SqlToRelConverter {
                                                 == ColumnStrategy.VIRTUAL);
 
         if (hasVirtualFields) {
+            // 如果存在虚拟字段，则创建一个表示源数据的RexNode（关系表达式节点）
             final RexNode sourceRef = rexBuilder.makeRangeReference(scan);
+            // 创建一个Blackboard，用于在后续操作中存储和访问数据
             final Blackboard bb =
                     createInsertBlackboard(table, sourceRef, table.getRowType().getFieldNames());
+
+            // 初始化一个列表，用于存储转换后的字段表达式
             final List<RexNode> list = new ArrayList<>();
+
+            // 遍历表的行类型中的所有字段
             for (RelDataTypeField f : table.getRowType().getFieldList()) {
+                // 根据字段的索引获取其生成策略
                 final ColumnStrategy strategy = ief.generationStrategy(table, f.getIndex());
+                // 根据字段的生成策略，决定如何构建RexNode
                 switch (strategy) {
                     case VIRTUAL:
+                        // 如果是虚拟字段，则使用InitializerExpressionFactory为该字段生成一个默认值
                         list.add(ief.newColumnDefaultValue(table, f.getIndex(), bb));
                         break;
                     default:
+                        // 对于非虚拟字段，直接引用源数据的相应字段
                         list.add(
                                 rexBuilder.makeInputRef(
                                         scan, RelOptTableImpl.realOrdinal(table, f.getIndex())));
                 }
             }
+            // 将scan节点推入RelBuilder的栈中，作为后续操作的基础
             relBuilder.push(scan);
+
+            // 使用之前构建的RexNode列表（list）作为投影字段，创建一个投影操作
+            // 这意味着我们将选择或转换scan节点中的某些列，以生成一个新的RelNode
             relBuilder.project(list);
+
+            // 调用RelBuilder的build方法，将当前栈中的操作转换为一个完整的RelNode
+            // 这个RelNode现在包含了scan操作后的投影操作
             final RelNode project = relBuilder.build();
+
+            // 尝试从InitializerExpressionFactory中获取一个后转换钩子（post-conversion hook）
+            // 这个钩子可以在投影操作之后，但在返回最终的RelNode之前，对RelNode进行额外的处理
             BiFunction<InitializerContext, RelNode, RelNode> postConversionHook =
                     ief.postExpressionConversionHook();
+            // 如果存在后转换钩子，则调用它，并将黑板（Blackboard）和构建的投影RelNode作为参数传递
+            // 后转换钩子可以返回一个新的RelNode，该节点可能是对原始投影RelNode的进一步转换
             if (postConversionHook != null) {
                 return postConversionHook.apply(bb, project);
             } else {
+                // 如果没有后转换钩子，则直接返回构建的投影RelNode
                 return project;
             }
         }
-
+         // 则直接返回原始的scan节点
         return scan;
     }
 
@@ -4818,6 +4990,12 @@ public class SqlToRelConverter {
     }
 
     /** Workspace for translating an individual SELECT statement (or sub-SELECT). */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 单个语句的工作区
+     */
     protected class Blackboard implements SqlRexContext, SqlVisitor<RexNode>, InitializerContext {
         /** Collection of {@link RelNode} objects which correspond to a SELECT statement. */
         public final @Nullable SqlValidatorScope scope;

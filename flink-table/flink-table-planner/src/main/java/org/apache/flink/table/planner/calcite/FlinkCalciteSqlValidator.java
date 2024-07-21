@@ -302,21 +302,35 @@ public final class FlinkCalciteSqlValidator extends SqlValidatorImpl {
      * @param ns The namespace used to find SqlSnapshot
      * @return SqlSnapshot found in {@param ns}, empty if not found
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     *  在给定的 {@link SqlValidatorNamespace} 中获取 {@link SqlSnapshot} 节点。
+     */
     private Optional<SqlSnapshot> getSnapShotNode(SqlValidatorNamespace ns) {
+        // 如果命名空间是 IdentifierNamespace 的实例
         if (ns instanceof IdentifierNamespace) {
+            // 获取该命名空间的封闭节点
             SqlNode enclosingNode = ns.getEnclosingNode();
             // FOR SYSTEM_TIME AS OF [expression]
+            // 检查封闭节点是否是 SqlSnapshot 的实例
+            // 这对应于 "FOR SYSTEM_TIME AS OF [expression]" 的情况
             if (enclosingNode instanceof SqlSnapshot) {
                 return Optional.of((SqlSnapshot) enclosingNode);
                 // FOR SYSTEM_TIME AS OF [expression] as [identifier]
+                // 如果封闭节点是 SqlBasicCall 的实例，并且它的操作符是 SqlAsOperator
+                // 这对应于 "FOR SYSTEM_TIME AS OF [expression] as [identifier]" 的情况
             } else if (enclosingNode instanceof SqlBasicCall
                     && ((SqlBasicCall) enclosingNode).getOperator() instanceof SqlAsOperator
                     && ((SqlBasicCall) enclosingNode).getOperandList().get(0)
                             instanceof SqlSnapshot) {
+                // 返回第一个操作数，它应该是 SqlSnapshot
                 return Optional.of(
                         (SqlSnapshot) ((SqlBasicCall) enclosingNode).getOperandList().get(0));
             }
         }
+        // 如果不满足以上条件，返回空的 Optional
         return Optional.empty();
     }
 

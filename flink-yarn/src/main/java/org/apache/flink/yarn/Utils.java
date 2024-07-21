@@ -280,6 +280,22 @@ public final class Utils {
      * @throws Exception Thrown if the launch context could not be created, for example if the
      *     resources could not be copied.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 创建一个启动上下文，该上下文描述了如何在分配的YARN容器中启动TaskExecutor/TaskManager进程。
+     * @param flinkConfig Flink配置对象，包含Flink任务执行所需的全局配置。
+     * @param yarnConfig YARN配置对象，包含与YARN集群交互所需的配置。
+     * @param configuration YarnResourceManagerDriver的配置，可能包含与资源管理相关的特定于YARN的配置。
+     * @param tmParams TaskExecutor容器的内存参数，定义了TaskExecutor的内存配置。
+     * @param taskManagerDynamicProperties 基于客户端上传的Flink配置，为TaskExecutors更新的动态配置。
+     * @param workingDirectory 当前应用程序主容器的工作目录，用作启动上下文中的基准路径。
+     * @param taskManagerMainClass 包含main方法的类，即TaskExecutor的入口点。
+     * @param log 日志记录器，用于记录启动过程中的重要信息。
+     * @return TaskManager进程的启动上下文，包含了在YARN容器中启动TaskManager所需的所有配置和资源。
+     * @throws Exception 如果无法创建启动上下文，例如资源无法复制，则抛出异常。
+     */
     static ContainerLaunchContext createTaskExecutorContext(
             org.apache.flink.configuration.Configuration flinkConfig,
             YarnConfiguration yarnConfig,
@@ -292,25 +308,29 @@ public final class Utils {
             throws Exception {
 
         // get and validate all relevant variables
-
+        // 从配置中获取Flink分发JAR的路径，并检查它是否已设置。
         String remoteFlinkJarPath =
                 checkNotNull(
                         configuration.getFlinkDistJar(),
                         "Environment variable %s not set",
                         YarnConfigKeys.FLINK_DIST_JAR);
-
+        // 从配置中获取客户端需要传输到YARN容器的文件列表（通常是额外的JARs或配置文件），并检查它是否已设置。
         String shipListString =
                 checkNotNull(
                         configuration.getClientShipFiles(),
                         "Environment variable %s not set",
                         YarnConfigKeys.ENV_CLIENT_SHIP_FILES);
-
+         // 获取远程keytab文件的路径
         final String remoteKeytabPath = configuration.getRemoteKeytabPath();
+        // 获取本地keytab文件的路径
         final String localKeytabPath = configuration.getLocalKeytabPath();
+        // 获取keytab文件的主体名称
         final String keytabPrincipal = configuration.getKeytabPrinciple();
+        // 获取远程YARN配置文件的路径
         final String remoteYarnConfPath = configuration.getYarnSiteXMLPath();
+        // 获取远程krb5.conf文件的路径
         final String remoteKrb5Path = configuration.getKrb5Path();
-
+        // 如果日志级别为DEBUG，则记录与Kerberos认证相关的关键信息
         if (log.isDebugEnabled()) {
             log.debug("TM:remote keytab path obtained {}", remoteKeytabPath);
             log.debug("TM:local keytab path obtained {}", localKeytabPath);
@@ -318,7 +338,7 @@ public final class Utils {
             log.debug("TM:remote yarn conf path obtained {}", remoteYarnConfPath);
             log.debug("TM:remote krb5 path obtained {}", remoteKrb5Path);
         }
-
+        // 从配置中获取Flink的类路径，并检查它是否已设置
         String classPathString =
                 checkNotNull(
                         configuration.getFlinkClasspath(),
@@ -326,6 +346,7 @@ public final class Utils {
                         YarnConfigKeys.ENV_FLINK_CLASSPATH);
 
         // register keytab
+        // 如果指定了远程keytab路径，则将其注册为容器本地资源
         LocalResource keytabResource = null;
         if (remoteKeytabPath != null) {
             log.info(
@@ -336,20 +357,22 @@ public final class Utils {
         }
 
         // To support Yarn Secure Integration Test Scenario
-        LocalResource yarnConfResource = null;
-        if (remoteYarnConfPath != null) {
+        // 为了支持Yarn的安全集成测试场景
+        LocalResource yarnConfResource = null;// 用于存储YARN配置文件的本地资源对象
+        if (remoteYarnConfPath != null) {// 如果远程YARN配置文件路径已设置
             log.info(
                     "TM:Adding remoteYarnConfPath {} to the container local resource bucket",
                     remoteYarnConfPath);
-            Path yarnConfPath = new Path(remoteYarnConfPath);
-            FileSystem fs = yarnConfPath.getFileSystem(yarnConfig);
-            yarnConfResource = registerLocalResource(fs, yarnConfPath, LocalResourceType.FILE);
+            Path yarnConfPath = new Path(remoteYarnConfPath);// 创建文件路径对象
+            FileSystem fs = yarnConfPath.getFileSystem(yarnConfig);// 获取文件系统的实例
+            yarnConfResource = registerLocalResource(fs, yarnConfPath, LocalResourceType.FILE);// 注册为文件类型的本地资源
         }
 
         // register krb5.conf
-        LocalResource krb5ConfResource = null;
-        boolean hasKrb5 = false;
-        if (remoteKrb5Path != null) {
+        // 注册krb5.conf文件
+        LocalResource krb5ConfResource = null;// 用于存储krb5.conf文件的本地资源对象
+        boolean hasKrb5 = false;// 标记是否已设置krb5.conf文件
+        if (remoteKrb5Path != null) {// 如果远程krb5.conf文件路径已设置
             log.info(
                     "Adding remoteKrb5Path {} to the container local resource bucket",
                     remoteKrb5Path);
@@ -358,17 +381,19 @@ public final class Utils {
             krb5ConfResource = registerLocalResource(fs, krb5ConfPath, LocalResourceType.FILE);
             hasKrb5 = true;
         }
-
+        // 创建一个映射来存储TaskManager所需的本地资源
         Map<String, LocalResource> taskManagerLocalResources = new HashMap<>();
 
         // register Flink Jar with remote HDFS
+        // 注册Flink分发JAR包为远程HDFS上的本地资源
         final YarnLocalResourceDescriptor flinkDistLocalResourceDesc =
-                YarnLocalResourceDescriptor.fromString(remoteFlinkJarPath);
+                YarnLocalResourceDescriptor.fromString(remoteFlinkJarPath);// 从字符串解析出Flink JAR的本地资源描述符
         taskManagerLocalResources.put(
-                flinkDistLocalResourceDesc.getResourceKey(),
-                flinkDistLocalResourceDesc.toLocalResource());
+                flinkDistLocalResourceDesc.getResourceKey(), // 使用资源描述符中的键
+                flinkDistLocalResourceDesc.toLocalResource());// 将描述符转换为本地资源对象并存储
 
         // To support Yarn Secure Integration Test Scenario
+        // 为了支持Yarn的安全集成测试场景
         if (yarnConfResource != null) {
             taskManagerLocalResources.put(YARN_SITE_FILE_NAME, yarnConfResource);
         }
@@ -380,20 +405,23 @@ public final class Utils {
         }
 
         // prepare additional files to be shipped
+        // 从字符串中解码YARN本地资源描述符列表，并遍历每个资源描述符
         decodeYarnLocalResourceDescriptorListFromString(shipListString)
                 .forEach(
                         resourceDesc ->
+                                // 将每个资源描述符转换为本地资源，并存储到taskManagerLocalResources中，以资源键为键
                                 taskManagerLocalResources.put(
                                         resourceDesc.getResourceKey(),
                                         resourceDesc.toLocalResource()));
 
         // now that all resources are prepared, we can create the launch context
+        // 现在所有资源都已准备好，可以创建启动上下文
 
+        // 检查工作目录中是否存在logback.xml和log4j.properties文件
         log.info("Creating container launch context for TaskManagers");
-
         boolean hasLogback = new File(workingDirectory, "logback.xml").exists();
         boolean hasLog4j = new File(workingDirectory, "log4j.properties").exists();
-
+        // 根据配置和文件存在情况，生成TaskManager的shell命令
         String launchCommand =
                 getTaskManagerShellCommand(
                         flinkConfig,
@@ -405,28 +433,35 @@ public final class Utils {
                         hasKrb5,
                         taskManagerMainClass,
                         taskManagerDynamicProperties);
-
+         // 如果日志级别为DEBUG，则打印启动命令；否则，仅打印启动信息
         if (log.isDebugEnabled()) {
             log.debug("Starting TaskManagers with command: " + launchCommand);
         } else {
             log.info("Starting TaskManagers");
         }
-
+       // 创建一个新的ContainerLaunchContext实例
         ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
+        // 设置要执行的命令
         ctx.setCommands(Collections.singletonList(launchCommand));
+        // 设置本地资源
         ctx.setLocalResources(taskManagerLocalResources);
-
+        // 初始化容器环境变量
         Map<String, String> containerEnv = new HashMap<>();
+        // 合并TaskManager的环境变量
         containerEnv.putAll(tmParams.taskManagerEnv());
 
         // add YARN classpath, etc to the container environment
+        // 将Flink的类路径添加到容器环境变量中
         containerEnv.put(ENV_FLINK_CLASSPATH, classPathString);
+        // 设置YARN相关的类路径等环境变量
         setupYarnClassPath(yarnConfig, containerEnv);
 
+        // 设置Hadoop用户名环境变量
         containerEnv.put(
                 YarnConfigKeys.ENV_HADOOP_USER_NAME,
                 UserGroupInformation.getCurrentUser().getUserName());
 
+        // 根据不同的条件设置Kerberos相关的环境变量
         if (remoteKeytabPath != null && localKeytabPath != null && keytabPrincipal != null) {
             containerEnv.put(YarnConfigKeys.REMOTE_KEYTAB_PATH, remoteKeytabPath);
             containerEnv.put(YarnConfigKeys.LOCAL_KEYTAB_PATH, localKeytabPath);
@@ -436,8 +471,9 @@ public final class Utils {
             containerEnv.put(YarnConfigKeys.KEYTAB_PRINCIPAL, keytabPrincipal);
         }
 
+        // 将配置好的环境变量设置到容器启动上下文中
         ctx.setEnvironment(containerEnv);
-
+       // 为容器启动上下文设置ACLs，这取决于Flink的配置
         setAclsFor(ctx, flinkConfig);
 
         // For TaskManager YARN container context, read the tokens from the jobmanager yarn
@@ -445,12 +481,14 @@ public final class Utils {
         // NOTE: must read the tokens from the local file, not from the UGI context, because if UGI
         // is login
         // using Kerberos keytabs, there is no HDFS delegation token in the UGI context.
+        // 对于TaskManager的YARN容器上下文，从JobManager YARN容器的本地文件中读取令牌
         final String fileLocation = System.getenv(UserGroupInformation.HADOOP_TOKEN_FILE_LOCATION);
 
         if (fileLocation != null) {
             log.debug("Adding security tokens to TaskExecutor's container launch context.");
 
             try (DataOutputBuffer dob = new DataOutputBuffer()) {
+                // 从指定的文件位置读取令牌存储文件，并使用Flink配置中的Hadoop配置
                 Credentials cred =
                         Credentials.readTokenStorageFile(
                                 new File(fileLocation),
@@ -458,16 +496,23 @@ public final class Utils {
 
                 // Filter out AMRMToken before setting the tokens to the TaskManager container
                 // context.
+                // 创建一个新的Credentials对象，用于存储过滤后的令牌
                 Credentials taskManagerCred = new Credentials();
+                // 获取所有令牌
                 Collection<Token<? extends TokenIdentifier>> userTokens = cred.getAllTokens();
+                // 遍历所有令牌，过滤掉AMRMToken
                 for (Token<? extends TokenIdentifier> token : userTokens) {
                     if (!token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
+                        // 如果令牌不是AMRMToken，则将其添加到taskManagerCred中
                         taskManagerCred.addToken(token.getService(), token);
                     }
                 }
 
+                // 将过滤后的令牌写入到DataOutputStreamBuffer中
                 taskManagerCred.writeTokenStorageToStream(dob);
+                // 将DataOutputStreamBuffer中的数据转换为ByteBuffer，以便设置到容器启动上下文中
                 ByteBuffer securityTokens = ByteBuffer.wrap(dob.getData(), 0, dob.getLength());
+                // 将包含安全令牌的ByteBuffer设置到容器启动上下文中
                 ctx.setTokens(securityTokens);
             } catch (Throwable t) {
                 log.error("Failed to add Hadoop's security tokens.", t);

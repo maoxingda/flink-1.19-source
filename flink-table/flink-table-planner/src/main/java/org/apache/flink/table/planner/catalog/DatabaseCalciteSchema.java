@@ -68,25 +68,41 @@ class DatabaseCalciteSchema extends FlinkSchema {
         this.isStreamingMode = isStreamingMode;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 根据tableName获取Table对象
+     */
     @Override
     public Table getTable(String tableName) {
+        // 构造对象标识符，用于唯一标识表，通常包括catalogName、databaseName和tableName
         final ObjectIdentifier identifier =
                 ObjectIdentifier.of(catalogName, databaseName, tableName);
+        // 声明一个Optional<ContextResolvedTable>来存储可能找到的表
         Optional<ContextResolvedTable> table;
+        // 检查是否存在Schema版本
         if (getSchemaVersion().isPresent()) {
+            // 获取Schema版本
             SchemaVersion schemaVersion = getSchemaVersion().get();
+            // 判断Schema版本类型是否为TimestampSchemaVersion
             if (schemaVersion instanceof TimestampSchemaVersion) {
+                // 如果是，则强制转换为TimestampSchemaVersion
                 TimestampSchemaVersion timestampSchemaVersion =
                         (TimestampSchemaVersion) getSchemaVersion().get();
+                // 使用时间戳和标识符从catalogManager中获取表
                 table = catalogManager.getTable(identifier, timestampSchemaVersion.getTimestamp());
             } else {
+                // 如果不是TimestampSchemaVersion类型，则抛出不支持的操作异常
                 throw new UnsupportedOperationException(
                         String.format(
                                 "Unsupported schema version type: %s", schemaVersion.getClass()));
             }
         } else {
+            // 如果没有指定Schema版本，则直接使用标识符从catalogManager中获取表
             table = catalogManager.getTable(identifier);
         }
+        // 使用map操作处理Optional中的ContextResolvedTable，如果Optional非空，则进行转换
         return table.map(
                         lookupResult ->
                                 new CatalogSchemaTable(

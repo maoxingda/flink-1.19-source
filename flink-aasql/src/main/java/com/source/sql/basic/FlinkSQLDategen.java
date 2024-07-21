@@ -28,9 +28,11 @@ public class FlinkSQLDategen {
                 + "  'fields.age.max' = '60',         -- age字段的最大值\n"
                 + "  'rows-per-second' = '3'            -- 每秒生成的行数\n"
                 + ")";
-        tableEnv.executeSql(ddl);
-        tableEnv.executeSql("select id,count(id) cnt_id from xm.t_user where id > 5 group by id ").print();
 
+        tableEnv.executeSql(ddl);
+        tableEnv.executeSql("select  id,count(id) cnt_id from xm.t_user  where id > 5 group by id ").print();
+        //tableEnv.executeSql("select t.a from (select id from xm.t_user) t ").print();
+        //tableEnv.executeSql("select max(id) cnt_id from xm.t_user").print();
         //tableEnv.executeSql("select id,name,age1 from xm.t_user t where id > 5 ").print();
         //tableEnv.executeSql("select id,count(id) cnt_id from (table xm.t_user) where id > 5 group by id ").print();
         // 执行任务 ;

@@ -201,6 +201,20 @@ public final class FactoryUtil {
      * Otherwise, an attempt is made to discover a matching factory using Java SPI (see {@link
      * Factory} for details).
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 根据一个{@link CatalogTable}创建一个{@link DynamicTableSource}实例。
+     * @param preferredFactory 首选的DynamicTableSourceFactory，如果传入，则使用该工厂创建表源。如果为null，则尝试其他方式发现工厂。
+     * @param objectIdentifier 表的唯一标识符。
+     * @param catalogTable 解析后的Catalog表信息。
+     * @param enrichmentOptions 附加的配置选项，用于进一步定制表源的行为。
+     * @param configuration 表的配置信息，通常包含表的特定配置选项。
+     * @param classLoader 类加载器，用于加载可能需要的类。
+     * @param isTemporary 标记该表是否为临时表。
+     * @return 创建的DynamicTableSource实例。
+     */
     public static DynamicTableSource createDynamicTableSource(
             @Nullable DynamicTableSourceFactory preferredFactory,
             ObjectIdentifier objectIdentifier,
@@ -209,6 +223,7 @@ public final class FactoryUtil {
             ReadableConfig configuration,
             ClassLoader classLoader,
             boolean isTemporary) {
+        // 创建一个DefaultDynamicTableContext实例，它封装了创建DynamicTableSource所需的所有上下文信息
         final DefaultDynamicTableContext context =
                 new DefaultDynamicTableContext(
                         objectIdentifier,
@@ -218,12 +233,15 @@ public final class FactoryUtil {
                         classLoader,
                         isTemporary);
         try {
+            // 如果传入了首选工厂，则直接使用；否则，通过SPI机制发现匹配的DynamicTableSourceFactory
             final DynamicTableSourceFactory factory =
                     preferredFactory != null
                             ? preferredFactory
                             : discoverTableFactory(DynamicTableSourceFactory.class, context);
+            // DynamicTableSourceFactory的工厂来创建DynamicTableSource实例
             return factory.createDynamicTableSource(context);
         } catch (Throwable t) {
+            // 如果在创建过程中发生任何异常，则抛出ValidationException
             throw new ValidationException(
                     String.format(
                             "Unable to create a source for reading table '%s'.\n\n"
@@ -242,6 +260,24 @@ public final class FactoryUtil {
      * @deprecated Use {@link #createDynamicTableSource(DynamicTableSourceFactory, ObjectIdentifier,
      *     ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)}
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 创建一个DynamicTableSource实例，但此方法已被弃用。
+     * 请改用另一个提供了更多灵活性和明确性的重载版本。
+     *
+     * @deprecated 请使用 {@link #createDynamicTableSource(DynamicTableSourceFactory, ObjectIdentifier,
+     *     ResolvedCatalogTable, Map, ReadableConfig, ClassLoader, boolean)} 来代替，该版本提供了更详细的参数配置。
+     *
+     * @param preferredFactory 首选的DynamicTableSourceFactory，可以为null，如果为null，则可能从其他途径（如catalog或模块）获取。
+     * @param objectIdentifier 表的唯一标识符。
+     * @param catalogTable 解析后的catalog表信息。
+     * @param configuration 配置信息，通常包含表的配置选项。
+     * @param classLoader 类加载器，用于加载可能需要的类。
+     * @param isTemporary 表示该表是否是临时的。
+     * @return 创建的DynamicTableSource实例。
+     */
     @Deprecated
     public static DynamicTableSource createDynamicTableSource(
             @Nullable DynamicTableSourceFactory preferredFactory,
@@ -250,6 +286,7 @@ public final class FactoryUtil {
             ReadableConfig configuration,
             ClassLoader classLoader,
             boolean isTemporary) {
+        // 调用另一个重载的方法，传入一个空的Map作为额外的上下文参数
         return createDynamicTableSource(
                 preferredFactory,
                 objectIdentifier,

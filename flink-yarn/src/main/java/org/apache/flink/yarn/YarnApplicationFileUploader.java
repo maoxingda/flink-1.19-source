@@ -154,6 +154,21 @@ class YarnApplicationFileUploader implements AutoCloseable {
      *     <tt>envShipResourceList</tt>
      * @return the uploaded resource descriptor
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 注册单个本地/远程资源，并将其添加到<tt>localResources</tt>中。
+     *
+     * @param key 资源在<tt>localResources</tt>中的键
+     * @param resourcePath 要注册的资源路径
+     * @param relativeDstPath 目标位置的相对路径（这将由应用程序特定的目录前缀）
+     * @param resourceType 资源的类型，可以是FILE、PATTERN或ARCHIVE之一
+     * @param whetherToAddToRemotePaths 是否将本地资源的路径添加到<tt>remotePaths</tt>
+     * @param whetherToAddToEnvShipResourceList 是否将本地资源添加到<tt>envShipResourceList</tt>
+     * @return 上传的资源描述符
+     * @throws IOException 如果在注册资源时发生I/O错误
+     */
     YarnLocalResourceDescriptor registerSingleLocalResource(
             final String key,
             final Path resourcePath,
@@ -162,24 +177,30 @@ class YarnApplicationFileUploader implements AutoCloseable {
             final boolean whetherToAddToRemotePaths,
             final boolean whetherToAddToEnvShipResourceList)
             throws IOException {
-
+        // 根据是否要添加到远程路径，执行相应操作
         addToRemotePaths(whetherToAddToRemotePaths, resourcePath);
-
+        // 检查资源路径是否为远程路径
         if (Utils.isRemotePath(resourcePath.toString())) {
+            // 获取远程文件的状态
             final FileStatus fileStatus = fileSystem.getFileStatus(resourcePath);
             LOG.debug("Using remote file {} to register local resource", fileStatus.getPath());
-
+            // 从文件状态创建YarnLocalResourceDescriptor
             final YarnLocalResourceDescriptor descriptor =
                     YarnLocalResourceDescriptor.fromFileStatus(
                             key, fileStatus, LocalResourceVisibility.APPLICATION, resourceType);
+            // 根据是否要添加到环境资源列表，执行相应操作
             addToEnvShipResourceList(whetherToAddToEnvShipResourceList, descriptor);
+            // 将资源描述符添加到本地资源映射中
             localResources.put(key, descriptor.toLocalResource());
+            // 返回资源描述符
             return descriptor;
         }
-
+        // 根据资源路径创建File对象
         final File localFile = new File(resourcePath.toUri().getPath());
+        // 将本地文件上传到远程存储系统，并获取远程文件的路径和时间戳
         final Tuple2<Path, Long> remoteFileInfo =
                 uploadLocalFileToRemote(resourcePath, relativeDstPath);
+        // 根据上传的远程文件信息创建YarnLocalResourceDescriptor
         final YarnLocalResourceDescriptor descriptor =
                 new YarnLocalResourceDescriptor(
                         key,
@@ -188,7 +209,9 @@ class YarnApplicationFileUploader implements AutoCloseable {
                         remoteFileInfo.f1,
                         LocalResourceVisibility.APPLICATION,
                         resourceType);
+        // 根据是否要添加到环境资源列表，执行相应操作
         addToEnvShipResourceList(whetherToAddToEnvShipResourceList, descriptor);
+        // 将资源描述符添加到本地资源映射中
         localResources.put(key, descriptor.toLocalResource());
         return descriptor;
     }
@@ -231,58 +254,92 @@ class YarnApplicationFileUploader implements AutoCloseable {
      * @param resourceType type of the resource, which can be one of FILE, PATTERN, or ARCHIVE
      * @return list of class paths with the proper resource keys from the registration
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 递归地上传（并注册）shipFiles集合中的任何（用户和系统）文件作为Yarn的本地资源，
+     * 但排除匹配"flink-dist*.jar"模式的文件，这些文件应被单独处理。
+     * 如果文件已经是远程文件，则跳过上传。
+     *
+     * @param shipFiles 要注册为Yarn本地资源的本地或远程文件集合
+     * @param localResourcesDirectory 本地资源被上传到的目录
+     * @param resourceType 资源的类型，可以是FILE、PATTERN或ARCHIVE之一
+     * @return 包含注册后资源键的类路径列表
+     * @throws IOException 如果在文件操作（如上传或读取）过程中发生I/O异常
+     */
     List<String> registerMultipleLocalResources(
             final Collection<Path> shipFiles,
             final String localResourcesDirectory,
             final LocalResourceType resourceType)
             throws IOException {
-
+         // 存储需要上传的文件的绝对路径
         final List<Path> localPaths = new ArrayList<>();
+        // 存储相对于localResourcesDirectory的相对路径
         final List<Path> relativePaths = new ArrayList<>();
+        // 遍历shipFiles集合中的每个文件
         for (Path shipFile : shipFiles) {
+            // 如果文件是远程文件
             if (Utils.isRemotePath(shipFile.toString())) {
+                // 并且是一个目录
                 if (fileSystem.isDirectory(shipFile)) {
+                    // 获取父目录的URI
                     final URI parentURI = shipFile.getParent().toUri();
+                    // 递归列出目录下的所有文件和子目录
                     final RemoteIterator<LocatedFileStatus> iterable =
                             fileSystem.listFiles(shipFile, true);
+                    // 遍历目录中的每个条目
                     while (iterable.hasNext()) {
+                        // 获取当前条目的路径
                         final Path current = iterable.next().getPath();
+                        // 将当前条目的绝对路径添加到localPaths列表中
                         localPaths.add(current);
+                        // 计算并添加当前条目相对于localResourcesDirectory的相对路径
                         relativePaths.add(
                                 new Path(
                                         localResourcesDirectory,
                                         parentURI.relativize(current.toUri()).getPath()));
                     }
+                    // 继续处理下一个shipFile
                     continue;
                 }
             } else {
+                // 如果shipFile不是远程文件，则尝试将其视为本地文件进行处理
                 final File file = new File(shipFile.toUri().getPath());
                 if (file.isDirectory()) {
-                    final java.nio.file.Path shipPath = file.toPath().toRealPath();
-                    final java.nio.file.Path parentPath = shipPath.getParent();
+                    // 如果shipFile是一个目录，则使用Java NIO来处理目录内容
+                    final java.nio.file.Path shipPath = file.toPath().toRealPath();// 获取文件的真实路径
+                    final java.nio.file.Path parentPath = shipPath.getParent();// 获取父目录的路径
                     Collection<java.nio.file.Path> paths =
                             FileUtils.listFilesInDirectory(shipPath, path -> true);
                     for (java.nio.file.Path javaPath : paths) {
+                        // 将文件路径转换为Hadoop的Path对象，并添加到需要上传的本地路径列表中
                         localPaths.add(new Path(javaPath.toUri()));
+                        // 计算并添加相对于localResourcesDirectory的相对路径
                         relativePaths.add(
                                 new Path(
                                         localResourcesDirectory,
                                         parentPath.relativize(javaPath).toString()));
                     }
+                    // 继续处理下一个shipFile
                     continue;
                 }
             }
+            // 如果shipFile不是目录，则直接添加到需要上传的本地路径列表，并构建相对路径
             localPaths.add(shipFile);
             relativePaths.add(new Path(localResourcesDirectory, shipFile.getName()));
         }
-
-        final Set<String> archives = new HashSet<>();
-        final Set<String> resources = new HashSet<>();
+        //为上传的文件构建资源描述符
+        final Set<String> archives = new HashSet<>();// 用于存储归档文件的资源键
+        final Set<String> resources = new HashSet<>();// 用于存储普通文件的资源键
         for (int i = 0; i < localPaths.size(); i++) {
             final Path localPath = localPaths.get(i);
             final Path relativePath = relativePaths.get(i);
+            // 检查文件名是否不是flink-dist*.jar，以避免单独处理这些jar文件
             if (!isFlinkDistJar(relativePath.getName())) {
+                // 资源的唯一键
                 final String key = relativePath.toString();
+                // 注册单个本地资源，并获取YarnLocalResourceDescriptor对象
                 final YarnLocalResourceDescriptor resourceDescriptor =
                         registerSingleLocalResource(
                                 key,
@@ -291,7 +348,7 @@ class YarnApplicationFileUploader implements AutoCloseable {
                                 resourceType,
                                 true,
                                 true);
-
+                // 根据资源类型（ARCHIVE, FILE, PATTERN），将资源键添加到相应的集合中
                 if (!resourceDescriptor.alreadyRegisteredAsLocalResource()) {
                     if (key.endsWith("jar")) {
                         archives.add(relativePath.toString());

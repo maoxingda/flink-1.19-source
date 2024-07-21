@@ -260,32 +260,60 @@ class FlinkPlannerImpl(
     }
   }
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 将已验证的SQL节点转换为关系型表达式的根节点。
+   *
+   * @param validatedSqlNode 已验证的SQL节点，它是SQL查询在Apache Calcite中的抽象表示。
+   */
   def rel(validatedSqlNode: SqlNode): RelRoot = {
+    // 调用重载或另一个版本的rel方法，传入已验证的SQL节点和一个通过getOrCreateSqlValidator()获取的SQL验证器
     rel(validatedSqlNode, getOrCreateSqlValidator())
   }
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 将已验证的SQL节点和SQL验证器转换为关系型表达式的根节点。
+   *
+   * @param validatedSqlNode 已验证的SQL节点，它是SQL查询在Apache Calcite中的抽象表示。
+   * @param sqlValidator Flink的Calcite SQL验证器，用于在转换过程中进行SQL验证。
+   */
   private def rel(validatedSqlNode: SqlNode, sqlValidator: FlinkCalciteSqlValidator) = {
     try {
+      // 断言验证过的SQL节点不为空
       assert(validatedSqlNode != null)
       // check whether this SqlNode tree contains query hints
+      // 创建一个遍历器来检查SQL节点树是否包含查询提示
       val checkContainQueryHintsShuttle = new CheckContainQueryHintsShuttle
       validatedSqlNode.accept(checkContainQueryHintsShuttle)
+
+      // 根据是否包含查询提示来创建SqlToRelConverter实例
+      // 如果包含查询提示，则配置转换器以在SQL到Rel的转换阶段禁用投影合并，防止查询提示被错误地传播到子查询块
       val sqlToRelConverter: SqlToRelConverter =
         if (checkContainQueryHintsShuttle.containsQueryHints) {
           val converter = createSqlToRelConverter(
             sqlValidator,
             // disable project merge during sql to rel phase to prevent
             // incorrect propagation of query hints into child query block
+
+            // 禁用投影合并，并通过配置转换器来告知其包含查询提示
             sqlToRelConverterConfig.addRelBuilderConfigTransform(c => c.withBloat(-1))
           )
           // TODO currently, it is a relatively hacked way to tell converter
           // that this SqlNode tree contains query hints
+          // 调用方法来标记转换器处理包含查询提示的SQL
           converter.containsQueryHints()
           converter
         } else {
+          // 如果没有查询提示，则使用默认配置创建转换器
+          //# todo scala 返回不用写return
           createSqlToRelConverter(sqlValidator, sqlToRelConverterConfig)
         }
-
+      // 使用SqlToRelConverter将SQL节点转换为关系型表达式
       sqlToRelConverter.convertQuery(validatedSqlNode, false, true)
       // we disable automatic flattening in order to let composite types pass without modification
       // we might enable it again once Calcite has better support for structured types
@@ -296,6 +324,7 @@ class FlinkPlannerImpl(
       // convert time indicators
       // root = root.withRel(RelTimeIndicatorConverter.convert(root.rel, rexBuilder))
     } catch {
+      // 捕获并转换关系型转换异常为TableException，以便上层处理
       case e: RelConversionException => throw new TableException(e.getMessage)
     }
   }
@@ -392,9 +421,16 @@ class FlinkPlannerImpl(
     }
   }
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 这个转换器负责将SQL语句转换为关系表达式（RelNode）
+   */
   private def createSqlToRelConverter(
       sqlValidator: SqlValidator,
       config: SqlToRelConverter.Config): SqlToRelConverter = {
+    // 创建一个SqlToRelConverter实例
     new SqlToRelConverter(
       createToRelContext(),
       sqlValidator,

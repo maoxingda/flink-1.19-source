@@ -104,7 +104,7 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
                                                     .map(CompletableFuture::completedFuture)
                                                     .orElseGet(
                                                             () ->
-                                                                    /** 如果槽位不可用，则请求一个新的槽位   */
+                                                                    /** todo 如果槽位不可用，则请求一个新的槽位   */
                                                                     requestNewSlot(
                                                                             slotRequestId,
                                                                             resourceProfile,

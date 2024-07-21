@@ -112,6 +112,20 @@ public final class DynamicSourceUtils {
      * Converts a given {@link DynamicTableSource} to a {@link RelNode}. It adds helper projections
      * if necessary.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将给定的 {@link DynamicTableSource} 转换为 {@link RelNode}。
+     * @param isBatchMode 是否是批处理模式
+     * @param config 可读的配置信息
+     * @param relBuilder Flink的关系表达式构建器，用于构建关系表达式树
+     * @param contextResolvedTable 已解析的表上下文，包含了解析后的表信息和架构
+     * @param statistic Flink的统计信息，用于优化查询
+     * @param hints 关系表达式的提示，用于指导查询优化
+     * @param tableSource 要转换的动态表源
+     * @return 构建好的关系表达式节点
+     */
     public static RelNode convertSourceToRel(
             boolean isBatchMode,
             ReadableConfig config,
@@ -120,11 +134,14 @@ public final class DynamicSourceUtils {
             FlinkStatistic statistic,
             List<RelHint> hints,
             DynamicTableSource tableSource) {
+        // 调试用的表名称
         final String tableDebugName = contextResolvedTable.getIdentifier().asSummaryString();
         final ResolvedCatalogTable resolvedCatalogTable = contextResolvedTable.getResolvedTable();
-
+        // 用来存放表源能力的列表
         final List<SourceAbilitySpec> sourceAbilities = new ArrayList<>();
         // 1. prepare table source
+        // 1. 准备表源
+        // 对表源进行预处理，包括设置表源的能力等
         prepareDynamicSource(
                 tableDebugName,
                 resolvedCatalogTable,
@@ -134,6 +151,8 @@ public final class DynamicSourceUtils {
                 sourceAbilities);
 
         // 2. push table scan
+        // 2. 推送表扫描
+        // 将表扫描操作推送到关系表达式构建器中
         pushTableScan(
                 isBatchMode,
                 relBuilder,
@@ -144,13 +163,19 @@ public final class DynamicSourceUtils {
                 sourceAbilities);
 
         // 3. push project for non-physical columns
+        // 3. 如果存在非物理列，推送投影
+        // 非物理列可能是计算列或元数据列，需要添加投影以获取这些列的值
         final ResolvedSchema schema = contextResolvedTable.getResolvedSchema();
         if (!schema.getColumns().stream().allMatch(Column::isPhysical)) {
+            // 推送元数据投影
             pushMetadataProjection(relBuilder, schema);
+            // 推送生成的列（如计算列）的投影
             pushGeneratedProjection(relBuilder, schema);
         }
 
         // 4. push watermark assigner
+        // 4. 如果不是批处理模式且存在水印规范，推送水印分配器
+        // 水印用于事件时间处理，确保时间窗口的正确计算
         if (!isBatchMode && !schema.getWatermarkSpecs().isEmpty()) {
             pushWatermarkAssigner(relBuilder, schema);
         }
@@ -162,6 +187,19 @@ public final class DynamicSourceUtils {
      * Prepares the given {@link DynamicTableSource}. It check whether the source is compatible with
      * the given schema and applies initial parameters.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 准备给定的 {@link DynamicTableSource}。此方法检查源是否与给定的模式兼容，并应用初始参数。
+     *
+     * @param tableDebugName 表的调试名称，用于日志和错误报告中识别表。
+     * @param table 解析后的目录表对象，包含表的元数据。
+     * @param source 需要准备的动态表源。
+     * @param isBatchMode 是否为批处理模式。这对于某些源的行为可能是重要的。
+     * @param config 可读配置，包含可能影响源行为的配置参数。
+     * @param sourceAbilities 源能力规范列表，描述了源支持的操作类型（如扫描、修改等）。
+     */
     public static void prepareDynamicSource(
             String tableDebugName,
             ResolvedCatalogTable table,
@@ -169,13 +207,16 @@ public final class DynamicSourceUtils {
             boolean isBatchMode,
             ReadableConfig config,
             List<SourceAbilitySpec> sourceAbilities) {
+        // 获取表的解析后的模式
         final ResolvedSchema schema = table.getResolvedSchema();
-
+        // 验证并应用元数据到源，同时检查源的能力是否满足表的需求
         validateAndApplyMetadata(tableDebugName, schema, source, sourceAbilities);
-
+        // 如果源是一个扫描表源（支持扫描操作的源）
         if (source instanceof ScanTableSource) {
+            // 验证扫描表源与给定的模式是否兼容，并检查批处理模式相关的配置
             validateScanSource(
                     tableDebugName, schema, (ScanTableSource) source, isBatchMode, config);
+            // 准备行级修改的扫描
             prepareRowLevelModificationScan(source);
         }
 
@@ -367,6 +408,20 @@ public final class DynamicSourceUtils {
         relBuilder.projectNamed(fieldNodes, fieldNames, true);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将表扫描操作推送到Flink的RelBuilder中。
+     *
+     * @param isBatchMode 是否为批处理模式，这可能会影响表的扫描方式。
+     * @param relBuilder Flink的RelBuilder实例，用于构建逻辑计划。
+     * @param contextResolvedTable 解析后的表上下文，包含表的元数据和解析后的模式。
+     * @param statistic 表的统计信息，用于优化查询计划。
+     * @param hints 提示信息列表，用于指导查询优化器如何处理这个表扫描。
+     * @param tableSource 动态表源，定义了如何访问表中的数据。
+     * @param sourceAbilities 源能力规范列表，描述了源支持的操作类型。
+     */
     private static void pushTableScan(
             boolean isBatchMode,
             FlinkRelBuilder relBuilder,
@@ -375,25 +430,28 @@ public final class DynamicSourceUtils {
             List<RelHint> hints,
             DynamicTableSource tableSource,
             List<SourceAbilitySpec> sourceAbilities) {
+        // 根据解析后的模式和表源创建生成的行类型
         final RowType producedType =
                 createProducedType(contextResolvedTable.getResolvedSchema(), tableSource);
+        // 将生成的行类型转换为RelDataType，这是Calcite中的类型系统
         final RelDataType producedRelDataType =
                 relBuilder.getTypeFactory().buildRelNodeRowType(producedType);
-
+        // 创建一个TableSourceTable实例，它封装了表扫描所需的所有信息
         final TableSourceTable tableSourceTable =
                 new TableSourceTable(
-                        relBuilder.getRelOptSchema(),
-                        producedRelDataType,
-                        statistic,
-                        tableSource,
-                        !isBatchMode,
-                        contextResolvedTable,
-                        ShortcutUtils.unwrapContext(relBuilder),
-                        ShortcutUtils.unwrapTypeFactory(relBuilder),
-                        sourceAbilities.toArray(new SourceAbilitySpec[0]));
-
+                        relBuilder.getRelOptSchema(),// 获取RelOptSchema，它是Calcite的schema定义
+                        producedRelDataType,// 生成的RelDataType
+                        statistic,// 表的统计信息
+                        tableSource,// 动态表源
+                        !isBatchMode,// 是否为流模式（非批处理模式）
+                        contextResolvedTable, // 表的上下文信息
+                        ShortcutUtils.unwrapContext(relBuilder),// 提取RelBuilder的上下文
+                        ShortcutUtils.unwrapTypeFactory(relBuilder),// 提取RelBuilder的类型工厂
+                        sourceAbilities.toArray(new SourceAbilitySpec[0])); // 源能力规范数组
+        // 创建一个LogicalTableScan实例，表示对TableSourceTable的扫描操作
         final LogicalTableScan scan =
                 LogicalTableScan.create(relBuilder.getCluster(), tableSourceTable, hints);
+        // 将扫描操作推送到RelBuilder中，以便后续的逻辑计划构建
         relBuilder.push(scan);
     }
 

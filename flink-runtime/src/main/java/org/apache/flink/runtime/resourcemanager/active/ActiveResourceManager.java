@@ -228,11 +228,19 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
         return Optional.ofNullable(workerNodeMap.get(resourceID));
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 声明所需的资源。
+     */
     @VisibleForTesting
     public void declareResourceNeeded(Collection<ResourceDeclaration> resourceDeclarations) {
+        // 将传入的资源声明集合设置为不可修改，以保护内部状态不被外部修改
         this.resourceDeclarations = Collections.unmodifiableCollection(resourceDeclarations);
+        // 记录日志，调试信息级别，显示资源声明的更新
         log.debug("Update resource declarations to {}.", resourceDeclarations);
-
+        // 检查资源声明的有效性或进行其他必要的处理
         checkResourceDeclarations();
     }
 
@@ -328,17 +336,27 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
     //  Internal
     // ------------------------------------------------------------------------
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 检查资源并声明
+     */
     private void checkResourceDeclarations() {
+        // 验证当前操作是否在主线程中执行，这可能是出于线程安全或UI更新等考虑
         validateRunsInMainThread();
-
+        // 遍历所有资源声明
         for (ResourceDeclaration resourceDeclaration : resourceDeclarations) {
+            // 获取当前资源声明的规格
             WorkerResourceSpec workerResourceSpec = resourceDeclaration.getSpec();
+            // 获取当前声明的所需Worker数量
             int declaredWorkerNumber = resourceDeclaration.getNumNeeded();
-
+            // 计算需要释放或请求的Worker数量，基于当前总数和声明数
             final int releaseOrRequestWorkerNumber =
                     totalWorkerCounter.getNum(workerResourceSpec) - declaredWorkerNumber;
-
+            // 如果需要释放Worker（即当前总数大于声明数）
             if (releaseOrRequestWorkerNumber > 0) {
+                // 记录日志，显示需要释放的Worker数量、当前Worker数量和声明的Worker数量
                 log.info(
                         "need release {} workers, current worker number {}, declared worker number {}",
                         releaseOrRequestWorkerNumber,
@@ -346,29 +364,33 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
                         declaredWorkerNumber);
 
                 // release unwanted workers.
+                // 释放不再需要的Worker资源
                 int remainingReleasingWorkerNumber =
+                        // 释放未分配的Worker资源
                         releaseUnWantedResources(
                                 resourceDeclaration.getUnwantedWorkers(),
                                 releaseOrRequestWorkerNumber);
-
+                // 如果还有剩余的Worker需要释放（即未找到足够的不再需要的Worker）
                 if (remainingReleasingWorkerNumber > 0) {
                     // release not allocated workers
                     remainingReleasingWorkerNumber =
                             releaseUnallocatedWorkers(
                                     workerResourceSpec, remainingReleasingWorkerNumber);
                 }
-
+                // 如果还有剩余的Worker需要释放（即未找到足够的未分配Worker）
                 if (remainingReleasingWorkerNumber > 0) {
                     // release starting workers
+                    // 释放已分配但当前未注册的Worker资源（可能是启动中的Worker）
                     remainingReleasingWorkerNumber =
                             releaseAllocatedWorkers(
                                     currentAttemptUnregisteredWorkers,
                                     workerResourceSpec,
                                     remainingReleasingWorkerNumber);
                 }
-
+                // 如果还有剩余的Worker需要释放（即未能在前面的步骤中完全释放）
                 if (remainingReleasingWorkerNumber > 0) {
                     // release registered workers
+                    // 释放已分配但当前未注册的Worker（可能是启动中但尚未完成注册的Worker）
                     remainingReleasingWorkerNumber =
                             releaseAllocatedWorkers(
                                     workerNodeMap.keySet(),
@@ -379,11 +401,14 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
                 checkState(
                         remainingReleasingWorkerNumber == 0,
                         "there are no more workers to release");
+                // 如果需要请求更多的Worker（即当前Worker数量少于声明的数量）
             } else if (releaseOrRequestWorkerNumber < 0) {
                 // In case of start worker failures, we should wait for an interval before
                 // trying to start new workers.
                 // Otherwise, ActiveResourceManager will always re-requesting the worker,
                 // which keeps the main thread busy.
+                // 在启动Worker失败的情况下，我们应该等待一段时间后再尝试启动新的Worker。
+                // 这样做可以避免ActiveResourceManager不断重新请求Worker，从而占用主线程。
                 if (startWorkerCoolDown.isDone()) {
                     int requestWorkerNumber = -releaseOrRequestWorkerNumber;
                     log.info(
@@ -391,13 +416,18 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
                             requestWorkerNumber,
                             totalWorkerCounter.getNum(workerResourceSpec),
                             declaredWorkerNumber);
+                    // 循环请求指定数量的新Worker
                     for (int i = 0; i < requestWorkerNumber; i++) {
+                        // todo 申请运行的worker
                         requestNewWorker(workerResourceSpec);
                     }
                 } else {
+                    //如果启动时间未能启动结束 重新检查
+                    // 这可能是为了确保在Worker启动失败后，冷却时间结束后能够重新评估并请求必要的Worker
                     startWorkerCoolDown.thenRun(this::checkResourceDeclarations);
                 }
             } else {
+                //打印日志
                 log.debug(
                         "current worker number {} meets the declared worker {}",
                         totalWorkerCounter.getNum(workerResourceSpec),
@@ -491,57 +521,80 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
      * @param workerResourceSpec workerResourceSpec specifies the size of the to be allocated
      *     resource
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     *  使用workerResourceSpec配置来分配资源。
+     */
     @VisibleForTesting
     public void requestNewWorker(WorkerResourceSpec workerResourceSpec) {
+        // 根据工作资源规范和工作配置，生成任务执行器的进程规范
         final TaskExecutorProcessSpec taskExecutorProcessSpec =
                 TaskExecutorProcessUtils.processSpecFromWorkerResourceSpec(
                         flinkConfig, workerResourceSpec);
+        // 增加待处理Worker计数器的值，表示有一个新的Worker请求正在等待处理
         final int pendingCount = pendingWorkerCounter.increaseAndGet(workerResourceSpec);
+        // 增加总Worker计数器的值，表示有一个新的Worker请求被提出
         totalWorkerCounter.increaseAndGet(workerResourceSpec);
-
+        // 记录日志，说明正在请求新的Worker，并显示当前待处理的Worker数量
         log.info(
                 "Requesting new worker with resource spec {}, current pending count: {}.",
                 workerResourceSpec,
                 pendingCount);
-
+        // todo 向资源管理器驱动请求资源，并返回一个CompletableFuture，该Future将在资源分配成功或失败时完成
         final CompletableFuture<WorkerType> requestResourceFuture =
                 resourceManagerDriver.requestResource(taskExecutorProcessSpec);
+        // 将这个Future和对应的工作资源规范添加到未分配Worker的Futures映射中，以便后续处理
         unallocatedWorkerFutures.put(requestResourceFuture, workerResourceSpec);
-
+        // 使用FutureUtils的assertNoException方法来处理Future的完成，包括正常完成和异常完成
         FutureUtils.assertNoException(
                 requestResourceFuture.handle(
                         (worker, exception) -> {
+                            // 从未分配Worker的Futures映射中移除这个Future
                             unallocatedWorkerFutures.remove(requestResourceFuture);
-
+                            // 如果存在异常，则进行异常处理
                             if (exception != null) {
+                                // 减少待处理Worker计数器和总Worker计数器的值
                                 final int count =
                                         pendingWorkerCounter.decreaseAndGet(workerResourceSpec);
                                 totalWorkerCounter.decreaseAndGet(workerResourceSpec);
+                                // 判断异常类型，如果是取消异常，则记录日志
                                 if (exception instanceof CancellationException) {
                                     log.info(
                                             "Requesting worker with resource spec {} canceled, current pending count: {}",
                                             workerResourceSpec,
                                             count);
+                                // 假设在某个条件不满足时（可能是工作器请求失败），执行以下逻辑
                                 } else {
                                     log.warn(
                                             "Failed requesting worker with resource spec {}, current pending count: {}",
                                             workerResourceSpec,
                                             count,
                                             exception);
+                                    // 记录工作器失败，并根据需要暂停工作器创建
                                     recordWorkerFailureAndPauseWorkerCreationIfNeeded();
+                                    // 检查资源声明，可能是为了确保所有资源都正确声明且可用
                                     checkResourceDeclarations();
                                 }
                             } else {
+                                // 从成功获取的工作器（worker）中获取资源ID
                                 final ResourceID resourceId = worker.getResourceID();
+                                // 将资源ID和工作器对象映射到workerNodeMap中，以便后续引用
                                 workerNodeMap.put(resourceId, worker);
+                                // 将资源ID和工作器资源规范映射到workerResourceSpecs中
                                 workerResourceSpecs.put(resourceId, workerResourceSpec);
+                                // 将资源ID添加到currentAttemptUnregisteredWorkers列表中，可能是为了跟踪尚未注册的工作器
                                 currentAttemptUnregisteredWorkers.add(resourceId);
+                                // 为该资源ID安排一个超时检查，以确保工作器在规定时间内完成注册
                                 scheduleWorkerRegistrationTimeoutCheck(resourceId);
+                                // 使用日志记录器记录信息，表明已成功请求资源规范为xxx的工作器
                                 log.info(
                                         "Requested worker {} with resource spec {}.",
                                         resourceId.getStringWithMetadata(),
                                         workerResourceSpec);
                             }
+                            // 无论成功还是失败，最后都返回null，表示该操作不直接返回工作器对象或状态
                             return null;
                         }));
     }

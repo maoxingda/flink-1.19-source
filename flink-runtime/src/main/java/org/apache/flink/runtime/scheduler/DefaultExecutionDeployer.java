@@ -99,7 +99,7 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
         validateExecutionStates(executionsToDeploy);
         /** 状态转换为 ExecutionState.SCHEDULED*/
         transitionToScheduled(executionsToDeploy);
-        /** 申请资源 */
+        /** todo 申请资源 */
         final Map<ExecutionAttemptID, ExecutionSlotAssignment> executionSlotAssignmentMap =
                 allocateSlotsFor(executionsToDeploy);
         /** 构建 ExecutionDeploymentHandle */
