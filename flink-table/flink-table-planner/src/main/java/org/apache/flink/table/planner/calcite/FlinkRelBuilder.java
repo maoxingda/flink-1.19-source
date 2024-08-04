@@ -257,8 +257,16 @@ public final class FlinkRelBuilder extends RelBuilder {
         return push(relNode);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 接收一个QueryOperation类型的参数，并返回一个RelBuilder实例
+     */
     public RelBuilder queryOperation(QueryOperation queryOperation) {
+        // 使用toRelNodeConverter转换器将QueryOperation对象转换为RelNode对象
         final RelNode relNode = queryOperation.accept(toRelNodeConverter);
+        // 调用push方法，将上一步得到的RelNode对象推送到当前的RelBuilder中
         return push(relNode);
     }
 

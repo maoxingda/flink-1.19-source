@@ -110,34 +110,48 @@ import static org.apache.flink.table.types.logical.utils.LogicalTypeCasts.suppor
 public final class DynamicSinkUtils {
 
     /** Converts an {@link TableResult#collect()} sink to a {@link RelNode}. */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将一个 {@link TableResult#collect()} 接收器（即收集操作）转换为 {@link RelNode}。
+     * 用于将Flink Table API中的collect操作转换成Calcite逻辑计划中的一个节点。
+     */
     public static RelNode convertCollectToRel(
             FlinkRelBuilder relBuilder,
             RelNode input,
             CollectModifyOperation collectModifyOperation,
             ReadableConfig configuration,
             ClassLoader classLoader) {
+        // 从关系表达式构建器中提取上下文，然后获取数据类型工厂
         final DataTypeFactory dataTypeFactory =
                 unwrapContext(relBuilder).getCatalogManager().getDataTypeFactory();
+        // 获取收集操作子查询的解析后的模式（即列名和列的数据类型）
         final ResolvedSchema childSchema = collectModifyOperation.getChild().getResolvedSchema();
+        // 创建一个物理模式，直接使用子查询的列名和列数据类型
         final ResolvedSchema schema =
                 ResolvedSchema.physical(
                         childSchema.getColumnNames(), childSchema.getColumnDataTypes());
+        // 创建一个外部目录表，并将其与解析后的模式关联起来，形成一个解析后的目录表
         final ResolvedCatalogTable catalogTable =
                 new ResolvedCatalogTable(
                         new ExternalCatalogTable(
                                 Schema.newBuilder().fromResolvedSchema(schema).build()),
                         schema);
+        // 创建一个匿名上下文解析表，这个表代表了collect操作的结果
         final ContextResolvedTable contextResolvedTable =
                 ContextResolvedTable.anonymous("collect", catalogTable);
-
+        // 根据数据类型工厂和解析后的模式，修正数据类型，以适配collect操作
         final DataType consumedDataType = fixCollectDataType(dataTypeFactory, schema);
 
+        // 从配置中获取时区信息，并转换为ZoneId对象
         final String zone = configuration.get(TableConfigOptions.LOCAL_TIME_ZONE);
         final ZoneId zoneId =
                 TableConfigOptions.LOCAL_TIME_ZONE.defaultValue().equals(zone)
                         ? ZoneId.systemDefault()
                         : ZoneId.of(zone);
-
+         // 根据配置和上下文信息，创建一个CollectDynamicSink实例
+        // 这个Sink用于处理collect操作的结果
         final CollectDynamicSink tableSink =
                 new CollectDynamicSink(
                         contextResolvedTable.getIdentifier(),
@@ -150,8 +164,11 @@ public final class DynamicSinkUtils {
                                 .get(ExecutionConfigOptions.TABLE_EXEC_LEGACY_CAST_BEHAVIOUR)
                                 .isEnabled(),
                         configuration);
+        // 设置collectModifyOperation的SelectResultProvider，这样它就可以提供查询结果
         collectModifyOperation.setSelectResultProvider(tableSink.getSelectResultProvider());
+        // 设置consumedDataType，这是Sink期望的数据类型
         collectModifyOperation.setConsumedDataType(consumedDataType);
+        // 将Sink转换为RelNode，并添加到逻辑计划中
         return convertSinkToRel(
                 relBuilder,
                 input,
@@ -206,6 +223,12 @@ public final class DynamicSinkUtils {
                 sink);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将Sink转换为RelNode
+     */
     private static RelNode convertSinkToRel(
             FlinkRelBuilder relBuilder,
             RelNode input,
@@ -215,14 +238,18 @@ public final class DynamicSinkUtils {
             int[][] targetColumns,
             boolean isOverwrite,
             DynamicTableSink sink) {
+        // 获取数据类型工厂，用于构建数据类型
         final DataTypeFactory dataTypeFactory =
                 unwrapContext(relBuilder).getCatalogManager().getDataTypeFactory();
+        // 获取Flink的类型工厂，用于构建Flink特定的数据类型
         final FlinkTypeFactory typeFactory = unwrapTypeFactory(relBuilder);
+        // 获取已解析的表结构
         final ResolvedSchema schema = contextResolvedTable.getResolvedSchema();
+        // 获取表的调试名称，便于日志和调试
         final String tableDebugName = contextResolvedTable.getIdentifier().asSummaryString();
-
+        // 初始化Sink能力规范列表，用于记录Sink支持的操作类型
         List<SinkAbilitySpec> sinkAbilitySpecs = new ArrayList<>();
-
+        // 判断输入是否是表修改操作，并确定操作类型是删除还是更新
         boolean isDelete = false;
         boolean isUpdate = false;
         if (input instanceof LogicalTableModify) {
@@ -232,6 +259,9 @@ public final class DynamicSinkUtils {
         }
 
         // 1. prepare table sink
+        // 1. 准备动态Sink
+        // 此步骤可能包括根据传入的参数（如动态选项、静态分区、是否覆盖等）
+        // 对Sink进行必要的配置或初始化
         prepareDynamicSink(
                 tableDebugName,
                 staticPartitions,
@@ -241,7 +271,10 @@ public final class DynamicSinkUtils {
                 sinkAbilitySpecs);
 
         // rewrite rel node for delete
+        // 根据操作类型重写RelNode
+       // 如果是删除操作
         if (isDelete) {
+
             input =
                     convertDelete(
                             (LogicalTableModify) input,
@@ -251,7 +284,7 @@ public final class DynamicSinkUtils {
                             dataTypeFactory,
                             typeFactory,
                             sinkAbilitySpecs);
-        } else if (isUpdate) {
+        } else if (isUpdate) {    // 如果是更新操作
             input =
                     convertUpdate(
                             (LogicalTableModify) input,
@@ -262,54 +295,74 @@ public final class DynamicSinkUtils {
                             typeFactory,
                             sinkAbilitySpecs);
         }
-
+        // 应用Sink能力规范列表中的每一项到Sink上
         sinkAbilitySpecs.forEach(spec -> spec.apply(sink));
 
         // 2. validate the query schema to the sink's table schema and apply cast if possible
+        // 验证查询模式与Sink的表模式，并在可能的情况下应用隐式转换
         RelNode query = input;
         // skip validate and implicit cast when it's delete/update since it has been done before
+        // 如果是删除或更新操作，则跳过验证和隐式转换，因为这些在之前已经处理过了
         if (!isDelete && !isUpdate) {
             query =
                     validateSchemaAndApplyImplicitCast(
                             input, schema, tableDebugName, dataTypeFactory, typeFactory);
         }
-
+        // 将处理后的查询（或原始输入，如果未进行验证和转换）推送到Flink关系表达式构建器中
         relBuilder.push(query);
 
         // 3. convert the sink's table schema to the consumed data type of the sink
+        // 将Sink的表模式转换为Sink所消费的数据类型
         final List<Integer> metadataColumns = extractPersistedMetadataColumns(schema);
+        // 如果存在需要持久化的元数据列，则推送一个元数据投影
         if (!metadataColumns.isEmpty()) {
             pushMetadataProjection(relBuilder, typeFactory, schema, sink);
         }
 
+        // 准备动态选项作为查询提示
         List<RelHint> hints = new ArrayList<>();
         if (!dynamicOptions.isEmpty()) {
+            // 将动态选项作为查询提示添加到列表中
             hints.add(RelHint.builder("OPTIONS").hintOptions(dynamicOptions).build());
         }
+        // 使用Flink关系表达式构建器构建最终的查询
         final RelNode finalQuery = relBuilder.build();
-
+        // 创建一个LogicalSink节点，该节点是查询计划中的一部分，表示数据输出的目标
         return LogicalSink.create(
-                finalQuery,
-                hints,
-                contextResolvedTable,
-                sink,
-                staticPartitions,
-                targetColumns,
-                sinkAbilitySpecs.toArray(new SinkAbilitySpec[0]));
+                finalQuery, // finalQuery: 经过所有转换和验证后的最终查询节点
+                hints, // hints: 查询执行时的提示列表，可能包含动态选项等
+                contextResolvedTable,// contextResolvedTable: 已解析的表上下文，包含表的结构和元数据等信息
+                sink,// sink: Sink节点，表示数据输出的目标
+                staticPartitions,// staticPartitions: 静态分区信息，用于指定数据输出的分区策略
+                targetColumns,// targetColumns: 目标列列表，指定哪些列的数据将被输出
+                sinkAbilitySpecs.toArray(new SinkAbilitySpec[0]));// sinkAbilitySpecs: Sink的能力规范列表，转换为数组形式
     }
 
     /** Checks if the given query can be written into the given sink's table schema. */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 检查给定的查询是否可以写入到给定sink的表结构中，并应用隐式类型转换（如果需要）。
+     *
+     * @param query            待验证的查询，以RelNode形式表示。
+     * @param sinkSchema       目标sink的解析后的表结构。
+     * @param tableDebugName   目标表的调试名称，用于日志和错误消息中以便于调试。
+     * @param dataTypeFactory  数据类型工厂，用于创建和操作数据类型。
+     * @param typeFactory      Flink类型工厂，用于Flink特定的类型转换和表示。
+     */
     public static RelNode validateSchemaAndApplyImplicitCast(
             RelNode query,
             ResolvedSchema sinkSchema,
             String tableDebugName,
             DataTypeFactory dataTypeFactory,
             FlinkTypeFactory typeFactory) {
+        // 首先，将sink的表结构（ResolvedSchema）转换为Flink的RowType，
         final RowType sinkType =
                 (RowType)
                         fixSinkDataType(dataTypeFactory, sinkSchema.toSinkRowDataType())
                                 .getLogicalType();
-
+        // 然后，使用修正后的sinkType、查询query、调试名称和Flink类型工厂来验证schema并应用隐式类型转换
         return validateSchemaAndApplyImplicitCast(query, sinkType, tableDebugName, typeFactory);
     }
 
@@ -336,22 +389,35 @@ public final class DynamicSinkUtils {
      * If types are not compatible, but can be implicitly cast, a cast projection will be applied.
      * Otherwise, an exception will be thrown.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 检查给定的查询是否可以写入给定的sink类型。
+     */
     private static RelNode validateSchemaAndApplyImplicitCast(
             RelNode query, RowType sinkType, String tableDebugName, FlinkTypeFactory typeFactory) {
+        // 将查询的Row类型转换为逻辑Row类型
         final RowType queryType = FlinkTypeFactory.toLogicalRowType(query.getRowType());
+        // 获取查询的字段列表
         final List<RowField> queryFields = queryType.getFields();
+        // 获取sink的字段列表
         final List<RowField> sinkFields = sinkType.getFields();
-
+        // 检查查询和sink的字段数量是否相等
         if (queryFields.size() != sinkFields.size()) {
+            // 如果不相等，抛出架构不匹配异常
             throw createSchemaMismatchException(
                     "Different number of columns.", tableDebugName, queryFields, sinkFields);
         }
 
         boolean requiresCasting = false;
         for (int i = 0; i < sinkFields.size(); i++) {
+            // 获取查询和sink中对应位置的字段类型
             final LogicalType queryColumnType = queryFields.get(i).getType();
             final LogicalType sinkColumnType = sinkFields.get(i).getType();
+            // 检查是否可以隐式转换
             if (!supportsImplicitCast(queryColumnType, sinkColumnType)) {
+                // 如果不能隐式转换，抛出架构不匹配异常
                 throw createSchemaMismatchException(
                         String.format(
                                 "Incompatible types for sink column '%s' at position %s.",
@@ -360,15 +426,20 @@ public final class DynamicSinkUtils {
                         queryFields,
                         sinkFields);
             }
+            // 检查是否支持避免转换（即是否严格相等）
             if (!supportsAvoidingCast(queryColumnType, sinkColumnType)) {
+                // 如果不支持避免转换（即需要显式转换），则标记需要转换
                 requiresCasting = true;
             }
         }
-
+        // 如果需要转换，则应用转换投影
         if (requiresCasting) {
+            // 使用类型工厂根据sink类型构建RelDataType
             final RelDataType castRelDataType = typeFactory.buildRelNodeRowType(sinkType);
+            // 创建转换关系的节点
             return RelOptUtil.createCastRel(query, castRelDataType, true);
         }
+        // 如果不需要转换，则直接返回原始查询
         return query;
     }
 
@@ -948,6 +1019,20 @@ public final class DynamicSinkUtils {
      * Prepares the given {@link DynamicTableSink}. It check whether the sink is compatible with the
      * INSERT INTO clause and applies initial parameters.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 准备给定的 {@link DynamicTableSink}。
+     * 该方法检查Sink是否与INSERT INTO子句兼容，并应用初始参数。
+     *
+     * @param tableDebugName 表的调试名称，用于日志和调试信息
+     * @param staticPartitions 静态分区信息，指定了数据输出的静态分区策略
+     * @param isOverwrite 是否覆盖目标表中的数据
+     * @param sink 要准备的DynamicTableSink实例
+     * @param table 已解析的表定义，包含了表的元数据和结构
+     * @param sinkAbilitySpecs Sink的能力规范列表，定义了Sink支持的操作和特性
+     */
     private static void prepareDynamicSink(
             String tableDebugName,
             Map<String, String> staticPartitions,
@@ -955,10 +1040,11 @@ public final class DynamicSinkUtils {
             DynamicTableSink sink,
             ResolvedCatalogTable table,
             List<SinkAbilitySpec> sinkAbilitySpecs) {
+        // 验证分区信息是否与表和Sink兼容
         validatePartitioning(tableDebugName, staticPartitions, sink, table.getPartitionKeys());
-
+        // 验证是否允许覆盖，并根据需要应用覆盖逻辑
         validateAndApplyOverwrite(tableDebugName, isOverwrite, sink, sinkAbilitySpecs);
-
+        // 验证并应用元数据，确保Sink能够正确处理表的元数据（如列名、数据类型等）
         validateAndApplyMetadata(tableDebugName, sink, table.getResolvedSchema(), sinkAbilitySpecs);
     }
 
@@ -1112,14 +1198,26 @@ public final class DynamicSinkUtils {
         return Collections.emptyMap();
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 验证并应用表的元数据到DynamicTableSink。
+     *
+     * @param tableDebugName 表的调试名称，用于日志和调试信息
+     * @param sink 要应用元数据的DynamicTableSink实例
+     * @param schema 已解析的表模式，包含了表的列和元数据定义
+     * @param sinkAbilitySpecs Sink的能力规范列表，定义了Sink支持的操作和特性
+     */
     private static void validateAndApplyMetadata(
             String tableDebugName,
             DynamicTableSink sink,
             ResolvedSchema schema,
             List<SinkAbilitySpec> sinkAbilitySpecs) {
-        final List<Column> columns = schema.getColumns();
+        final List<Column> columns = schema.getColumns();// 获取表中的列定义
+        // 提取需要持久化的元数据列索引
         final List<Integer> metadataColumns = extractPersistedMetadataColumns(schema);
-
+        // 如果没有需要持久化的元数据列，则直接返回，不进行后续操作
         if (metadataColumns.isEmpty()) {
             return;
         }

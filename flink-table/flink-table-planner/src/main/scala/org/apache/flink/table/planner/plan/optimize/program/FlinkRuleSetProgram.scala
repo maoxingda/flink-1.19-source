@@ -30,9 +30,21 @@ import scala.collection.JavaConversions._
  * A FlinkOptimizeProgram that transforms a relational expression into another relational expression
  * with [[RuleSet]].
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 一个FlinkOptimizeProgram，使用[[RuleSet]]将关系表达式转换为另一个关系表达式。
+ */
 abstract class FlinkRuleSetProgram[OC <: FlinkOptimizeContext] extends FlinkOptimizeProgram[OC] {
 
   /** All [[RelOptRule]]s for optimizing associated with this program. */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 与此程序相关的所有优化[[RelOptRule]]
+   */
   protected val rules: util.List[RelOptRule] = new util.ArrayList[RelOptRule]()
 
   /** Adds specified rules to this program. */

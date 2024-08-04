@@ -266,16 +266,31 @@ public class PlannerContext {
         return cluster;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 创建一个FlinkRelBuilder实例的方法，该方法接收一个FlinkPlannerImpl类型的planner作为参数
+     */
     private FlinkRelBuilder createRelBuilder(FlinkPlannerImpl planner) {
+        // 创建一个FlinkCalciteCatalogReader实例，用于访问Calcite的Catalog信息。
+        // 参数false可能表示以某种非特定模式（如非流处理模式）来创建CatalogReader。
         final FlinkCalciteCatalogReader calciteCatalogReader = createCatalogReader(false);
 
         // Sets up the ViewExpander explicitly for FlinkRelBuilder.
+        // 创建一个Context链，用于配置FlinkRelBuilder。
+        // Contexts.of方法接受多个配置参数，这里配置了三个：
+        // 1. context（未在代码片段中定义，可能是外部传入或之前定义的上下文信息）
+        // 2. planner.createToRelContext()：通过planner创建一个转换到RelNode（逻辑计划节点）的上下文。
+        // 3. FlinkRelBuilder.FLINK_REL_BUILDER_CONFIG：FlinkRelBuilder特有的配置信息。
         final Context chain =
                 Contexts.of(
                         context,
                         planner.createToRelContext(),
                         FlinkRelBuilder.FLINK_REL_BUILDER_CONFIG);
-
+        // 使用上面创建的Context链、Cluster
+        // 和calciteCatalogReader来创建一个FlinkRelBuilder实例。
+        // FlinkRelBuilder是用于构建Flink逻辑计划（即RelNode树）的构建器。
         return FlinkRelBuilder.of(chain, cluster, calciteCatalogReader);
     }
 

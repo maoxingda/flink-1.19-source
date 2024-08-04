@@ -262,18 +262,29 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
         return false;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 处理优先级buffer
+     */
     @GuardedBy("buffers")
     private boolean processPriorityBuffer(BufferConsumer bufferConsumer, int partialRecordLength) {
+        // 将带有部分记录长度的BufferConsumer添加到优先缓冲区中
         buffers.addPriorityElement(
                 new BufferConsumerWithPartialRecordLength(bufferConsumer, partialRecordLength));
         final int numPriorityElements = buffers.getNumPriorityElements();
 
+        // 解析BufferConsumer中的检查点屏障
         CheckpointBarrier barrier = parseCheckpointBarrier(bufferConsumer);
+        // 检查检查点是否为非对齐检查点，只有非对齐检查点才应作为优先事件处理
         if (barrier != null) {
+            // 检查检查点是否为非对齐检查点，只有非对齐检查点才应作为优先事件处理
             checkState(
                     barrier.getCheckpointOptions().isUnalignedCheckpoint(),
                     "Only unaligned checkpoints should be priority events");
             final Iterator<BufferConsumerWithPartialRecordLength> iterator = buffers.iterator();
+            // 跳过优先元素
             Iterators.advance(iterator, numPriorityElements);
             List<Buffer> inflightBuffers = new ArrayList<>();
             while (iterator.hasNext()) {
@@ -281,11 +292,13 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
 
                 if (buffer.isBuffer()) {
                     try (BufferConsumer bc = buffer.copy()) {
+                        // 将Buffer添加到正在传输的缓冲区列表中
                         inflightBuffers.add(bc.build());
                     }
                 }
             }
             if (!inflightBuffers.isEmpty()) {
+                // 如果存在正在传输的缓冲区，则将它们添加到通道状态写入器中
                 channelStateWriter.addOutputData(
                         barrier.getId(),
                         subpartitionInfo,
@@ -293,6 +306,7 @@ public class PipelinedSubpartition extends ResultSubpartition implements Channel
                         inflightBuffers.toArray(new Buffer[0]));
             }
         }
+        // 返回是否需要通知优先事件
         return needNotifyPriorityEvent();
     }
 

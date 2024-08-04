@@ -25,12 +25,14 @@ public class SocketWordCountState {
         config.set(StateBackendOptions.STATE_BACKEND, "hashmap");
         config.set(CheckpointingOptions.CHECKPOINT_STORAGE, "filesystem");
         config.set(CheckpointingOptions.CHECKPOINTS_DIRECTORY, "file:///H:/chk");
+
         /**
          * 创建StreamExecutionEnvironment
          */
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment(config);
         env.registerCachedFile("./a_conf/a.txt","cache");
-
+        // 启用非对齐 Checkpoint
+        env.getCheckpointConfig().enableUnalignedCheckpoints();
         /** 设置检查点的时间间隔 */
         //需要开启 Checkpoint 机制10000000
         env.enableCheckpointing(60000, CheckpointingMode.EXACTLY_ONCE);

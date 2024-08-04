@@ -90,6 +90,12 @@ import scala.collection.mutable
  *   A RelNode of the output in the block, which could be a [[LegacySink]] or other RelNode which
  *   data outputs to multiple [[LegacySink]]s.
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * [[RelNodeBlock]]是[[RelNode]]DAG中的子树，表示[[CommonSubGraphBasedOptimizer]]中的公共子图。每个块中的所有[[RelNode]]只有一个[[LegacySink]]
+ */
 class RelNodeBlock(val outputNode: RelNode) {
   // child (or input) blocks
   private val childBlocks = mutable.LinkedHashSet[RelNodeBlock]()
@@ -122,11 +128,17 @@ class RelNodeBlock(val outputNode: RelNode) {
   def setOptimizedPlan(rel: RelNode): Unit = this.optimizedPlan = Option(rel)
 
   def getOptimizedPlan: RelNode = optimizedPlan.orNull
-
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   *  设置是否需要在更新前生成消息。
+   */
   def setUpdateBeforeRequired(requireUpdateBefore: Boolean): Unit = {
     // set the child block whether need to produce update before messages for updates,
     // a child block may have multiple parents (outputs), if one of the parents require
     // update before message, then this child block has to produce update before for updates.
+    // 如果要求在更新前生成消息，则设置此子块的updateBeforeRequired标志为true。
     if (requireUpdateBefore) {
       this.updateBeforeRequired = true
     }
@@ -384,19 +396,41 @@ object RelNodeBlockPlanBuilder {
    * @return
    *   Sink-RelNodeBlocks, each Sink-RelNodeBlock is a tree.
    */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 将[[RelNode]]树分解为[[RelNodeBlock]]树。
+   * 1.首先，将逻辑节点树转换为RelNode树。
+   * 2.在不同的树中重用相同的子计划。
+   * 3.将RelNode有向无环图（DAG）分解为[[RelNodeBlock]]树。
+   *
+   * @param sinkNodes 属于逻辑节点计划的Sink节点集合。Sink节点是查询计划的输出点。
+   * @param tableConfig 配置表，包含用于查询优化的配置信息。
+   * @return Sink-RelNodeBlock集合，每个Sink-RelNodeBlock代表一棵树。这些树是基于原始查询计划优化后的执行计划块。
+
+   */
   def buildRelNodeBlockPlan(
       sinkNodes: Seq[RelNode],
       tableConfig: ReadableConfig): Seq[RelNodeBlock] = {
+    // 确保传入的sink节点不为空
     require(sinkNodes.nonEmpty)
 
     // expand QueryOperationCatalogViewTable in TableScan
+    /**
+     *
+     * 在TableScan中扩展QueryOperationCatalogViewTable
+     * 将所有[[QueryOperationCatalogViewTable]]（包括[[RexSubQuery]]中的表）转换为关系表达式
+     */
     val shuttle = new ExpandTableScanShuttle
     val convertedRelNodes = sinkNodes.map(_.accept(shuttle))
-
+    // 如果转换后的RelNode只有一个，则直接将其包装为一个RelNodeBlock并返回
     if (convertedRelNodes.size == 1) {
       Seq(new RelNodeBlock(convertedRelNodes.head))
     } else {
       // merge multiple RelNode trees to RelNode dag
+      // 如果有多个RelNode树，将它们合并成一个RelNode有向无环图（DAG）
+      // 这一步可能涉及识别并合并共同的子表达式，以减少重复计算
       val relNodeDag = reuseRelNodes(convertedRelNodes, tableConfig)
       val builder = new RelNodeBlockPlanBuilder(tableConfig)
       builder.buildRelNodeBlockPlan(relNodeDag)

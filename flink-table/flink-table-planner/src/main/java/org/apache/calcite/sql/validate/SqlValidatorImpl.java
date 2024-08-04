@@ -2165,18 +2165,30 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
         nodeToTypeMap.remove(node);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 创建一个无参数的SQL调用（nullary call），基于给定的SQL标识符（SqlIdentifier）。
+     */
     @Override
     public @Nullable SqlCall makeNullaryCall(SqlIdentifier id) {
+        // 检查标识符是否仅包含一个未加引号的名称部分
         if (id.names.size() == 1 && !id.isComponentQuoted(0)) {
+            // 创建一个列表来存储找到的运算符重载
             final List<SqlOperator> list = new ArrayList<>();
+            // 根据标识符、null（表示无参数）、函数语法、运算符列表和名称匹配器来查找运算符重载
             opTab.lookupOperatorOverloads(
                     id, null, SqlSyntax.FUNCTION, list, catalogReader.nameMatcher());
+            // 遍历找到的运算符重载
             for (SqlOperator operator : list) {
+                // 检查运算符的语法是否为函数标识符
                 if (operator.getSyntax() == SqlSyntax.FUNCTION_ID) {
                     // Even though this looks like an identifier, it is a
                     // actually a call to a function. Construct a fake
                     // call to this function, so we can use the regular
                     // operator validation.
+                    // 尽管这看起来像一个标识符，但实际上是对一个函数的调用。
                     return new SqlBasicCall(
                                     operator, ImmutableList.of(), id.getParserPosition(), null)
                             .withExpanded(true);

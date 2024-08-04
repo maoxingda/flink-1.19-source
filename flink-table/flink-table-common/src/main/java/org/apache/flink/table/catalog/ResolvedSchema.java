@@ -85,15 +85,29 @@ public final class ResolvedSchema {
     }
 
     /** Shortcut for a resolved schema of only physical columns. */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 快捷方式，用于创建一个仅包含物理列的已解析模式（ResolvedSchema）。
+     *
+     * @param columnNames 列的名称列表
+     * @param columnDataTypes 对应列的数据类型列表
+     * @return 一个新的ResolvedSchema实例，其中仅包含指定的物理列
+     */
     public static ResolvedSchema physical(
             List<String> columnNames, List<DataType> columnDataTypes) {
+        // 验证列名称和数据类型的数量是否匹配
         Preconditions.checkArgument(
                 columnNames.size() == columnDataTypes.size(),
                 "Mismatch between number of columns names and data types.");
+        // 使用IntStream遍历索引范围，为每个索引生成一个Column对象
+        // Column对象通过Column.physical方法创建，该方法接收列名和列的数据类型
         final List<Column> columns =
                 IntStream.range(0, columnNames.size())
                         .mapToObj(i -> Column.physical(columnNames.get(i), columnDataTypes.get(i)))
                         .collect(Collectors.toList());
+        // 创建一个新的ResolvedSchema实例，其中只包含物理列（没有计算列或元数据列），并且没有主键和索引信息
         return new ResolvedSchema(columns, Collections.emptyList(), null);
     }
 

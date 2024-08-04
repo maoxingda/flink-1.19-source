@@ -74,6 +74,7 @@ class StreamPlanner(
     )
   }
 
+  /** 于获取优化器实例  StreamCommonSubGraphBasedOptimizer 用于优化流 */
   override protected def getOptimizer: Optimizer = new StreamCommonSubGraphBasedOptimizer(this)
 
   override protected def getExecNodeGraphProcessors: Seq[ExecNodeGraphProcessor] = Seq()

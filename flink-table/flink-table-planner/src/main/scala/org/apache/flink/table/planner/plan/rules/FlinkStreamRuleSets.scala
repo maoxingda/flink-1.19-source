@@ -31,6 +31,7 @@ import scala.collection.JavaConverters._
 
 object FlinkStreamRuleSets {
 
+  /** 半连接（Semi-Join）优化规则集，包含一系列用于优化半连接查询的规则。 */
   val SEMI_JOIN_RULES: RuleSet = RuleSets.ofList(
     SimplifyFilterConditionRule.EXTENDED,
     FlinkRewriteSubQueryRule.FILTER,
@@ -40,6 +41,10 @@ object FlinkStreamRuleSets {
   )
 
   /** Convert sub-queries before query decorrelation. */
+  /**
+   * 在查询解相关之前转换子查询。
+   * 这些规则将子查询转换为可以进行后续优化处理的形式。
+   */
   val TABLE_SUBQUERY_RULES: RuleSet = RuleSets.ofList(
     CoreRules.FILTER_SUB_QUERY_TO_CORRELATE,
     CoreRules.PROJECT_SUB_QUERY_TO_CORRELATE,
@@ -50,6 +55,10 @@ object FlinkStreamRuleSets {
    * Expand plan by replacing references to tables into a proper plan sub trees. Those rules can
    * create new plan nodes.
    */
+  /**
+   * 扩展计划，通过替换对表的引用来生成适当的计划子树。
+   * 这些规则可以创建新的计划节点，特别是针对时间表的查询优化。
+   */
   val EXPAND_PLAN_RULES: RuleSet = RuleSets.ofList(
     LogicalCorrelateToJoinFromTemporalTableRule.LOOKUP_JOIN_WITH_FILTER,
     LogicalCorrelateToJoinFromTemporalTableRule.LOOKUP_JOIN_WITHOUT_FILTER,
@@ -57,20 +66,30 @@ object FlinkStreamRuleSets {
     LogicalCorrelateToJoinFromTemporalTableRule.WITHOUT_FILTER,
     LogicalCorrelateToJoinFromTemporalTableFunctionRule.INSTANCE
   )
-
+  /**
+   * 扩展计划后的清理规则，主要用于将可枚举的表扫描转换为逻辑表扫描。
+   */
   val POST_EXPAND_CLEAN_UP_RULES: RuleSet = RuleSets.ofList(EnumerableToLogicalTableScan.INSTANCE)
 
   /** Convert table references before query decorrelation. */
-  val TABLE_REF_RULES: RuleSet = RuleSets.ofList(
+  /**
+   * 在查询解相关之前转换表引用。
+   * 主要是将表引用转换为逻辑表扫描，以便后续处理。
+   */   val TABLE_REF_RULES: RuleSet = RuleSets.ofList(
     EnumerableToLogicalTableScan.INSTANCE
   )
 
   /** Solid transformations before actual decorrelation. */
+  /**
+   * 在实际解相关之前的稳定转换规则。
+   * 这些规则可能用于对计划进行预处理，以便后续的解相关操作。
+   */
   val PRE_DECORRELATION_RULES: RuleSet = RuleSets.ofList(
     CorrelateSortToRankRule.INSTANCE
   )
 
   /** RuleSet to reduce expressions */
+  // 私有规则集，用于减少表达式中的冗余和复杂性。
   private val REDUCE_EXPRESSION_RULES: RuleSet = RuleSets.ofList(
     CoreRules.FILTER_REDUCE_EXPRESSIONS,
     CoreRules.PROJECT_REDUCE_EXPRESSIONS,
@@ -79,6 +98,10 @@ object FlinkStreamRuleSets {
   )
 
   /** RuleSet to simplify coalesce invocations */
+  /**
+   * 用于简化 COALESCE 调用的规则集。
+   * 这些规则旨在减少不必要的 COALESCE 参数，提高查询的执行效率。
+   */
   private val SIMPLIFY_COALESCE_RULES: RuleSet = RuleSets.ofList(
     RemoveUnreachableCoalesceArgumentsRule.PROJECT_INSTANCE,
     RemoveUnreachableCoalesceArgumentsRule.FILTER_INSTANCE,
@@ -87,6 +110,10 @@ object FlinkStreamRuleSets {
   )
 
   /** RuleSet to simplify predicate expressions in filters and joins */
+  /**
+   * 用于简化过滤器和连接中的谓词表达式的规则集。
+   * 这些规则通过优化谓词表达式来改进查询的性能和可读性。
+   */
   private val PREDICATE_SIMPLIFY_EXPRESSION_RULES: RuleSet = RuleSets.ofList(
     SimplifyFilterConditionRule.INSTANCE,
     SimplifyJoinConditionRule.INSTANCE,
@@ -95,6 +122,10 @@ object FlinkStreamRuleSets {
   )
 
   /** RuleSet to normalize plans for stream */
+  /**
+   * 针对流处理计划的规范化规则集
+   * 这个规则集包含了一系列用于优化和规范化流处理查询计划的规则。
+   */
   val DEFAULT_REWRITE_RULES: RuleSet = RuleSets.ofList(
     (
       PREDICATE_SIMPLIFY_EXPRESSION_RULES.asScala ++
@@ -134,6 +165,10 @@ object FlinkStreamRuleSets {
     ).asJava)
 
   /** RuleSet about filter */
+  /**
+   * 关于过滤器的规则集
+   * 该规则集包含了一系列用于优化查询中过滤器位置的规则。
+   */
   private val FILTER_RULES: RuleSet = RuleSets.ofList(
     // push a filter into a join (which isn't an event time temporal join)
     FlinkFilterJoinRule.FILTER_INTO_JOIN,
@@ -149,10 +184,18 @@ object FlinkStreamRuleSets {
   )
 
   /** RuleSet to extract sub-condition which can be pushed into join inputs */
+  /**
+   * 提取可推入连接输入的子条件的规则集
+   * 这个规则集用于从连接条件中提取出可以推送到连接输入部分的子条件，以优化连接操作。
+   */
   val JOIN_PREDICATE_REWRITE_RULES: RuleSet =
     RuleSets.ofList(RuleSets.ofList(JoinDependentConditionDerivationRule.INSTANCE))
 
   /** RuleSet to do predicate pushdown */
+  /**
+   * 准备谓词下推的规则集
+   * 该规则集首先应用过滤器优化规则，然后简化谓词表达式并减少过滤器中的表达式复杂度，为后续的谓词下推做准备。
+   */
   val FILTER_PREPARE_RULES: RuleSet = RuleSets.ofList(
     (
       FILTER_RULES.asScala
@@ -163,6 +206,10 @@ object FlinkStreamRuleSets {
     ).asJava)
 
   /** RuleSet to push down partitions into table source */
+  /**
+   * 将分区信息推送到表源中的规则集
+   * 这些规则用于将查询中的分区信息推送到表扫描操作中，以优化数据读取。
+   */
   val PUSH_PARTITION_DOWN_RULES: RuleSet = RuleSets.ofList(
     // push partition into the table scan
     PushPartitionIntoLegacyTableSourceScanRule.INSTANCE,
@@ -171,6 +218,10 @@ object FlinkStreamRuleSets {
   )
 
   /** RuleSet to push down filters into table source */
+  /**
+   * 将过滤器推送到表源中的规则集
+   * 这些规则用于将查询中的过滤器条件推送到表扫描操作中，以减少不必要的数据读取。
+   */
   val PUSH_FILTER_DOWN_RULES: RuleSet = RuleSets.ofList(
     // push a filter down into the table scan
     PushFilterIntoTableSourceScanRule.INSTANCE,
@@ -178,6 +229,7 @@ object FlinkStreamRuleSets {
   )
 
   /** RuleSet to prune empty results rules */
+    //用于剪除空结果集的规则集
   val PRUNE_EMPTY_RULES: RuleSet = RuleSets.ofList(
     PruneEmptyRules.AGGREGATE_INSTANCE,
     PruneEmptyRules.FILTER_INSTANCE,
@@ -189,6 +241,7 @@ object FlinkStreamRuleSets {
   )
 
   /** RuleSet about project */
+  //关于投影的规则集
   val PROJECT_RULES: RuleSet = RuleSets.ofList(
     // push a projection past a filter
     CoreRules.PROJECT_FILTER_TRANSPOSE,
@@ -228,6 +281,7 @@ object FlinkStreamRuleSets {
   )
 
   /** RuleSet to do logical optimize. This RuleSet is a sub-set of [[LOGICAL_OPT_RULES]]. */
+  //用于执行逻辑优化的规则集。这个规则集是[[LOGICAL_OPT_RULES]]的子集。
   private val LOGICAL_RULES: RuleSet = RuleSets.ofList(
     // scan optimization
     PushProjectIntoTableSourceScanRule.INSTANCE,
@@ -299,6 +353,7 @@ object FlinkStreamRuleSets {
   )
 
   /** RuleSet to translate calcite nodes to flink nodes */
+  //将 Calcite 节点转换为 Flink 节点的规则集
   private val LOGICAL_CONVERTERS: RuleSet = RuleSets.ofList(
     // translate to flink logical rel nodes
     FlinkLogicalAggregate.STREAM_CONVERTER,
@@ -327,6 +382,7 @@ object FlinkStreamRuleSets {
   )
 
   /** RuleSet to do logical optimize for stream */
+  //RuleSet用于对流进行逻辑优化
   val LOGICAL_OPT_RULES: RuleSet = RuleSets.ofList(
     (
       FILTER_RULES.asScala ++
@@ -337,6 +393,7 @@ object FlinkStreamRuleSets {
     ).asJava)
 
   /** RuleSet to do rewrite on FlinkLogicalRel for Stream */
+  //RuleSet为流重写FlinkLogicalRel
   val LOGICAL_REWRITE: RuleSet = RuleSets.ofList(
     // watermark push down
     PushWatermarkIntoTableSourceScanAcrossCalcRule.INSTANCE,
@@ -417,6 +474,7 @@ object FlinkStreamRuleSets {
   )
 
   /** RuleSet to do physical optimize for stream */
+  //RuleSet用于对流进行物理优化
   val PHYSICAL_OPT_RULES: RuleSet = RuleSets.ofList(
     FlinkCalcMergeRule.STREAM_PHYSICAL_INSTANCE,
     FlinkExpandConversionRule.STREAM_INSTANCE,
@@ -482,18 +540,21 @@ object FlinkStreamRuleSets {
   )
 
   /** RuleSet related to transpose watermark to be close to source */
+  //与转置水印相关的规则集要接近源
   val WATERMARK_TRANSPOSE_RULES: RuleSet = RuleSets.ofList(
     WatermarkAssignerChangelogNormalizeTransposeRule.WITH_CALC,
     WatermarkAssignerChangelogNormalizeTransposeRule.WITHOUT_CALC
   )
 
   /** RuleSet related to mini-batch. */
+  //与小批量相关的规则集
   val MINI_BATCH_RULES: RuleSet = RuleSets.ofList(
     // mini-batch interval infer rule
     MiniBatchIntervalInferRule.INSTANCE
   )
 
   /** RuleSet to optimize plans after stream exec execution. */
+  //RuleSet用于在流执行后优化计划。
   val PHYSICAL_REWRITE: RuleSet = RuleSets.ofList(
     // optimize agg rule
     TwoStageOptimizedAggregateRule.INSTANCE,

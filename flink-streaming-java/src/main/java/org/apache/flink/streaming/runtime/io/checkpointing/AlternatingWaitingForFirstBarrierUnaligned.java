@@ -55,6 +55,18 @@ final class AlternatingWaitingForFirstBarrierUnaligned implements BarrierHandler
         return this;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 处理接收到的检查点屏障（Checkpoint Barrier）的函数。
+     *
+     * @param controller        控制器，用于管理检查点流程。
+     * @param channelInfo       接收屏障的输入通道信息。
+     * @param checkpointBarrier 接收到的检查点屏障。
+     * @param markChannelBlocked 标记是否需要将该通道标记为阻塞状态，通常与基于信用的网络流量控制相关。
+     * @return 处理后的状态，可能表示检查点完成或需要继续等待其他屏障。
+     */
     @Override
     public BarrierHandlerState barrierReceived(
             Controller controller,
@@ -65,23 +77,32 @@ final class AlternatingWaitingForFirstBarrierUnaligned implements BarrierHandler
 
         // we received an out of order aligned barrier, we should book keep this channel as blocked,
         // as it is being blocked by the credit-based network
+        // 如果需要标记通道为阻塞，并且该屏障不是未对齐的检查点屏障，则将该通道标记为阻塞。
+        // 这通常是因为基于信用的网络控制需要阻塞该通道以等待资源。
         if (markChannelBlocked
                 && !checkpointBarrier.getCheckpointOptions().isUnalignedCheckpoint()) {
             channelState.blockChannel(channelInfo);
         }
-
+        // 将接收到的检查点屏障转换为未对齐的屏障（如果原本就是未对齐的，则直接返回自身）。
         CheckpointBarrier unalignedBarrier = checkpointBarrier.asUnaligned();
+        // 初始化控制器的输入检查点流程，使用转换后的未对齐屏障。
         controller.initInputsCheckpoint(unalignedBarrier);
+        // 通知所有输入检查点开始，使用未对齐的屏障。
         for (CheckpointableInput input : channelState.getInputs()) {
             input.checkpointStarted(unalignedBarrier);
         }
+        // 触发全局检查点流程，使用未对齐的屏障。
         controller.triggerGlobalCheckpoint(unalignedBarrier);
+        // 如果所有必要的检查点屏障都已接收，执行检查点停止逻辑。
         if (controller.allBarriersReceived()) {
+            // 通知所有输入检查点结束，使用未对齐屏障的ID。
             for (CheckpointableInput input : channelState.getInputs()) {
                 input.checkpointStopped(unalignedBarrier.getId());
             }
+            // 执行停止检查点的后续逻辑，并返回处理完成的状态。
             return stopCheckpoint();
         }
+        // 如果还没有接收到所有必要的检查点屏障，则返回一个表示需要继续交替收集未对齐屏障的状态。
         return new AlternatingCollectingBarriersUnaligned(alternating, channelState);
     }
 

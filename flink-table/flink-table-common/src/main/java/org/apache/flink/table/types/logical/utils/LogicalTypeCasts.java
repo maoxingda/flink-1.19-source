@@ -98,6 +98,12 @@ import static org.apache.flink.table.types.logical.utils.LogicalTypeChecks.isSin
  * as integer value) are not considered here. They are an internal bridging feature that is not
  * standard compliant. If at all, {@code CONVERT} methods should make such conversions available.
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 用于转换｛@link LogicalType｝的实用程序。
+ */
 @Internal
 public final class LogicalTypeCasts {
 
@@ -245,6 +251,21 @@ public final class LogicalTypeCasts {
      * compatible. However, all the children types ({@link LogicalType#getChildren()}) must be
      * compatible.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+    /**
+     * 返回源类型是否可以安全地被解释为目标类型。这允许通过忽略某些逻辑属性来避免类型转换。这基本上是对 {@link LogicalType#equals(Object)} 的一个宽松版本。
+     *
+     * <p>具体来说，这意味着：
+     *
+     * <p>原子类型（非字符串类型，如INT、BOOLEAN等）和用户定义的结构化类型必须完全相等（即使用 {@link LogicalType#equals(Object)} 判断）。然而，一个非空（NOT NULL）类型可以被存储在空（NULL）类型中，但反之不可。
+     *
+     * <p>原子类型中的字符串类型必须在目标类型中包含（例如，CHAR(2) 可以被包含在 VARCHAR(3) 中，但 VARCHAR(2) 不被包含在 CHAR(3) 中）。同样的规则也适用于二进制字符串。
+     *
+     * <p>构造类型（ARRAY、ROW、MAP等）和用户定义的DISTINCT类型必须属于相同的种类，但忽略字段名称和其他逻辑属性。结构化和行类型被视为兼容。然而，所有子类型（通过 {@link LogicalType#getChildren()} 获取）也必须是兼容的。
+     */
     public static boolean supportsAvoidingCast(LogicalType sourceType, LogicalType targetType) {
         final CastAvoidanceChecker checker = new CastAvoidanceChecker(sourceType);
         return targetType.accept(checker);
@@ -271,6 +292,12 @@ public final class LogicalTypeCasts {
      * <p>Implicit casts are used for type widening and type generalization (finding a common
      * supertype for a set of types). Implicit casts are similar to the Java semantics (e.g. this is
      * not possible: {@code int x = (String) z}).
+     */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 返回源类型是否可以安全地转换为目标类型而不会丢失信息。
      */
     public static boolean supportsImplicitCast(LogicalType sourceType, LogicalType targetType) {
         return supportsCasting(sourceType, targetType, false);

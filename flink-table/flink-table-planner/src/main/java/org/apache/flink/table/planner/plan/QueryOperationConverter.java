@@ -150,9 +150,18 @@ public class QueryOperationConverter extends QueryOperationDefaultVisitor<RelNod
         this.isBatchMode = isBatchMode;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 它接收一个QueryOperation类型的参数other
+     * 方法的返回类型是RelNode，表示它返回一个逻辑计划节点
+     */
     @Override
     public RelNode defaultMethod(QueryOperation other) {
+        // 遍历other的所有子节点（假设QueryOperation有一个getChildren方法返回其子节点列表）
         other.getChildren().forEach(child -> relBuilder.push(child.accept(this)));
+        //调用访问者继续传递
         return other.accept(singleRelVisitor);
     }
 
@@ -440,14 +449,29 @@ public class QueryOperationConverter extends QueryOperationDefaultVisitor<RelNod
                             });
         }
 
+        /**
+         * @授课老师: 码界探索
+         * @微信: 252810631
+         * @版权所有: 请尊重劳动成果
+         * 用于处理不同类型的QueryOperation对象，并返回对应的RelNode对象，表示逻辑计划的一部分
+         */
         @Override
         public RelNode visit(QueryOperation other) {
             if (other instanceof PlannerQueryOperation) {
+                // 判断other是否为PlannerQueryOperation的实例
+                // 如果是，则直接返回其Calcite树
                 return ((PlannerQueryOperation) other).getCalciteTree();
+                // 判断other是否为PlannerExternalQueryOperation的实例
+                // 如果是，同样直接返回其Calcite树
             } else if (other instanceof PlannerExternalQueryOperation) {
                 return ((PlannerExternalQueryOperation) other).getCalciteTree();
+                // 判断other是否为InternalDataStreamQueryOperation的实例
+                // 如果是，则调用convertToDataStreamScan方法将其转换为数据流扫描的RelNode
             } else if (other instanceof InternalDataStreamQueryOperation) {
                 return convertToDataStreamScan((InternalDataStreamQueryOperation<?>) other);
+                // 判断other是否为ExternalQueryOperation的实例
+                // 如果是，则调用convertToExternalScan方法，根据其上下文解析的表、数据流等信息
+                // 构建并返回外部扫描的RelNode
             } else if (other instanceof ExternalQueryOperation) {
                 final ExternalQueryOperation<?> externalQueryOperation =
                         (ExternalQueryOperation<?>) other;
@@ -459,6 +483,8 @@ public class QueryOperationConverter extends QueryOperationDefaultVisitor<RelNod
                         externalQueryOperation.getChangelogMode());
             }
             // legacy
+            // 对于遗留的DataStreamQueryOperation类型，也进行处理
+            // 调用convertToDataStreamScan方法，但根据其特有的参数进行转换
             else if (other instanceof DataStreamQueryOperation) {
                 DataStreamQueryOperation<?> dataStreamQueryOperation =
                         (DataStreamQueryOperation<?>) other;
@@ -468,7 +494,8 @@ public class QueryOperationConverter extends QueryOperationDefaultVisitor<RelNod
                         dataStreamQueryOperation.getResolvedSchema(),
                         dataStreamQueryOperation.getIdentifier());
             }
-
+            // 如果other不是上述任何类型的实例，则抛出TableException异常
+            // 表示遇到了未知的表操作类型
             throw new TableException("Unknown table operation: " + other);
         }
 

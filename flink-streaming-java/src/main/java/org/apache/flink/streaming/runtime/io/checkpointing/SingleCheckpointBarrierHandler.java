@@ -572,11 +572,24 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
             return pendingCheckpointBarrier;
         }
 
+        /**
+         * @授课老师: 码界探索
+         * @微信: 252810631
+         * @版权所有: 请尊重劳动成果
+         * 初始化输入检查点流程。
+         *
+         * @param checkpointBarrier 接收到的检查点屏障，包含了检查点的ID和选项。
+         */
         @Override
         public void initInputsCheckpoint(CheckpointBarrier checkpointBarrier)
                 throws CheckpointException {
+            // 检查子任务检查点协调器是否已初始化，确保后续操作不会因空引用而失败。
             checkState(subTaskCheckpointCoordinator != null);
+            // 获取检查点屏障的ID，这是唯一标识该检查点的关键信息。
             long barrierId = checkpointBarrier.getId();
+            // 调用子任务检查点协调器的initInputsCheckpoint方法，
+            // 传入检查点屏障的ID和检查点选项，以初始化输入端的检查点流程。
+            // 这一步是准备阶段，为后续处理（如快照生成、状态同步等）做准备。
             subTaskCheckpointCoordinator.initInputsCheckpoint(
                     barrierId, checkpointBarrier.getCheckpointOptions());
         }

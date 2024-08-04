@@ -190,69 +190,101 @@ abstract class PlannerBase(
     parser
   }
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 将Operation转换为Flink Transformation
+   */
   override def translate(
       modifyOperations: util.List[ModifyOperation]): util.List[Transformation[_]] = {
+    // 在翻译操作之前执行的前置处理,配置时间，获取数据库名
     beforeTranslation()
+    // 检查是否有修改操作需要转换，如果没有则直接返回一个空的转换列表
     if (modifyOperations.isEmpty) {
       return List.empty[Transformation[_]]
     }
-
+    // 将每个修改操作转换为关系节点（RelNode），这些节点是逻辑计划的一部分
     val relNodes = modifyOperations.map(translateToRel)
+    // 对关系节点进行优化，生成优化后的关系节点列表
     val optimizedRelNodes = optimize(relNodes)
+    // 将优化后的关系节点列表翻译为执行节点图（ExecNodeGraph），这里指定不直接编译为物理计划
     val execGraph = translateToExecNodeGraph(optimizedRelNodes, isCompiled = false)
+    // 将执行节点图翻译为物理执行计划，即一系列的转换操作（Transformation）
     val transformations = translateToPlan(execGraph)
+    // 在翻译操作之后执行的后置处理
     afterTranslation()
+    // 返回最终的转换操作列表
     transformations
   }
 
   /** Converts a relational tree of [[ModifyOperation]] into a Calcite relational expression. */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 将一个由[[ModifyOperation]]组成的关系树转换为Calcite的关系表达式。
+   */
   @VisibleForTesting
   private[flink] def translateToRel(modifyOperation: ModifyOperation): RelNode = {
+    // 获取数据类型工厂
     val dataTypeFactory = catalogManager.getDataTypeFactory
     modifyOperation match {
+      // 处理未注册的Sink修改操作
       case s: UnregisteredSinkModifyOperation[_] =>
+        // 构建子查询的Calcite关系表达式
         val input = createRelBuilder.queryOperation(s.getChild).build()
+        // 获取Sink的表结构
         val sinkSchema = s.getSink.getTableSchema
         // validate query schema and sink schema, and apply cast if possible
+        // 验证查询的schema和Sink的schema，并在可能的情况下应用隐式类型转换
         val query = validateSchemaAndApplyImplicitCast(
           input,
           catalogManager.getSchemaResolver.resolve(sinkSchema.toSchema),
           null,
           dataTypeFactory,
           getTypeFactory)
+        // 创建表示未注册Sink的逻辑节点
         LogicalLegacySink.create(
           query,
           s.getSink,
           "UnregisteredSink",
           ConnectorCatalogTable.sink(s.getSink, !isStreamingMode))
 
-      case collectModifyOperation: CollectModifyOperation =>
-        val input = createRelBuilder.queryOperation(modifyOperation.getChild).build()
+      case collectModifyOperation: CollectModifyOperation =>// 处理收集（Collect）修改操作
+        val input = createRelBuilder.queryOperation(modifyOperation.getChild).build()// 构建子查询的Calcite关系表达式
+        // 将收集操作转换为Calcite的关系表达式
         DynamicSinkUtils.convertCollectToRel(
-          createRelBuilder,
-          input,
-          collectModifyOperation,
-          getTableConfig,
-          getFlinkContext.getClassLoader
+          createRelBuilder,// 创建关系构建器
+          input,// 输入的Calcite关系表达式
+          collectModifyOperation,// 收集操作实例
+          getTableConfig,// 获取表配置
+          getFlinkContext.getClassLoader// 获取类加载器
         )
 
-      case stagedSink: StagedSinkModifyOperation =>
+      case stagedSink: StagedSinkModifyOperation =>// 处理分阶段Sink修改操作
         val input = createRelBuilder.queryOperation(modifyOperation.getChild).build()
+        // 将分阶段Sink转换为Calcite的关系表达式
         DynamicSinkUtils.convertSinkToRel(
           createRelBuilder,
           input,
           stagedSink,
           stagedSink.getDynamicTableSink)
 
-      case catalogSink: SinkModifyOperation =>
-        val input = createRelBuilder.queryOperation(modifyOperation.getChild).build()
+      case catalogSink: SinkModifyOperation =>// 处理基于Catalog的Sink修改操作
+        // 构建子查询的Calcite关系表达式
+      val input = createRelBuilder.queryOperation(modifyOperation.getChild).build()
+        // 获取动态选项，这些选项可能用于配置Sink
         val dynamicOptions = catalogSink.getDynamicOptions
+        // 尝试从表上下文中获取TableSink
         getTableSink(catalogSink.getContextResolvedTable, dynamicOptions).map {
           case (table, sink: TableSink[_]) =>
             // Legacy tables can't be anonymous
-            val identifier = catalogSink.getContextResolvedTable.getIdentifier
+            // 获取表的标识符（用于错误消息和日志）
+          val identifier = catalogSink.getContextResolvedTable.getIdentifier
 
             // check it's not for UPDATE/DELETE because they're not supported for Legacy table
+            // 检查是否是DELETE或UPDATE操作，因为这些操作在Legacy TableSink中不受支持
             if (catalogSink.isDelete || catalogSink.isUpdate) {
               throw new TableException(
                 String.format(
@@ -266,22 +298,29 @@ abstract class PlannerBase(
             }
 
             // check the logical field type and physical field type are compatible
+            // 检查逻辑字段类型和物理字段类型是否兼容
             val queryLogicalType = FlinkTypeFactory.toLogicalRowType(input.getRowType)
             // validate logical schema and physical schema are compatible
+            // 验证逻辑模式和物理模式是否兼容
             validateLogicalPhysicalTypesCompatible(table, sink, queryLogicalType)
             // validate TableSink
+            // 验证TableSink
             validateTableSink(catalogSink, identifier, sink, table.getPartitionKeys)
             // validate query schema and sink schema, and apply cast if possible
+            // 验证查询的schema和Sink的schema，并在可能的情况下应用隐式类型转换
             val query = validateSchemaAndApplyImplicitCast(
-              input,
-              table.getResolvedSchema,
-              identifier.asSummaryString,
-              dataTypeFactory,
-              getTypeFactory)
+              input,// 输入的Calcite关系表达式
+              table.getResolvedSchema,// 表的解析后的schema
+              identifier.asSummaryString, // 表的标识符，用于日志和错误消息
+              dataTypeFactory, // 数据类型工厂
+              getTypeFactory)  // Calcite的类型工厂
+            // 准备额外的执行提示（如动态选项）
             val hints = new util.ArrayList[RelHint]
             if (!dynamicOptions.isEmpty) {
+              // 如果存在动态选项，将它们作为提示添加到列表中
               hints.add(RelHint.builder("OPTIONS").hintOptions(dynamicOptions).build)
             }
+            //构建Sink
             LogicalLegacySink.create(
               query,
               hints,
@@ -290,58 +329,82 @@ abstract class PlannerBase(
               table,
               catalogSink.getStaticPartitions.toMap)
 
-          case (table, sink: DynamicTableSink) =>
-            DynamicSinkUtils.convertSinkToRel(createRelBuilder, input, catalogSink, sink)
+          case (table, sink: DynamicTableSink) =>// 处理DynamicTableSink的情况
+            // 使用DynamicSinkUtils工具类将DynamicTableSink转换为Calcite的RelNode
+          DynamicSinkUtils.convertSinkToRel(createRelBuilder, input, catalogSink, sink)
+          // 对上述DynamicTableSink处理的结果进行匹配
+          // 如果成功创建了Sink的RelNode，则返回它；否则抛出异常
         } match {
           case Some(sinkRel) => sinkRel
           case None =>
             throw new TableException(
               s"Sink '${catalogSink.getContextResolvedTable}' does not exists")
         }
-
+      // 处理外部修改操作的情况（如外部系统如Kafka的修改）
       case externalModifyOperation: ExternalModifyOperation =>
-        val input = createRelBuilder.queryOperation(modifyOperation.getChild).build()
+        // 构建子查询的Calcite关系表达式
+      val input = createRelBuilder.queryOperation(modifyOperation.getChild).build()
+        // 使用DynamicSinkUtils工具类（或类似工具）将外部修改操作转换为Calcite的RelNode
         DynamicSinkUtils.convertExternalToRel(createRelBuilder, input, externalModifyOperation)
 
       // legacy
+      // 处理遗留的输出转换操作（如老版本的Flink Table API中的输出转换）
       case outputConversion: OutputConversionModifyOperation =>
-        val input = createRelBuilder.queryOperation(outputConversion.getChild).build()
+        // 构建子查询的Calcite关系表达式
+      val input = createRelBuilder.queryOperation(outputConversion.getChild).build()
+        // 根据更新模式确定是否需要在写入前更新以及是否需要变更标志
         val (needUpdateBefore, withChangeFlag) = outputConversion.getUpdateMode match {
-          case UpdateMode.RETRACT => (true, true)
-          case UpdateMode.APPEND => (false, false)
-          case UpdateMode.UPSERT => (false, true)
+          case UpdateMode.RETRACT => (true, true) // 撤回模式，需要更新前处理和变更标志
+          case UpdateMode.APPEND => (false, false)// 追加模式，两者都不需要
+          case UpdateMode.UPSERT => (false, true)// 插入更新模式，不需要更新前处理但需要变更标志
         }
+        // 将输出类型转换为遗留的TypeInfo
         val typeInfo = LegacyTypeInfoDataTypeConverter.toLegacyTypeInfo(outputConversion.getType)
+        // 获取输入的逻辑类型
         val inputLogicalType = FlinkTypeFactory.toLogicalRowType(input.getRowType)
+        // 推断Sink的物理模式
         val sinkPhysicalSchema =
           inferSinkPhysicalSchema(outputConversion.getType, inputLogicalType, withChangeFlag)
         // validate query schema and sink schema, and apply cast if possible
+        // 验证查询的schema和Sink的schema，并在可能的情况下应用隐式类型转换
         val query = validateSchemaAndApplyImplicitCast(
           input,
           catalogManager.getSchemaResolver.resolve(sinkPhysicalSchema.toSchema),
           null,
           dataTypeFactory,
           getTypeFactory)
+        // 创建一个DataStreamTableSink实例，用于将数据流（DataStream）转换为表（Table）的Sink
         val tableSink = new DataStreamTableSink(
           FlinkTypeFactory.toTableSchema(query.getRowType),
           typeInfo,
           needUpdateBefore,
           withChangeFlag)
+        // 使用LogicalLegacySink.create方法创建一个逻辑上的遗留Sink
         LogicalLegacySink.create(
           query,
           tableSink,
           "DataStreamTableSink",
           ConnectorCatalogTable.sink(tableSink, !isStreamingMode))
 
-      case _ =>
+      case _ => //抛出异常
         throw new TableException(s"Unsupported ModifyOperation: $modifyOperation")
     }
   }
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 私有方法，仅在flink包内部可见，用于优化给定的RelNode
+   */
   @VisibleForTesting
   private[flink] def optimize(relNodes: Seq[RelNode]): Seq[RelNode] = {
+    // 调用获取到的优化器对输入的RelNode序列进行优化
     val optimizedRelNodes = getOptimizer.optimize(relNodes)
+    // 确保优化后的RelNode序列与输入序列的大小相同，这是一种校验手段，用于确保优化过程没有意外地增减节点
+    // 如果不满足，将抛出IllegalArgumentException异常
     require(optimizedRelNodes.size == relNodes.size)
+    // 返回优化后的RelNode序列
     optimizedRelNodes
   }
 
@@ -489,25 +552,38 @@ abstract class PlannerBase(
     )
   }
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 转换前置操作
+   */
   protected def beforeTranslation(): Unit = {
     // Add query start time to TableConfig, these config are used internally,
     // these configs will be used by temporal functions like CURRENT_TIMESTAMP,LOCALTIMESTAMP.
-    val epochTime: JLong = System.currentTimeMillis()
-    tableConfig.set(TABLE_QUERY_START_EPOCH_TIME, epochTime)
+    // 在转换操作之前，记录查询的开始时间到TableConfig中，这些配置是内部使用的，
+    // 并将被时间函数如CURRENT_TIMESTAMP, LOCALTIMESTAMP等使用。
+    val epochTime: JLong = System.currentTimeMillis() // 获取当前时间的毫秒数作为查询开始时间
+    tableConfig.set(TABLE_QUERY_START_EPOCH_TIME, epochTime)// 将查询开始时间（UTC时间）保存到TableConfig中
+    // 计算并设置查询开始的本地时间（考虑到时区偏移）
     val localTime: JLong = epochTime +
       TimeZone.getTimeZone(TableConfigUtils.getLocalTimeZone(tableConfig)).getOffset(epochTime)
     tableConfig.set(TABLE_QUERY_START_LOCAL_TIME, localTime)
 
+    // 获取当前数据库名称，如果没有则默认为空字符串，并保存到TableConfig中
     val currentDatabase = Option(catalogManager.getCurrentDatabase).getOrElse("")
     tableConfig.set(TABLE_QUERY_CURRENT_DATABASE, currentDatabase)
 
     // We pass only the configuration to avoid reconfiguration with the rootConfiguration
+    // 仅传递配置以避免与rootConfiguration重新配置，这里将TableConfig的配置应用到执行环境中
     getExecEnv.configure(tableConfig.getConfiguration, classLoader)
 
     // Use config parallelism to override env parallelism.
+    // 使用配置中的并行度来覆盖执行环境的默认并行度
     val defaultParallelism =
       getTableConfig.get(ExecutionConfigOptions.TABLE_EXEC_RESOURCE_DEFAULT_PARALLELISM)
     if (defaultParallelism > 0) {
+      // 如果TableConfig中配置了默认的并行度，则将其设置到执行环境的配置中
       getExecEnv.getConfig.setParallelism(defaultParallelism)
     }
   }

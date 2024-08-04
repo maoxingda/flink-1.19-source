@@ -77,10 +77,21 @@ public class QueryHintsResolver extends QueryHintsRelShuttle {
      * right side of this query, that means this query hint is invalid and a {@link
      * ValidationException} will be thrown.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 解析并验证给定 {@link RelNode} 列表中的查询提示。对于无效的提示，将抛出 {@link ValidationException} 异常。
+     */
     final List<RelNode> resolve(List<RelNode> roots) {
+        // 使用流操作遍历每个根节点，并调用 accept 方法
+        // 对每个节点进行遍历和修改，可能是解析查询提示等操作。
         List<RelNode> resolvedRoots =
                 roots.stream().map(node -> node.accept(this)).collect(Collectors.toList());
+        // 调用 validateHints 方法来验证所有已解析的查询提示是否有效。
+        // 如果发现无效提示，将抛出 ValidationException 异常。
         validateHints();
+        // 返回解析并验证后的根节点列表。
         return resolvedRoots;
     }
 

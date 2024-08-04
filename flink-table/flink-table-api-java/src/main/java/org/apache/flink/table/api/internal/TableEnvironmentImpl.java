@@ -1127,38 +1127,54 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
         }
 
         // otherwise, fall back to internal implementation
+        // 如果 operation 是 ModifyOperation 类型，则将其封装为单元素列表并递归调用 executeInternal
         if (operation instanceof ModifyOperation) {
             return executeInternal(Collections.singletonList((ModifyOperation) operation));
+            // 如果 operation 是 StatementSetOperation 类型，则获取其包含的所有 Operation 并递归调用 executeInternal
         } else if (operation instanceof StatementSetOperation) {
             return executeInternal(((StatementSetOperation) operation).getOperations());
+            // 如果 operation 是 ExplainOperation 类型，则执行解释操作
         } else if (operation instanceof ExplainOperation) {
+            // 将 ExplainOperation 强制转型，并获取其 ExplainDetail 数组和子 Operation
             ExplainOperation explainOperation = (ExplainOperation) operation;
             ExplainDetail[] explainDetails =
                     explainOperation.getExplainDetails().stream()
                             .map(ExplainDetail::valueOf)
                             .toArray(ExplainDetail[]::new);
             Operation child = ((ExplainOperation) operation).getChild();
+            // 根据子 Operation 的类型，构建 Operation 列表
             List<Operation> operations;
             if (child instanceof StatementSetOperation) {
                 operations = new ArrayList<>(((StatementSetOperation) child).getOperations());
             } else {
                 operations = Collections.singletonList(child);
             }
+            // 执行内部解释逻辑，生成解释字符串
             String explanation = explainInternal(operations, explainDetails);
+            // 构建并返回 TableResultImpl 对象，包含解释结果
             return TableResultImpl.builder()
                     .resultKind(ResultKind.SUCCESS_WITH_CONTENT)
                     .schema(ResolvedSchema.of(Column.physical("result", DataTypes.STRING())))
                     .data(Collections.singletonList(Row.of(explanation)))
                     .build();
+            // 检查操作是否为QueryOperation类型
         } else if (operation instanceof QueryOperation) {
+            // 强制类型转换操作对象为QueryOperation
             QueryOperation queryOperation = (QueryOperation) operation;
+            // 创建一个CollectModifyOperation对象，传入QueryOperation作为参数
             CollectModifyOperation sinkOperation = new CollectModifyOperation(queryOperation);
+            // 将sinkOperation转换为一个转换操作列表
             List<Transformation<?>> transformations =
                     translate(Collections.singletonList(sinkOperation));
+            // 执行查询操作，传入原始查询操作、sink操作和转换操作列表
             return executeQueryOperation(queryOperation, sinkOperation, transformations);
+            // 检查操作是否为ExecutePlanOperation类型
         } else if (operation instanceof ExecutePlanOperation) {
+            // 强制类型转换操作对象为ExecutePlanOperation
             ExecutePlanOperation executePlanOperation = (ExecutePlanOperation) operation;
             try {
+                // 注册文件资源，并将文件路径转换为PlanReference对象
+                // 执行计划并返回结果
                 return (TableResultInternal)
                         executePlan(
                                 PlanReference.fromFile(
@@ -1172,34 +1188,47 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
                                 "Failed to execute %s statement.", operation.asSummaryString()),
                         e);
             }
+            // 检查操作是否为CompilePlanOperation类型
         } else if (operation instanceof CompilePlanOperation) {
+            // 强制类型转换操作对象为CompilePlanOperation
             CompilePlanOperation compilePlanOperation = (CompilePlanOperation) operation;
+            // 编译计划并写入到指定文件路径
             compilePlanAndWrite(
                     compilePlanOperation.getFilePath(),
                     compilePlanOperation.isIfNotExists(),
                     compilePlanOperation.getOperation());
+            // 编译成功，返回表示成功的TableResultImpl对象
             return TableResultImpl.TABLE_RESULT_OK;
+            // 检查操作是否为CompileAndExecutePlanOperation类型
         } else if (operation instanceof CompileAndExecutePlanOperation) {
+            // 强制类型转换操作对象为CompileAndExecutePlanOperation
             CompileAndExecutePlanOperation compileAndExecutePlanOperation =
                     (CompileAndExecutePlanOperation) operation;
+            // 编译计划并写入到指定文件路径，这里总是覆盖文件（因为第二个参数为true）
             CompiledPlan compiledPlan =
                     compilePlanAndWrite(
                             compileAndExecutePlanOperation.getFilePath(),
                             true,
                             compileAndExecutePlanOperation.getOperation());
+            // 执行编译后的计划，并返回执行结果
             return (TableResultInternal) compiledPlan.execute();
+            // 检查操作是否为AnalyzeTableOperation类型
         } else if (operation instanceof AnalyzeTableOperation) {
+            // 如果是流式处理模式，则不支持ANALYZE TABLE操作
             if (isStreamingMode) {
                 throw new TableException("ANALYZE TABLE is not supported for streaming mode now");
             }
             try {
+                // 调用AnalyzeTableUtil工具类来执行ANALYZE TABLE操作
                 return AnalyzeTableUtil.analyzeTable(this, (AnalyzeTableOperation) operation);
             } catch (Exception e) {
                 throw new TableException("Failed to execute ANALYZE TABLE command", e);
             }
+            // 检查操作是否为NopOperation类型
         } else if (operation instanceof NopOperation) {
             return TableResultImpl.TABLE_RESULT_OK;
         } else {
+            // 抛出TableException，表示不支持的查询操作
             throw new TableException(UNSUPPORTED_QUERY_IN_EXECUTE_SQL_MSG);
         }
     }

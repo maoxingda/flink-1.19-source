@@ -263,6 +263,12 @@ class SubtaskCheckpointCoordinatorImpl implements SubtaskCheckpointCoordinator {
         return channelStateWriter;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * checkpoint状态
+     */
     @Override
     public void checkpointState(
             CheckpointMetaData metadata,
@@ -528,16 +534,30 @@ class SubtaskCheckpointCoordinatorImpl implements SubtaskCheckpointCoordinator {
         ExceptionUtils.tryRethrowException(previousException);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 根据检查点选项初始化输入端的检查点流程。
+     *
+     * @param id           检查点的唯一标识符。
+     * @param checkpointOptions 检查点选项，包含了检查点的类型和其他相关设置。
+     */
     @Override
     public void initInputsCheckpoint(long id, CheckpointOptions checkpointOptions)
             throws CheckpointException {
+        // 如果这是一个未对齐的检查点
         if (checkpointOptions.isUnalignedCheckpoint()) {
+            // 启动通道状态写入器，为当前检查点ID和选项准备状态记录。
             channelStateWriter.start(id, checkpointOptions);
-
+            // 准备处理中（in-flight）数据的快照。
             prepareInflightDataSnapshot(id);
+            // 如果这是一个可超时的检查点
         } else if (checkpointOptions.isTimeoutable()) {
             // The output buffer may need to be snapshotted, so start the channelStateWriter here.
+            // 启动通道状态写入器，因为输出缓冲区可能需要被快照记录。
             channelStateWriter.start(id, checkpointOptions);
+            // 完成输入端的检查点准备工作。
             channelStateWriter.finishInput(id);
         }
     }
@@ -675,17 +695,32 @@ class SubtaskCheckpointCoordinatorImpl implements SubtaskCheckpointCoordinator {
         }
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 准备处理中（in-flight）数据的快照。
+     *
+     * @param checkpointId 检查点的唯一标识符。
+     */
     private void prepareInflightDataSnapshot(long checkpointId) throws CheckpointException {
+        // 使用一个函数式接口（可能是CompletableFuture的某个转换或执行操作）
+        // 来应用prepareInputSnapshot操作，该操作涉及将channelStateWriter和checkpointId作为参数。
         prepareInputSnapshot
                 .apply(channelStateWriter, checkpointId)
+                // 当异步操作完成时，无论是正常完成还是异常完成，都会执行whenComplete中的lambda表达式。
                 .whenComplete(
                         (unused, ex) -> {
+                            // 如果异步操作因异常而完成
                             if (ex != null) {
+                                // 调用channelStateWriter的abort方法，通知检查点失败。
                                 channelStateWriter.abort(
                                         checkpointId,
                                         ex,
                                         false /* result is needed and cleaned by getWriteResult */);
                             } else {
+                                // 如果异步操作成功完成
+                                // 调用channelStateWriter的finishInput方法，标记输入端的检查点工作已完成。
                                 channelStateWriter.finishInput(checkpointId);
                             }
                         });

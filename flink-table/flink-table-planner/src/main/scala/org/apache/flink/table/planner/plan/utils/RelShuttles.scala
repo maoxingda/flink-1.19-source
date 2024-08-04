@@ -57,15 +57,32 @@ class ExpandTableScanShuttle extends RelShuttleImpl {
    * change. This will not change any output of LogicalTableScan when LogicalTableScan is replaced
    * with RelNode tree in its RelTable.
    */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 重写此方法以在子节点发生变化时使用 `replaceInput` 方法而不是 `copy` 方法。
+   * 当在 RelTable 中的 LogicalTableScan 被替换为 RelNode 树时，这不会改变 LogicalTableScan 的任何输出。
+   *
+   * @param parent 当前正在访问的父节点。
+   * @param i 当前正在访问的子节点在父节点输入列表中的索引。
+   * @param child 当前正在访问的父节点的子节点。
+   */
   override def visitChild(parent: RelNode, i: Int, child: RelNode): RelNode = {
+    // 将父节点推入栈中，可能用于调试或跟踪递归深度。
     stack.push(parent)
     try {
+      // 递归地访问子节点，子节点可能根据实现进行转换或保持不变。
       val child2 = child.accept(this)
+      // 如果子节点在访问过程中发生了变化（即 child2 不等于 child），
+      // 则使用 replaceInput 方法将父节点的第 i 个输入替换为新的子节点 child2。
       if (child2 ne child) {
         parent.replaceInput(i, child2)
       }
+      // 返回父节点，无论其子节点是否发生变化。
       parent
     } finally {
+      // 无论是否发生异常，都将父节点从栈中弹出。
       stack.pop
     }
   }

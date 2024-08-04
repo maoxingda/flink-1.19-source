@@ -31,12 +31,11 @@ public class FlinkSQLDategen {
 
         tableEnv.executeSql(ddl);
         tableEnv.executeSql("select  id,count(id) cnt_id from xm.t_user  where id > 5 group by id ").print();
-        //tableEnv.executeSql("select t.a from (select id from xm.t_user) t ").print();
-        //tableEnv.executeSql("select max(id) cnt_id from xm.t_user").print();
-        //tableEnv.executeSql("select id,name,age1 from xm.t_user t where id > 5 ").print();
-        //tableEnv.executeSql("select id,count(id) cnt_id from (table xm.t_user) where id > 5 group by id ").print();
-        // 执行任务 ;
         env.execute("Flink SQL Demo");
+
+        //String result = tableEnv.explainSql("select  id,count(id) cnt_id from xm.t_user  where id > 5 group by id ");
+       /* String result = tableEnv.explainSql("select  t1.id,t2.name,t2.age from xm.t_user t1 left join xm.t_user t2 on t1.id=t2.id where t1.id > 5 ");
+        System.out.println(result);*/
     }
 
 }

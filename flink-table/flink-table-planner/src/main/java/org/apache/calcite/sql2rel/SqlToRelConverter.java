@@ -738,7 +738,7 @@ public class SqlToRelConverter {
      * @授课老师: 码界探索
      * @微信: 252810631
      * @版权所有: 请尊重劳动成果
-     * 将SqlSelect转换为RelNode（逻辑计划节点），可选地支持“TOP”操作
+     * 将SqlSelect转换为RelNode（逻辑计划节点）
      */
     public RelNode convertSelect(SqlSelect select, boolean top) {
         // 通过验证器获取SqlSelect的WHERE子句的作用域
@@ -759,8 +759,18 @@ public class SqlToRelConverter {
         return new Blackboard(scope, nameToNodeMap, top);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 转换Select查询语句
+     */
     /** Implementation of {@link #convertSelect(SqlSelect, boolean)}; derived class may override. */
     protected void convertSelectImpl(final Blackboard bb, SqlSelect select) {
+        /**
+         * 转换 FROM 子句
+         * 将 SQL 查询中的 FROM 子句转换为内部表
+         */
         convertFrom(bb, select.getFrom());
 
         // We would like to remove ORDER BY clause from an expanded view, except if
@@ -796,29 +806,39 @@ public class SqlToRelConverter {
                 bb.setRoot(castNonNull(bb.root).getInput(0), true);
             }
         }
-
+        /**
+         * 转换 WHERE 子句
+         * 将 SQL 查询中的 WHERE 子句转换为内部表示
+         */
         convertWhere(bb, select.getWhere());
-
+        // 初始化两个列表，用于存储ORDER BY子句的表达式和排序规则
         final List<SqlNode> orderExprList = new ArrayList<>();
         final List<RelFieldCollation> collationList = new ArrayList<>();
+        // 收集ORDER BY子句中的表达式和排序规则
         gatherOrderExprs(bb, select, select.getOrderList(), orderExprList, collationList);
+        // 根据收集到的排序规则列表，创建一个RelCollation对象，并进行规范化
         final RelCollation collation = cluster.traitSet().canonize(RelCollations.of(collationList));
-
+        // 判断SELECT语句是否包含聚合函数
         if (validator().isAggregate(select)) {
+            // 如果包含，则对聚合函数进行转换
             convertAgg(bb, select, orderExprList);
         } else {
+            // 否则，对SELECT列表项进行转换
             convertSelectList(bb, select, orderExprList);
         }
 
+        // 如果SELECT语句指定了DISTINCT，则应用DISTINCT转换
         if (select.isDistinct()) {
             distinctify(bb, true);
         }
-
+        // 对ORDER BY子句进行转换，包括处理OFFSET和FETCH子句
         convertOrder(select, bb, collation, orderExprList, select.getOffset(), select.getFetch());
-
+        // 如果SELECT语句包含了查询提示（Hints）
         if (select.hasHints()) {
+            // 获取这些查询提示对应的RelHint列表
             final List<RelHint> hints = SqlUtil.getRelHint(hintStrategies, select.getHints());
             // Attach the hints to the first Hintable node we found from the root node.
+            // 遍历逻辑计划的根节点，找到第一个实现Hintable接口的节点，并将查询提示附加到这个节点上
             bb.setRoot(
                     bb.root()
                             .accept(
@@ -828,6 +848,7 @@ public class SqlToRelConverter {
                                         @Override
                                         public RelNode visitChild(
                                                 RelNode parent, int i, RelNode child) {
+                                            // 如果当前父节点实现了Hintable接口且尚未附加提示
                                             if (parent instanceof Hintable && !attached) {
                                                 attached = true;
                                                 return ((Hintable) parent).attachHints(hints);
@@ -838,6 +859,7 @@ public class SqlToRelConverter {
                                     }),
                     true);
         } else {
+            // 如果没有查询提示，则直接设置根节点（可能只是为了保持API调用的一致性）
             bb.setRoot(bb.root(), true);
         }
     }
@@ -1037,48 +1059,67 @@ public class SqlToRelConverter {
      * @param sqlNode the root node from which to look for NOT operators
      * @return the transformed SqlNode representation with NOT pushed down.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将所有的NOT逻辑操作符向下推动到任何IN/NOT IN操作符中。
+     * @param scope SQL节点发生作用的作用域
+     * @param sqlNode 从中查找NOT操作符的根节点
+     * @return 转换后的SqlNode表示，其中NOT操作符已被向下推动。
+     */
     private static SqlNode pushDownNotForIn(SqlValidatorScope scope, SqlNode sqlNode) {
+        // 如果sqlNode不是SqlCall类型或不含IN操作符，则直接返回
         if (!(sqlNode instanceof SqlCall) || !containsInOperator(sqlNode)) {
             return sqlNode;
         }
         final SqlCall sqlCall = (SqlCall) sqlNode;
+        // 根据SqlCall的类型进行不同的处理
         switch (sqlCall.getKind()) {
-            case AND:
-            case OR:
+            case AND:// 如果是AND操作符
+            case OR:// 如果是OR操作符
                 final List<SqlNode> operands = new ArrayList<>();
+                // 遍历所有操作数，并递归地对每个操作数调用pushDownNotForIn
                 for (SqlNode operand : sqlCall.getOperandList()) {
                     operands.add(pushDownNotForIn(scope, operand));
                 }
+                // 创建新的SqlCall节点并注册
                 final SqlCall newCall =
                         sqlCall.getOperator().createCall(sqlCall.getParserPosition(), operands);
                 return reg(scope, newCall);
 
-            case NOT:
-                assert sqlCall.operand(0) instanceof SqlCall;
-                final SqlCall call = sqlCall.operand(0);
+            case NOT: // 如果是NOT操作符
+                assert sqlCall.operand(0) instanceof SqlCall;// 断言NOT的第一个操作数是SqlCall类型
+                final SqlCall call = sqlCall.operand(0);// 获取NOT的第一个操作数
                 switch (sqlCall.operand(0).getKind()) {
-                    case CASE:
+                    case CASE:// 如果是CASE表达式
                         final SqlCase caseNode = (SqlCase) call;
+                        // 创建一个新的SqlNodeList来存储THEN部分的结果
                         final SqlNodeList thenOperands = new SqlNodeList(SqlParserPos.ZERO);
-
+                        // 遍历CASE表达式的THEN部分，对每个THEN操作数应用NOT，并递归调用pushDownNotForIn
                         for (SqlNode thenOperand : caseNode.getThenOperands()) {
                             final SqlCall not =
                                     SqlStdOperatorTable.NOT.createCall(
-                                            SqlParserPos.ZERO, thenOperand);
+                                            SqlParserPos.ZERO, thenOperand);// 创建NOT操作符的SqlCall
+                            // 递归调用pushDownNotForIn并添加到新的THEN列表中
                             thenOperands.add(pushDownNotForIn(scope, reg(scope, not)));
                         }
+                        // 处理ELSE部分
                         SqlNode elseOperand =
                                 requireNonNull(
                                         caseNode.getElseOperand(),
                                         "getElseOperand for " + caseNode);
+                        // 如果ELSE操作数不为NULL
                         if (!SqlUtil.isNull(elseOperand)) {
                             // "not(unknown)" is "unknown", so no need to simplify
+                            // "not(unknown)"的结果是"unknown"，因此不需要简化
                             final SqlCall not =
                                     SqlStdOperatorTable.NOT.createCall(
                                             SqlParserPos.ZERO, elseOperand);
+                            // 调用pushDownNotForIn方法处理并注册NOT表达式
                             elseOperand = pushDownNotForIn(scope, reg(scope, not));
                         }
-
+                        // 创建一个新的CASE表达式，使用原始的条件（WHEN部分）和修改后的THEN及ELSE部分
                         return reg(
                                 scope,
                                 SqlStdOperatorTable.CASE.createCall(
@@ -1088,9 +1129,11 @@ public class SqlToRelConverter {
                                         thenOperands,
                                         elseOperand));
 
-                    case AND:
+                    case AND:// 处理AND操作符
+                        // 创建一个列表来存储对AND的每个操作数应用NOT操作符后的结果
                         final List<SqlNode> orOperands = new ArrayList<>();
                         for (SqlNode operand : call.getOperandList()) {
+                            // 对每个操作数应用NOT操作符，并将结果添加到orOperands列表中
                             orOperands.add(
                                     pushDownNotForIn(
                                             scope,
@@ -1099,13 +1142,16 @@ public class SqlToRelConverter {
                                                     SqlStdOperatorTable.NOT.createCall(
                                                             SqlParserPos.ZERO, operand))));
                         }
+                        // 使用OR操作符和转换后的操作数列表创建一个新的表达式，并返回其注册或处理后的结果
                         return reg(
                                 scope,
                                 SqlStdOperatorTable.OR.createCall(SqlParserPos.ZERO, orOperands));
-
+                    // 处理OR操作符
                     case OR:
+                        // 创建一个列表来存储对OR的每个操作数应用NOT操作符后的结果
                         final List<SqlNode> andOperands = new ArrayList<>();
                         for (SqlNode operand : call.getOperandList()) {
+                            // 对每个操作数应用NOT操作符，并将结果添加到andOperands列表中
                             andOperands.add(
                                     pushDownNotForIn(
                                             scope,
@@ -1114,21 +1160,25 @@ public class SqlToRelConverter {
                                                     SqlStdOperatorTable.NOT.createCall(
                                                             SqlParserPos.ZERO, operand))));
                         }
+                        // 使用AND操作符和转换后的操作数列表创建一个新的表达式，并返回其注册或处理后的结果
                         return reg(
                                 scope,
                                 SqlStdOperatorTable.AND.createCall(SqlParserPos.ZERO, andOperands));
 
-                    case NOT:
+                    case NOT:// 处理NOT操作符
+                        // 断言NOT操作符只有一个操作数
                         assert call.operandCount() == 1;
+                        // 直接对NOT操作符的操作数进行处理（可能是转换、优化或注册）
+                        // 并返回处理后的结果
                         return pushDownNotForIn(scope, call.operand(0));
 
-                    case NOT_IN:
+                    case NOT_IN://处理Not IN
                         return reg(
                                 scope,
                                 SqlStdOperatorTable.IN.createCall(
                                         SqlParserPos.ZERO, call.getOperandList()));
 
-                    case IN:
+                    case IN://处理IN
                         return reg(
                                 scope,
                                 SqlStdOperatorTable.NOT_IN.createCall(
@@ -1158,40 +1208,72 @@ public class SqlToRelConverter {
      * @param bb Blackboard
      * @param where WHERE clause, may be null
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 转换WHERE子句。
+     *
+     * @param bb Blackboard对象，用于存储和转换中间结果
+     * @param where WHERE子句，可能为null
+     */
     private void convertWhere(final Blackboard bb, final @Nullable SqlNode where) {
+        // 如果WHERE子句为空，则直接返回
         if (where == null) {
             return;
         }
+        // 将NOT操作向下推送到IN操作中，优化查询
         SqlNode newWhere = pushDownNotForIn(bb.scope(), where);
+        // 替换子查询，如果子查询的逻辑在上下文中未知，则视为FALSE
         replaceSubQueries(bb, newWhere, RelOptUtil.Logic.UNKNOWN_AS_FALSE);
+        // 将SqlNode转换为RexNode
         final RexNode convertedWhere = bb.convertExpression(newWhere);
+        // 移除RexNode中的空值检查转换，因为它们在查询执行中可能不是必需的
         final RexNode convertedWhere2 = RexUtil.removeNullabilityCast(typeFactory, convertedWhere);
 
         // only allocate filter if the condition is not TRUE
+        // 如果转换后的WHERE条件总是为真，则不需要分配过滤器
         if (convertedWhere2.isAlwaysTrue()) {
             return;
         }
-
+        // 使用默认的过滤器工厂创建过滤器节点
         final RelFactories.FilterFactory filterFactory = RelFactories.DEFAULT_FILTER_FACTORY;
         final RelNode filter =
                 filterFactory.createFilter(bb.root(), convertedWhere2, ImmutableSet.of());
+        // 检查是否需要处理相关性
         final RelNode r;
         final CorrelationUse p = getCorrelationUse(bb, filter);
         if (p != null) {
+            // 如果存在相关性，并且相关节点是Filter类型，则创建一个新的Filter节点来处理这种相关性
             assert p.r instanceof Filter;
             Filter f = (Filter) p.r;
             r = LogicalFilter.create(f.getInput(), f.getCondition(), ImmutableSet.of(p.id));
         } else {
+            // 如果没有相关性，直接使用创建的filter节点
             r = filter;
         }
-
+        // 更新Blackboard中的根节点为转换后的查询节点
         bb.setRoot(r, false);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 替换子查询的方法
+     *
+     * @param bb         Blackboard ，用于存储和访问中间结果，包括子查询列表
+     * @param expr       SqlNode对象，表示待处理的SQL表达式
+     */
     private void replaceSubQueries(
             final Blackboard bb, final SqlNode expr, RelOptUtil.Logic logic) {
+        // 在SQL表达式中查找子查询，并将它们添加到Blackboard对象的子查询列表中
+        // 此处不直接替换子查询，只是寻找并记录它们
         findSubQueries(bb, expr, logic, false);
+        // 遍历Blackboard对象中的子查询列表
         for (SubQuery node : bb.subQueryList) {
+            // 对每个子查询进行替换操作
+            // 具体的替换逻辑可能包括将子查询重写为更高效的查询形式、将子查询内联到外层查询中等
             substituteSubQuery(bb, node);
         }
     }
@@ -2246,6 +2328,12 @@ public class SqlToRelConverter {
      * @param bb Blackboard
      * @return null to proceed with the usual expression translation process
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 转换非标准表达式
+     */
     protected @Nullable RexNode convertExtendedExpression(SqlNode node, Blackboard bb) {
         return null;
     }
@@ -2361,7 +2449,6 @@ public class SqlToRelConverter {
      *
      * @param bb 目标Blackboard对象，用于存储转换后的数据。
      * @param from 可为null的SqlNode对象，表示数据来源的SQL节点。如果为null，则此方法可能执行空操作或特殊处理。
-
      */
     protected void convertFrom(Blackboard bb, @Nullable SqlNode from) {
         // 调用重载的convertFrom方法，传入空的List作为附加参数，表示没有额外的转换参数或条件。
@@ -3033,6 +3120,7 @@ public class SqlToRelConverter {
                         LogicalTableScan.create(cluster, table, ImmutableList.of()));
         // 将表和提示转换为RelNode，这里假设toRel方法能够处理表和提示并生成相应的RelNode
         final RelNode tableRel = toRel(table, hints);
+        //将根节点设置为tableRel
         bb.setRoot(tableRel, true);
          // 如果当前根节点是一个纯排序操作（即没有其他逻辑操作，只有排序），并且满足某些条件（如子查询中可以移除排序），则移除排序
         if (RelOptUtil.isPureOrder(castNonNull(bb.root)) && removeSortInSubQuery(bb.top)) {
@@ -3244,49 +3332,75 @@ public class SqlToRelConverter {
         return node;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 获取一个关系表达式（RelNode）或其子表达式中使用的变量集合。
+     */
     private @Nullable CorrelationUse getCorrelationUse(Blackboard bb, final RelNode r0) {
+        // 获取在RelNode r0中使用的所有关联变量
         final Set<CorrelationId> correlatedVariables = RelOptUtil.getVariablesUsed(r0);
+        // 如果没有使用任何关联变量，则返回null
         if (correlatedVariables.isEmpty()) {
             return null;
         }
+        // 用于构建所需列集合的ImmutableBitSet构建器
         final ImmutableBitSet.Builder requiredColumns = ImmutableBitSet.builder();
+        // 存储关联变量名称的列表
         final List<CorrelationId> correlNames = new ArrayList<>();
 
         // All correlations must refer the same namespace since correlation
         // produces exactly one correlation source.
         // The same source might be referenced by different variables since
         // DeferredLookups are not de-duplicated at create time.
+        // 所有关联必须引用相同的命名空间，因为关联操作仅产生一个关联源
+        // 相同的源可能由不同的变量引用，因为延迟查找在创建时不会被去重
         SqlValidatorNamespace prevNs = null;
 
         for (CorrelationId correlName : correlatedVariables) {
+            // 从映射中获取与关联变量对应的延迟查找对象
             DeferredLookup lookup =
                     requireNonNull(
                             mapCorrelToDeferred.get(correlName),
                             () -> "correlation variable is not found: " + correlName);
+            // 获取关联变量对应的字段访问表达式
             RexFieldAccess fieldAccess = lookup.getFieldAccess(correlName);
+            // 获取原始关系名（即表名或别名）
             String originalRelName = lookup.getOriginalRelName();
+            // 获取字段名
             String originalFieldName = fieldAccess.getField().getName();
 
+            // 获取名称匹配器，用于解析名称
             final SqlNameMatcher nameMatcher = bb.getValidator().getCatalogReader().nameMatcher();
+            // 创建一个解析器实例，用于解析命名空间
             final SqlValidatorScope.ResolvedImpl resolved = new SqlValidatorScope.ResolvedImpl();
+            // 使用lookup对象的Blackboard和原始关系名进行解析
             lookup.bb
                     .scope()
                     .resolve(ImmutableList.of(originalRelName), nameMatcher, false, resolved);
+            // 断言解析结果只有一个，因为关联变量应该唯一对应一个命名空间
             assert resolved.count() == 1;
+            // 获取解析结果中的命名空间、行类型和路径信息
             final SqlValidatorScope.Resolve resolve = resolved.only();
             final SqlValidatorNamespace foundNs = resolve.namespace;
             final RelDataType rowType = resolve.rowType();
+            // 获取在路径中引用的子命名空间的索引
             final int childNamespaceIndex = resolve.path.steps().get(0).i;
+            // 获取祖先作用域，这通常用于进一步的上下文或作用域查询
             final SqlValidatorScope ancestorScope = resolve.scope;
+            // 检查当前作用域是否包含该关联的祖先作用域
             boolean correlInCurrentScope = bb.scope().isWithin(ancestorScope);
-
+            // 如果关联不在当前作用域内，则跳过当前循环迭代
             if (!correlInCurrentScope) {
                 continue;
             }
-
+            // 检查是否已经设置了前一个命名空间，如果没有，则设置它
             if (prevNs == null) {
                 prevNs = foundNs;
             } else {
+                // 断言所有关联变量都应解析到同一个命名空间
+                // 如果不是，则抛出AssertionError
                 assert prevNs == foundNs
                         : "All correlation variables should resolve"
                                 + " to the same namespace."
@@ -3295,44 +3409,54 @@ public class SqlToRelConverter {
                                 + ", new ns="
                                 + foundNs;
             }
-
+            // 计算命名空间偏移量，用于处理多层嵌套的情况
             int namespaceOffset = 0;
             if (childNamespaceIndex > 0) {
                 // If not the first child, need to figure out the width
                 // of output types from all the preceding namespaces
+                // 如果不是第一个子命名空间，则需要计算前面所有命名空间的输出类型宽度
                 assert ancestorScope instanceof ListScope;
                 List<SqlValidatorNamespace> children = ((ListScope) ancestorScope).getChildren();
 
+                // 遍历所有前面的子命名空间，并累加它们的字段数
                 for (int i = 0; i < childNamespaceIndex; i++) {
                     SqlValidatorNamespace child = children.get(i);
                     namespaceOffset += child.getRowType().getFieldCount();
                 }
             }
-
+            // 找到顶级字段访问表达式，即最外层的字段访问
             RexFieldAccess topLevelFieldAccess = fieldAccess;
             while (topLevelFieldAccess.getReferenceExpr() instanceof RexFieldAccess) {
                 topLevelFieldAccess = (RexFieldAccess) topLevelFieldAccess.getReferenceExpr();
             }
+            // 根据顶级字段访问的索引和命名空间偏移量，从行类型中获取实际的字段
             final RelDataTypeField field =
                     rowType.getFieldList()
                             .get(topLevelFieldAccess.getField().getIndex() - namespaceOffset);
+            // 计算该字段在整个输出行类型中的位置
             int pos = namespaceOffset + field.getIndex();
-
+            // 断言顶级字段访问的字段类型与从行类型中获取的字段类型相同
             assert field.getType() == topLevelFieldAccess.getField().getType();
 
+            // 断言位置pos不应该是-1，这表示我们成功找到了字段
             assert pos != -1;
 
             // bb.root is an aggregate and only projects group by
             // keys.
+            // 假设bb.root是一个聚合操作，并且只投影了GROUP BY的键。
             Map<Integer, Integer> exprProjection = bb.mapRootRelToFieldProjection.get(bb.root);
             if (exprProjection != null) {
                 // sub-query can reference group by keys projected from
                 // the root of the outer relation.
+                // 子查询可以引用从外部关系根节点投影出的GROUP BY键。
+                // 尝试从映射中获取当前字段（由pos标识）的投影位置。
                 Integer projection = exprProjection.get(pos);
                 if (projection != null) {
+                    // 如果找到了投影位置，则更新pos为该位置。
                     pos = projection;
                 } else {
                     // correl not grouped
+                    // 如果没有找到投影位置，说明当前字段不是GROUP BY表达式的一部分。
                     throw new AssertionError(
                             "Identifier '"
                                     + originalRelName
@@ -3341,26 +3465,35 @@ public class SqlToRelConverter {
                                     + "' is not a group expr");
                 }
             }
-
+            // 将需要的列位置（由pos标识）标记在requiredColumns集合中。
             requiredColumns.set(pos);
+            // 将关联变量的名称添加到correlNames列表中。
             correlNames.add(correlName);
         }
-
+        // 检查是否有任何关联变量起源于当前作用域。
         if (correlNames.isEmpty()) {
             // None of the correlating variables originated in this scope.
+            // 如果没有关联变量起源于当前作用域，则返回null。
             return null;
         }
 
+        // 初始化r为原始关系节点r0。
         RelNode r = r0;
+        // 如果关联变量列表中有多个相同的表被引用（即correlNames大小大于1），
+        // 则需要进行去重处理。
         if (correlNames.size() > 1) {
             // The same table was referenced more than once.
             // So we deduplicate.
+            // 调用DeduplicateCorrelateVariables工具类的方法来处理去重，
+            // 并返回一个新的关系节点r。
             r =
                     DeduplicateCorrelateVariables.go(
                             rexBuilder, correlNames.get(0), Util.skip(correlNames), r0);
             // Add new node to leaves.
+            // 将新的关系节点r及其字段数添加到leaves映射中。
             leaves.put(r, r.getRowType().getFieldCount());
         }
+        // 返回一个新的CorrelationUse实例，表示当前作用域中关联变量的使用情况。
         return new CorrelationUse(correlNames.get(0), requiredColumns.build(), r);
     }
 
@@ -3615,16 +3748,32 @@ public class SqlToRelConverter {
      * @param select Query
      * @param orderExprList Additional expressions needed to implement ORDER BY
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 转换聚合查询中的SELECT、GROUP BY和HAVING子句。
+     */
     protected void convertAgg(Blackboard bb, SqlSelect select, List<SqlNode> orderExprList) {
+        // 断言确保bb.root不为空，这是前置条件
         assert bb.root != null : "precondition: child != null";
+        // 获取GROUP BY子句中的列或表达式列表
         SqlNodeList groupList = select.getGroup();
+        // 获取SELECT子句中的列或表达式列表
         SqlNodeList selectList = select.getSelectList();
+        // 获取HAVING子句（如果有的话）
         SqlNode having = select.getHaving();
-
+        // 创建一个AggConverter对象，用于后续的聚合转换处理
         final AggConverter aggConverter = new AggConverter(bb, select);
+        // 调用createAggImpl方法，传入必要的参数以进行实际的聚合转换逻辑
         createAggImpl(bb, aggConverter, selectList, groupList, having, orderExprList);
     }
-
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 解析聚合操作
+     */
     protected final void createAggImpl(
             Blackboard bb,
             final AggConverter aggConverter,
@@ -3633,27 +3782,35 @@ public class SqlToRelConverter {
             @Nullable SqlNode having,
             List<SqlNode> orderExprList) {
         // Find aggregate functions in SELECT and HAVING clause
+        // 在SELECT和HAVING子句中查找聚合函数
         final AggregateFinder aggregateFinder = new AggregateFinder();
+        // 遍历SELECT子句中的每个节点，查找聚合函数
         selectList.accept(aggregateFinder);
         if (having != null) {
+            // 如果存在HAVING子句，则遍历HAVING子句中的每个节点，查找聚合函数
             having.accept(aggregateFinder);
         }
 
         // first replace the sub-queries inside the aggregates
         // because they will provide input rows to the aggregates.
+        // 首先替换聚合函数内部的子查询
+        // 因为这些子查询将为聚合函数提供输入行。
         replaceSubQueries(bb, aggregateFinder.list, RelOptUtil.Logic.TRUE_FALSE_UNKNOWN);
 
         // also replace sub-queries inside filters in the aggregates
+        // 替换聚合函数过滤器中的子查询
         replaceSubQueries(bb, aggregateFinder.filterList, RelOptUtil.Logic.TRUE_FALSE_UNKNOWN);
 
         // also replace sub-queries inside ordering spec in the aggregates
+        // 替换聚合函数排序规范中的子查询
         replaceSubQueries(bb, aggregateFinder.orderList, RelOptUtil.Logic.TRUE_FALSE_UNKNOWN);
 
         // If group-by clause is missing, pretend that it has zero elements.
+        // 如果缺少GROUP BY子句，设置为空元素列表。
         if (groupList == null) {
             groupList = SqlNodeList.EMPTY;
         }
-
+        // 替换GROUP BY列表中的子查询，虽然通常GROUP BY中不包含子查询此调用是为了某种形式上预处理或标准化）
         replaceSubQueries(bb, groupList, RelOptUtil.Logic.TRUE_FALSE_UNKNOWN);
 
         // register the group exprs
@@ -3664,55 +3821,77 @@ public class SqlToRelConverter {
         // Calcite allows expressions, not just column references in
         // group by list. This is not SQL 2003 compliant, but hey.
 
+        // 注册GROUP BY表达式
+        // 这可能涉及将GROUP BY表达式添加到某种上下文中，以便在后续的聚合处理中使用
+        // 构建一个映射，用于记住从顶层作用域到当前根输出的投影
+        // Calcite允许在GROUP BY列表中使用表达式，而不仅仅是列引用，这与SQL 2003标准不完全兼容，但这是Calcite的特性。
+
         final AggregatingSelectScope scope =
                 requireNonNull(aggConverter.aggregatingSelectScope, "aggregatingSelectScope");
         final AggregatingSelectScope.Resolved r = scope.resolved.get();
         for (SqlNode groupExpr : r.groupExprList) {
+            // 将GROUP BY表达式添加到聚合转换器中，以便在生成聚合查询时考虑这些表达式
             aggConverter.addGroupExpr(groupExpr);
         }
 
+        // 初始化HAVING表达式的RexNode表示（RexNode是Calcite中用于表示表达式的内部数据结构）
         final RexNode havingExpr;
+        // 初始化一个列表，用于存储从原始查询到聚合查询结果的投影对（RexNode和列名）
         final List<Pair<RexNode, String>> projects = new ArrayList<>();
 
         try {
+            // 确保当前不在聚合模式下，以避免状态冲突
             Preconditions.checkArgument(bb.agg == null, "already in agg mode");
+            // 设置当前处于聚合模式，并将聚合转换器分配给当前的黑板（Blackboard）对象
             bb.agg = aggConverter;
 
             // convert the select and having expressions, so that the
             // agg converter knows which aggregations are required
-
+            // 转换SELECT和HAVING表达式，以便聚合转换器知道需要哪些聚合操作
+            // 这可能涉及将SQL表达式转换为Calcite可以理解的内部表示（RexNode）
             selectList.accept(aggConverter);
             // Assert we don't have dangling items left in the stack
+            // 断言确保在处理SELECT表达式后，没有遗留的未处理项
             assert !aggConverter.inOver;
+            // 对ORDER BY列表中的每个表达式执行相同的操作
             for (SqlNode expr : orderExprList) {
                 expr.accept(aggConverter);
+                // 再次断言，确保没有遗留的未处理项
                 assert !aggConverter.inOver;
             }
+            // 如果存在HAVING子句，则处理它
             if (having != null) {
                 having.accept(aggConverter);
+                // 再次断言，确保没有遗留的未处理项
                 assert !aggConverter.inOver;
             }
 
             // compute inputs to the aggregator
+            // 计算聚合器所需的输入
             List<Pair<RexNode, @Nullable String>> preExprs = aggConverter.getPreExprs();
 
             if (preExprs.size() == 0) {
                 // Special case for COUNT(*), where we can end up with no inputs
                 // at all.  The rest of the system doesn't like 0-tuples, so we
                 // select a dummy constant here.
+                // 特殊情况处理：当使用COUNT(*)且没有其他输入时，整个系统可能不喜欢处理0元组（即没有字段的元组）。
+                // 因此，我们在这里选择一个哑元常量（dummy constant），通常是0，作为输入。
                 final RexNode zero = rexBuilder.makeExactLiteral(BigDecimal.ZERO);
                 preExprs = ImmutableList.of(Pair.of(zero, null));
             }
 
+            // 获取当前查询的根节点（RelNode），这是构建新查询的基础。
             final RelNode inputRel = bb.root();
 
             // Project the expressions required by agg and having.
+            // 投影出agg和having所需的表达式。这意味着我们将从原始查询中选取一部分表达式，
             bb.setRoot(
                     relBuilder
                             .push(inputRel)
                             .projectNamed(Pair.left(preExprs), Pair.right(preExprs), false)
                             .build(),
                     false);
+            // 将新的根节点与其字段投影映射关系存储起来，以便后续使用。
             bb.mapRootRelToFieldProjection.put(bb.root(), r.groupExprProjection);
 
             // REVIEW jvs 31-Oct-2007:  doesn't the declaration of
@@ -3720,25 +3899,38 @@ public class SqlToRelConverter {
             // the physical level?
 
             // Tell bb which of group columns are sorted.
+            // 清除现有的列单调性信息，并重新根据GROUP BY列表中的元素设置列单调性。
+           // 列单调性可能用于优化查询，比如判断某个列是否在整个数据集上单调递增或递减。
             bb.columnMonotonicities.clear();
             for (SqlNode groupItem : groupList) {
                 bb.columnMonotonicities.add(bb.scope().getMonotonicity(groupItem));
             }
 
             // Add the aggregator
+            // 添加聚合器到查询中。这通常意味着在查询中插入一个聚合节点，
+           // 该节点将根据GROUP BY子句和聚合函数对输入数据进行分组和聚合操作。
             bb.setRoot(
                     createAggregate(
                             bb, r.groupSet, r.groupSets.asList(), aggConverter.getAggCalls()),
                     false);
+            // 更新根节点与字段投影映射关系。
             bb.mapRootRelToFieldProjection.put(bb.root(), r.groupExprProjection);
 
             // Replace sub-queries in having here and modify having to use
             // the replaced expressions
+            // 如果存在HAVING子句，则对其进行处理。
+            // 首先，将HAVING子句中的NOT IN子查询下推（如果有的话），然后替换HAVING子句中的子查询。
+            // 注意，这里的替换逻辑可能有所不同，具体取决于将UNKNOWN视为FALSE还是其他逻辑。
             if (having != null) {
+                // 下推NOT IN子查询
                 SqlNode newHaving = pushDownNotForIn(bb.scope(), having);
+                // 替换子查询，并将UNKNOWN视为FALSE
                 replaceSubQueries(bb, newHaving, RelOptUtil.Logic.UNKNOWN_AS_FALSE);
+                // 将更新后的HAVING子句转换为RexNode，以便在查询执行时使用。
                 havingExpr = bb.convertExpression(newHaving);
             } else {
+                // 如果前面没有设置havingExpr（即没有HAVING子句），则默认将其设置为true的字面量。
+                // 这意味着如果没有特定的HAVING条件，查询将不会基于HAVING子句过滤任何分组聚合的结果。
                 havingExpr = relBuilder.literal(true);
             }
 
@@ -3746,11 +3938,16 @@ public class SqlToRelConverter {
             // This needs to be done separately from the sub-query inside
             // any aggregate in the select list, and after the aggregate rel
             // is allocated.
+            // 现在转换SELECT列表中的其他子查询。
+            // 这需要单独进行，以区别于SELECT列表中任何聚合函数内的子查询，并且应该在聚合关系（rel）分配之后进行。
+            // 因为聚合操作可能改变了查询的上下文，使得子查询的解析方式有所不同。
             replaceSubQueries(bb, selectList, RelOptUtil.Logic.TRUE_FALSE_UNKNOWN);
 
             // Now sub-queries in the entire select list have been converted.
             // Convert the select expressions to get the final list to be
             // projected.
+            // 现在，整个SELECT列表中的子查询都已经被转换。
+            // 接下来，将SELECT表达式转换为最终要投影的列表。
             int k = 0;
 
             // For select expressions, use the field names previously assigned
@@ -3759,13 +3956,24 @@ public class SqlToRelConverter {
             // validator. This is especially the case when there are system
             // fields; system fields appear in the relnode's rowtype but do not
             // (yet) appear in the validator type.
+            // 对于SELECT表达式，使用之前由验证器分配的字段名。
+            // 如果我们重新推导字段名，可能会生成如"EXPR$2"这样的名称，这些名称可能与验证器生成的名称不匹配。
+            // 特别是当存在系统字段时，系统字段会出现在关系节点的行类型中，但尚未（或不会）出现在验证器类型中。
             final SelectScope selectScope = SqlValidatorUtil.getEnclosingSelectScope(bb.scope);
+            // 确保存在SELECT作用域
             assert selectScope != null;
             final SqlValidatorNamespace selectNamespace = getNamespaceOrNull(selectScope.getNode());
+            // 确保SELECT命名空间不为空
             assert selectNamespace != null : "selectNamespace must not be null for " + selectScope;
+            // 获取SELECT命名空间的行类型中的字段名列表
             final List<String> names = selectNamespace.getRowType().getFieldNames();
+            // 计算系统字段的数量，这些字段在SELECT列表中但可能不在原始查询的字段列表中
             int sysFieldCount = selectList.size() - names.size();
+            // 遍历SELECT列表中的每个表达式
             for (SqlNode expr : selectList) {
+                // 将每个表达式转换为RexNode，并与对应的字段名（或推导出的别名）配对
+                // 如果当前索引k小于系统字段数，则使用推导出的别名（可能是系统字段的别名）
+                // 否则，从names列表中获取字段名
                 projects.add(
                         Pair.of(
                                 bb.convertExpression(expr),
@@ -3773,30 +3981,47 @@ public class SqlToRelConverter {
                                         ? castNonNull(validator().deriveAlias(expr, k++))
                                         : names.get(k++ - sysFieldCount)));
             }
-
+            // 遍历ORDER BY子句中的表达式列表
             for (SqlNode expr : orderExprList) {
+                // 将每个ORDER BY表达式转换为RexNode，并为其生成一个别名（如果可能）
+                // 然后将RexNode和别名作为一对添加到projects列表中
+                // 这里projects列表可能用于后续的投影或排序操作
                 projects.add(
                         Pair.of(
                                 bb.convertExpression(expr),
                                 castNonNull(validator().deriveAlias(expr, k++))));
             }
+            // 无论前面的操作是否成功，都执行finally块中的代码
+            // 这里主要是将bb（可能是某个查询构建器的上下文对象）的agg属性重置为null
+            // 这可能是为了确保后续操作不会错误地使用之前设置的聚合上下文
         } finally {
             bb.agg = null;
         }
 
         // implement HAVING (we have already checked that it is non-trivial)
+        // 实现HAVING子句（之前已经检查过HAVING子句不是简单的TRUE）
+        // 首先，将根关系（可能是聚合后的结果）推送到relBuilder的栈上
         relBuilder.push(bb.root());
+        // 如果havingExpr不为null，则应用HAVING条件作为过滤
         if (havingExpr != null) {
             relBuilder.filter(havingExpr);
         }
 
         // implement the SELECT list
+        // 实现SELECT列表
+        // 使用projects列表中的RexNode作为投影的源，并使用别名进行重命名
+        // 注意：这里假设projects列表中的RexNode和别名是成对出现的
         relBuilder.project(Pair.left(projects), Pair.right(projects)).rename(Pair.right(projects));
         bb.setRoot(relBuilder.build(), false);
 
         // Tell bb which of group columns are sorted.
+        // 告诉bb哪些分组列是有序的（单调性）
+        // 这可能用于优化查询，特别是当分组列已经排序时
         bb.columnMonotonicities.clear();
+        // 遍历SELECT列表中的每个项
         for (SqlNode selectItem : selectList) {
+            // 为每个SELECT项添加其单调性信息到bb中
+            // 单调性信息可能用于后续的查询优化，比如确定是否可以跳过某些排序操作
             bb.columnMonotonicities.add(bb.scope().getMonotonicity(selectItem));
         }
     }
@@ -4174,7 +4399,12 @@ public class SqlToRelConverter {
     private RelOptTable.ToRelContext createToRelContext(List<RelHint> hints) {
         return ViewExpanders.toRelContext(viewExpander, cluster, hints);
     }
-
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将RelOptTable转换为RelNode
+     */
     public RelNode toRel(final RelOptTable table, final List<RelHint> hints) {
         // 使用给定的hints创建一个转换上下文，并通过这个上下文将table转换为RelNode
         final RelNode scan = table.toRel(createToRelContext(hints));
@@ -4607,53 +4837,81 @@ public class SqlToRelConverter {
      * Converts an identifier into an expression in a given scope. For example, the "empno" in
      * "select empno from emp join dept" becomes "emp.empno".
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将标识符转换为给定作用域内的表达式。例如，在 "select empno from emp join dept" 中的 "empno"
+     * 将被转换为 "emp.empno"。
+     */
     private RexNode convertIdentifier(Blackboard bb, SqlIdentifier identifier) {
         // first check for reserved identifiers like CURRENT_USER
+        // 首先检查是否为保留标识符，如 CURRENT_USER
         final SqlCall call = bb.getValidator().makeNullaryCall(identifier);
         if (call != null) {
+            // 如果是保留标识符，则直接转换该调用表达式
             return bb.convertExpression(call);
         }
-
+        // 用于存储模式变量引用的前缀
         String pv = null;
         if (bb.isPatternVarRef && identifier.names.size() > 1) {
+            // 如果标识符包含多个部分且当前作用域是模式变量引用，则取第一部分作为模式变量名
             pv = identifier.names.get(0);
         }
 
+        // 用于存储完全限定的标识符
         final SqlQualified qualified;
         if (bb.scope != null) {
+            // 如果当前有作用域，则使用作用域来完全限定标识符，SqlQualified
             qualified = bb.scope.fullyQualify(identifier);
         } else {
+            // 如果没有作用域，则创建一个非限定的标识符
             qualified = SqlQualified.create(null, 1, null, identifier);
         }
+        // 查找完全限定标识符对应的 RexNode 表达式，以及一个可能的函数用于后续访问
         final Pair<RexNode, @Nullable BiFunction<RexNode, String, RexNode>> e0 =
                 bb.lookupExp(qualified);
+        // 初始化表达式
         RexNode e = e0.left;
+        // 遍历限定符的后缀部分
         for (String name : qualified.suffix()) {
             if (e == e0.left && e0.right != null) {
+                // 如果表达式是初始查找的结果
                 e = e0.right.apply(e, name);
+                // 否则，使用RexBuilder来创建字段访问表达式
             } else {
+                // 名称已经是完全限定的，因此是大小写敏感的
                 final boolean caseSensitive = true; // name already fully-qualified
                 if (identifier.isStar() && bb.scope instanceof MatchRecognizeScope) {
+                    // 如果是星号（*）且作用域是匹配识别作用域，则特殊处理
                     e = rexBuilder.makeFieldAccess(e, 0);
                 } else {
+                    // 一般的字段访问
                     e = rexBuilder.makeFieldAccess(e, name, caseSensitive);
                 }
             }
         }
+        // 如果最终表达式是输入引用，可能需要调整其类型以考虑外连接引入的空值
         if (e instanceof RexInputRef) {
             // adjust the type to account for nulls introduced by outer joins
             e = adjustInputRef(bb, (RexInputRef) e);
             if (pv != null) {
+                // 如果存在模式变量前缀，则将其包装为模式字段引用
                 e = RexPatternFieldRef.of(pv, (RexInputRef) e);
             }
         }
 
+        // 检查e0.left（即最初查找到的表达式）是否是一个相关变量
         if (e0.left instanceof RexCorrelVariable) {
+            // 断言e是一个RexFieldAccess实例，这通常意味着我们从一个相关变量中访问了某个字段
             assert e instanceof RexFieldAccess;
+            // 从e0.left中获取相关变量的ID
+            // 将这个相关变量ID映射到当前的RexFieldAccess表达式上
             final RexNode prev =
                     bb.mapCorrelateToRex.put(((RexCorrelVariable) e0.left).id, (RexFieldAccess) e);
             assert prev == null;
         }
+        // 返回最终构建的RexNode表达式
         return e;
     }
 
@@ -4665,9 +4923,18 @@ public class SqlToRelConverter {
      * @param inputRef Input ref
      * @return Adjusted input ref
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 调整对输入字段的引用的类型，以考虑外部连接引入的空值；并调整偏移量以匹配物理实现
+     */
     protected RexNode adjustInputRef(Blackboard bb, RexInputRef inputRef) {
+        // 从Blackboard中获取与输入引用相关联的字段,也就是where语句字段与输入字段的引用关系
         RelDataTypeField field = bb.getRootField(inputRef);
         if (field != null) {
+            // 检查字段的类型（忽略空值性）是否与输入引用的类型相同
+            // 如果不同，则通常不需要调整，因为这里的调整主要是处理类型因外部连接而可能引入的空值性变化
             if (!SqlTypeUtil.equalSansNullability(
                     typeFactory, field.getType(), inputRef.getType())) {
                 return inputRef;
@@ -5245,22 +5512,36 @@ public class SqlToRelConverter {
          * @param qualified The alias of the FROM item
          * @return a {@link RexFieldAccess} or {@link RexRangeRef}, never null
          */
+        /**
+         * @授课老师: 码界探索
+         * @微信: 252810631
+         * @版权所有: 请尊重劳动成果
+         * 根据提供的限定标识符（SqlQualified）查找对应的RexNode，并可能返回一个用于进一步转换的函数。
+         */
         Pair<RexNode, @Nullable BiFunction<RexNode, String, RexNode>> lookupExp(
                 SqlQualified qualified) {
+            // 如果nameToNodeMap不为空且限定标识符只有一个前缀
             if (nameToNodeMap != null && qualified.prefixLength == 1) {
+                // 尝试从nameToNodeMap中获取对应的RexNode
                 RexNode node = nameToNodeMap.get(qualified.identifier.names.get(0));
+                // 如果没有找到对应的RexNode，则抛出断言错误
                 if (node == null) {
                     throw new AssertionError(
                             "Unknown identifier '"
                                     + qualified.identifier
                                     + "' encountered while expanding expression");
                 }
+                // 返回一个包含找到的RexNode和null函数的Pair对象
                 return Pair.of(node, null);
             }
+            // 使用SQL名称匹配器来解析限定标识符
             final SqlNameMatcher nameMatcher =
                     scope().getValidator().getCatalogReader().nameMatcher();
+            // 创建一个解析结果对象
             final SqlValidatorScope.ResolvedImpl resolved = new SqlValidatorScope.ResolvedImpl();
+            // 尝试解析限定标识符的前缀
             scope().resolve(qualified.prefix(), nameMatcher, false, resolved);
+            // 如果没有找到唯一的解析结果，则抛出断言错误
             if (resolved.count() != 1) {
                 throw new AssertionError(
                         "no unique expression found for "
@@ -5268,25 +5549,35 @@ public class SqlToRelConverter {
                                 + "; count is "
                                 + resolved.count());
             }
+            // 获取唯一的解析结果
             final SqlValidatorScope.Resolve resolve = resolved.only();
+            // 获取解析结果的行类型  
             final RelDataType rowType = resolve.rowType();
 
             // Found in current query's from list.  Find which from item.
             // We assume that the order of the from clause items has been
             // preserved.
+            // 如果找到的解析结果在当前的查询FROM列表中，确定它是来自哪个FROM项。
             final SqlValidatorScope ancestorScope = resolve.scope;
+            // 检查解析结果的作用域是否是当前作用域的直接父级
             boolean isParent = ancestorScope != scope;
             if ((inputs != null) && !isParent) {
+                // 如果inputs不为空且不是父级作用域，则尝试在当前作用域内查找
                 final LookupContext rels = new LookupContext(this, inputs, systemFieldList.size());
+                // 根据解析路径的第一个步骤的索引在rels中查找RexNode
                 final RexNode node = lookup(resolve.path.steps().get(0).i, rels);
+                // 断言找到的RexNode不为null
                 assert node != null;
+                // 返回一个Pair对象，其中包含了找到的RexNode和一个用于字段访问的转换函数
                 return Pair.of(
                         node,
                         (e, fieldName) -> {
+                            // 获取指定字段名的RelDataTypeField，如果不存在则抛出异常
                             final RelDataTypeField field =
                                     requireNonNull(
                                             rowType.getField(fieldName, true, false),
                                             () -> "field " + fieldName);
+                            // 使用RexBuilder创建一个字段访问表达式
                             return rexBuilder.makeFieldAccess(e, field.getIndex());
                         });
             } else {
@@ -5294,44 +5585,72 @@ public class SqlToRelConverter {
                 // converted yet. This occurs when from items are correlated,
                 // e.g. "select from emp as emp join emp.getDepts() as dept".
                 // Create a temporary expression.
+                // 我们正在引用一个尚未转换的关系表达式，这通常发生在from项是关联的情况下
+                // 例如，"select from emp as emp join emp.getDepts() as dept"
+                // 创建一个延迟查找对象
                 DeferredLookup lookup = new DeferredLookup(this, qualified.identifier.names.get(0));
+                // 创建一个新的关联ID
                 final CorrelationId correlId = cluster.createCorrel();
+                // 将关联ID映射到延迟查找对象
                 mapCorrelToDeferred.put(correlId, lookup);
+                // 如果解析路径的第一个步骤的索引小于0，表示这是一个特殊的关联表达式
                 if (resolve.path.steps().get(0).i < 0) {
+                    // 返回一个包含关联RexNode和null函数的Pair对象
                     return Pair.of(rexBuilder.makeCorrel(rowType, correlId), null);
                 } else {
+                    // 否则，开始构建一个新的RelDataType，这可能涉及从祖先作用域中提取字段信息
                     final RelDataTypeFactory.Builder builder = typeFactory.builder();
+                    // 确保resolve.scope不为null，并转换为ListScope（这里假设了resolve.scope的类型）
                     final ListScope ancestorScope1 =
                             (ListScope) requireNonNull(resolve.scope, "resolve.scope");
+                    // 开始构建一个不可变映射，用于存储字段名和索引的映射
                     final ImmutableMap.Builder<String, Integer> fields = ImmutableMap.builder();
-                    int i = 0;
-                    int offset = 0;
+                    // 初始化变量
+                    int i = 0;// 用于遍历ancestorScope1的子节点的索引
+                    int offset = 0;// 用于计算字段的偏移量，以便在最终的字段映射中正确处理索引
+                    // 遍历ancestorScope1的所有子节点
                     for (SqlValidatorNamespace c : ancestorScope1.getChildren()) {
+                        // 检查当前子节点是否为可空的
                         if (ancestorScope1.isChildNullable(i)) {
+                            // 如果是可空的，则遍历该子节点的所有字段
+                            // 并为每个字段创建一个新的类型，该类型是可空的，然后将这些字段添加到builder中
                             for (final RelDataTypeField f : c.getRowType().getFieldList()) {
                                 builder.add(
                                         f.getName(),
                                         typeFactory.createTypeWithNullability(f.getType(), true));
                             }
                         } else {
+                            // 如果子节点不是可空的，则直接将所有字段添加到builder中
                             builder.addAll(c.getRowType().getFieldList());
                         }
+                        // 检查当前子节点是否是resolve.path中指定的子节点
                         if (i == resolve.path.steps().get(0).i) {
+                            // 如果是，则遍历该子节点的所有字段
+                            // 并将字段名和对应的索引（加上之前的偏移量）添加到fields映射中
                             for (RelDataTypeField field : c.getRowType().getFieldList()) {
                                 fields.put(field.getName(), field.getIndex() + offset);
                             }
                         }
+                        // 更新索引和偏移量
                         ++i;
+                        // 将当前子节点的字段数加到偏移量上
                         offset += c.getRowType().getFieldCount();
                     }
+                    // 使用builder构建一个新的类型，并创建一个关联表达式RexNode
                     final RexNode c = rexBuilder.makeCorrel(builder.uniquify().build(), correlId);
+                    // 构建最终的字段名到索引的映射，并结束fields的构建
                     final ImmutableMap<String, Integer> fieldMap = fields.build();
+                    // 返回一个Pair对象，包含了关联表达式RexNode和一个函数
+                   // 该函数接受一个表达式e和字段名fieldName，并返回一个新的RexNode，表示对e中指定字段的访问
                     return Pair.of(
                             c,
                             (e, fieldName) -> {
+                                // 从fieldMap中获取字段名对应的索引
+                                // 如果找不到，则抛出异常
                                 final int j =
                                         requireNonNull(
                                                 fieldMap.get(fieldName), "field " + fieldName);
+                                // 使用RexBuilder创建一个字段访问表达式
                                 return rexBuilder.makeFieldAccess(e, j);
                             });
                 }
@@ -5417,20 +5736,34 @@ public class SqlToRelConverter {
             }
         }
 
+        /**
+         * @授课老师: 码界探索
+         * @微信: 252810631
+         * @版权所有: 请尊重劳动成果
+         * 将SqlNode表达式转换为RexNode表达式
+         */
         @Override
         public RexNode convertExpression(SqlNode expr) {
             // If we're in aggregation mode and this is an expression in the
             // GROUP BY clause, return a reference to the field.
-            AggConverter agg = this.agg;
-            if (agg != null) {
+            // 如果我们处于聚合模式，并且当前表达式在GROUP BY子句中，
+            // 则直接返回对该字段的引用。
+            AggConverter agg = this.agg;// 获取聚合转换器实例
+            if (agg != null) {  // 如果聚合转换器存在
+                // 展开表达式，处理可能的别名或嵌套表达式
                 final SqlNode expandedGroupExpr = validator().expand(expr, scope());
+                // 查找展开后的GROUP BY表达式在聚合转换器中的索引
                 final int ref = agg.lookupGroupExpr(expandedGroupExpr);
                 if (ref >= 0) {
+                    // 如果找到了索引，则创建并返回对该字段的输入引用
                     return rexBuilder.makeInputRef(root(), ref);
                 }
+                // 如果表达式是一个函数调用（SqlCall）
                 if (expr instanceof SqlCall) {
+                    // 尝试在聚合转换器中查找该函数调用对应的聚合表达式
                     final RexNode rex = agg.lookupAggregates((SqlCall) expr);
                     if (rex != null) {
+                        // 如果找到了对应的聚合表达式，则返回它
                         return rex;
                     }
                 }
@@ -5438,35 +5771,48 @@ public class SqlToRelConverter {
 
             // Allow the derived class chance to override the standard
             // behavior for special kinds of expressions.
+            // 转换非标准表达式，以处理特殊类型的表达式
             RexNode rex = convertExtendedExpression(expr, this);
             if (rex != null) {
+                // 如果派生类已经处理了该表达式，并返回了一个RexNode，则直接返回该RexNode
                 return rex;
             }
 
             // Sub-queries and OVER expressions are not like ordinary
             // expressions.
-            final SqlKind kind = expr.getKind();
+            // 子查询和OVER表达式与普通表达式不同。
+            final SqlKind kind = expr.getKind();// 获取表达式的类型
+            // 声明一个SubQuery类型的变量
             final SubQuery subQuery;
-            if (!config.isExpand()) {
-                final SqlCall call;
-                final SqlNode query;
-                final RelRoot root;
+            if (!config.isExpand()) {// 如果配置不允许展开表达式
+                final SqlCall call;// 声明一个SqlCall类型的变量，用于存储函数调用表达式
+                final SqlNode query;// 声明一个SqlNode类型的变量，用于存储子查询
+                final RelRoot root;// 声明一个RelRoot类型的变量，用于存储转换后的查询关系根
+                // 根据表达式的类型（如IN, NOT IN, SOME, ALL）进行不同的处理
                 switch (kind) {
                     case IN:
                     case NOT_IN:
                     case SOME:
                     case ALL:
+                        // 将表达式转换为SqlCall类型，因为这些类型通常是通过函数调用来表示的
                         call = (SqlCall) expr;
+                        // 获取子查询部分，它通常是函数调用的第二个操作数
                         query = call.operand(1);
+                        // 如果子查询不是一个SqlNodeList（表示可能是一个更复杂的查询），则需要递归转换
                         if (!(query instanceof SqlNodeList)) {
+                            // 递归转换子查询为RelRoot
                             root = convertQueryRecursive(query, false, null);
+                            // 获取函数调用的第一个操作数
                             final SqlNode operand = call.operand(0);
+                            // 根据第一个操作数的类型
                             List<SqlNode> nodes;
                             switch (operand.getKind()) {
                                 case ROW:
+                                    // 如果操作数是ROW类型，则获取其操作数列表
                                     nodes = ((SqlCall) operand).getOperandList();
                                     break;
                                 default:
+                                    // 如果不是ROW类型，则将其视为单个操作数并创建列表
                                     nodes = ImmutableList.of(operand);
                             }
                             final ImmutableList.Builder<RexNode> builder = ImmutableList.builder();
@@ -5982,24 +6328,36 @@ public class SqlToRelConverter {
         }
 
         public int addGroupExpr(SqlNode expr) {
+            // 查找给定的表达式是否已存在于分组表达式列表中
             int ref = lookupGroupExpr(expr);
+            // 如果已存在，则返回其索引（或引用）
             if (ref >= 0) {
                 return ref;
             }
+            // 否则，将表达式添加到分组表达式列表中，并获取其索引
             final int index = groupExprs.size();
             groupExprs.add(expr);
+            // 尝试从名称映射中获取表达式名称，但这里直接使用表达式的字符串表示可能不够精确
+            // 通常情况下，表达式到名称的映射可能需要更复杂的逻辑
             String name = nameMap.get(expr.toString());
+            // 将原始SqlNode表达式转换为RexNode表达式，RexNode是Calcite框架中用于表示表达式的类
             RexNode convExpr = bb.convertExpression(expr);
+            // 将转换后的RexNode表达式和名称添加到另一个管理表达式的结构中
+            // 这个步骤可能用于优化、查询计划生成等
             addExpr(convExpr, name);
-
+            // 如果传入的expr是一个SqlCall（即一个函数调用），则进行特殊处理
             if (expr instanceof SqlCall) {
                 SqlCall call = (SqlCall) expr;
+                // 遍历并处理所有需要转换为辅助调用的分组表达式
                 for (Pair<SqlNode, AuxiliaryConverter> p :
                         SqlStdOperatorTable.convertGroupToAuxiliaryCalls(call)) {
+                    // 为每个转换后的表达式添加辅助分组表达式
+                    // 这里的index用于标识原始分组表达式在列表中的位置
+                    // AuxiliaryConverter可能包含了转换的详细信息或逻辑
                     addAuxiliaryGroupExpr(p.left, index, p.right);
                 }
             }
-
+            // 返回新添加的分组表达式的索引
             return index;
         }
 
@@ -6066,7 +6424,10 @@ public class SqlToRelConverter {
 
         @Override
         public Void visit(SqlCall call) {
+            // 使用switch语句来根据SqlCall的类型执行不同的逻辑
             switch (call.getKind()) {
+                // 对于FILTER、IGNORE_NULLS、RESPECT_NULLS、WITHIN_DISTINCT、WITHIN_GROUP等特殊类型的SqlCall，
+                // 调用translateAgg方法进行处理，并返回null表示不再继续递归
                 case FILTER:
                 case IGNORE_NULLS:
                 case RESPECT_NULLS:
@@ -6074,6 +6435,7 @@ public class SqlToRelConverter {
                 case WITHIN_GROUP:
                     translateAgg(call);
                     return null;
+                // 如果是SELECT类型的SqlCall（通常表示一个子查询），则不检测其中的聚合函数，直接返回null
                 case SELECT:
                     // rchen 2006-10-17:
                     // for now do not detect aggregates in sub-queries.
@@ -6081,45 +6443,59 @@ public class SqlToRelConverter {
                 default:
                     break;
             }
+            // 标记之前的inOver状态，用于处理与OVER操作符相关的逻辑
             final boolean prevInOver = inOver;
             // Ignore window aggregates and ranking functions (associated with OVER
             // operator). However, do not ignore nested window aggregates.
+            // 忽略与OVER操作符关联的窗口聚合和排名函数，但不忽略嵌套的窗口聚合
             if (call.getOperator().getKind() == SqlKind.OVER) {
                 // Track aggregate nesting levels only within an OVER operator.
+                // 遍历OVER操作符的操作数列表
                 List<SqlNode> operandList = call.getOperandList();
-                assert operandList.size() == 2;
+                assert operandList.size() == 2;// 通常OVER操作符有两个操作数
 
                 // Ignore the top level window aggregates and ranking functions
                 // positioned as the first operand of a OVER operator
+                // 忽略OVER操作符的第一个操作数（通常是窗口聚合或排名函数），并设置inOver为true
                 inOver = true;
-                operandList.get(0).accept(this);
+                operandList.get(0).accept(this);// 递归访问第一个操作数，但不做特别处理
 
                 // Normal translation for the second operand of a OVER operator
+                // 恢复正常状态，并处理OVER操作符的第二个操作数（如分区键或排序键）
                 inOver = false;
-                operandList.get(1).accept(this);
-                return null;
+                operandList.get(1).accept(this);// 递归访问第二个操作数
+                return null;// OVER操作符处理完毕，返回null
             }
 
             // Do not translate the top level window aggregate. Only do so for
             // nested aggregates, if present
+            // 对于聚合函数，仅在嵌套在OVER操作符内部时不做特别处理（即不调用translateAgg），
+            // 否则（即在顶层或嵌套在其他非OVER结构中）调用translateAgg进行处理
             if (call.getOperator().isAggregator()) {
                 if (inOver) {
                     // Add the parent aggregate level before visiting its children
+                    // 如果当前在OVER操作符内部，则不处理该聚合函数，并恢复inOver状态为false
+                    // 以供后续可能的嵌套聚合函数处理
                     inOver = false;
                 } else {
                     // We're beyond the one ignored level
+                    // 不在OVER操作符内部，调用translateAgg处理该聚合函数
                     translateAgg(call);
                     return null;
                 }
             }
+            // 遍历SqlCall对象的所有操作数
             for (SqlNode operand : call.getOperandList()) {
                 // Operands are occasionally null, e.g. switched CASE arg 0.
+                // 操作数列表中的元素有时可能是null，例如在某些情况下CASE语句的第一个参数可能被省略。
+                // 因此，在尝试访问之前需要检查操作数是否为null。
                 if (operand != null) {
                     operand.accept(this);
                 }
             }
             // Remove the parent aggregate level after visiting its children
             inOver = prevInOver;
+            // 返回null，表示当前SqlCall节点的处理已经完成，且没有特定的返回值。
             return null;
         }
 
@@ -6127,6 +6503,12 @@ public class SqlToRelConverter {
             translateAgg(call, null, null, null, false, call);
         }
 
+        /**
+         * @授课老师: 码界探索
+         * @微信: 252810631
+         * @版权所有: 请尊重劳动成果
+         * 转换聚合函数
+         */
         private void translateAgg(
                 SqlCall call,
                 @Nullable SqlNode filter,
@@ -6134,14 +6516,21 @@ public class SqlToRelConverter {
                 @Nullable SqlNodeList orderList,
                 boolean ignoreNulls,
                 SqlCall outerCall) {
+            // 断言确保当前聚合对象（可能是当前类的实例）是bb.agg
             assert bb.agg == this;
+            // 断言确保外部调用对象不为null
             assert outerCall != null;
+            // 获取当前聚合调用的操作数列表
             final List<SqlNode> operands = call.getOperandList();
+            // 获取当前聚合调用的解析位置
             final SqlParserPos pos = call.getParserPosition();
+            // 定义一个临时的SqlCall变量，用于后续可能的替换或操作
             final SqlCall call2;
+            // 根据当前聚合调用的种类进行不同的处理
             switch (call.getKind()) {
-                case FILTER:
+                case FILTER:// 处理FILTER聚合（如FILTER(SUM(x) FILTER (WHERE y > 0))）
                     assert filter == null;
+                    // 递归调用translateAgg处理FILTER内的聚合调用，传入FILTER的过滤条件和其他参数
                     translateAgg(
                             call.operand(0),
                             call.operand(1),
@@ -6150,8 +6539,10 @@ public class SqlToRelConverter {
                             ignoreNulls,
                             outerCall);
                     return;
-                case WITHIN_DISTINCT:
+                case WITHIN_DISTINCT:// 处理DISTINCT内的聚合（如SUM(DISTINCT x)）
+                    // 断言确保此聚合调用不应有排序列表（因为DISTINCT与ORDER BY不兼容）
                     assert orderList == null;
+                    // 递归调用translateAgg处理DISTINCT内的聚合调用，传入DISTINCT的列表和其他参数
                     translateAgg(
                             call.operand(0),
                             filter,
@@ -6160,8 +6551,9 @@ public class SqlToRelConverter {
                             ignoreNulls,
                             outerCall);
                     return;
-                case WITHIN_GROUP:
+                case WITHIN_GROUP:// 处理GROUP内的聚合或窗口函数相关
                     assert orderList == null;
+                    // 递归调用translateAgg处理GROUP内的聚合调用或窗口函数相关逻辑，传入分组或窗口的列表和其他参数
                     translateAgg(
                             call.operand(0),
                             filter,
@@ -6183,28 +6575,42 @@ public class SqlToRelConverter {
                             outerCall);
                     return;
 
-                case COUNTIF:
+                case COUNTIF:// 处理COUNTIF聚合函数
                     // COUNTIF(b)  ==> COUNT(*) FILTER (WHERE b)
                     // COUNTIF(b) FILTER (WHERE b2)  ==> COUNT(*) FILTER (WHERE b2 AND b)
+                    // COUNTIF(b) 被转换为 COUNT(*) FILTER (WHERE b)
+                    // COUNTIF(b) FILTER (WHERE b2) 被转换为 COUNT(*) FILTER (WHERE b2 AND b)
+                    // 创建一个COUNT(*)的调用
                     call2 = SqlStdOperatorTable.COUNT.createCall(pos, SqlIdentifier.star(pos));
+                    // 如果存在外部过滤器，则将其与COUNTIF的条件组合成一个新的过滤器
                     final SqlNode filter2 = SqlUtil.andExpressions(filter, call.operand(0));
+                    // 使用新的过滤器和其他参数调用translateAgg
                     translateAgg(call2, filter2, distinctList, orderList, ignoreNulls, outerCall);
                     return;
 
-                case STRING_AGG:
+                case STRING_AGG:// 处理STRING_AGG聚合函数
                     // Translate "STRING_AGG(s, sep ORDER BY x, y)"
                     // as if it were "LISTAGG(s, sep) WITHIN GROUP (ORDER BY x, y)";
                     // and "STRING_AGG(s, sep)" as "LISTAGG(s, sep)".
+
+                    // 将 "STRING_AGG(s, sep ORDER BY x, y)" 翻译为类似 "LISTAGG(s, sep) WITHIN GROUP (ORDER BY x, y)" 的形式
+                    // 并且将 "STRING_AGG(s, sep)" 翻译为 "LISTAGG(s, sep)"
+                    // 首先处理ORDER BY子句（如果存在）
                     final List<SqlNode> operands2;
                     if (!operands.isEmpty() && Util.last(operands) instanceof SqlNodeList) {
+                        // 如果操作数列表的最后一个元素是SqlNodeList，则假定它是ORDER BY子句
                         orderList = (SqlNodeList) Util.last(operands);
+                        // 移除ORDER BY子句，保留其他操作数
                         operands2 = Util.skipLast(operands);
                     } else {
+                        // 如果没有ORDER BY子句，则直接使用原始操作数列表
                         operands2 = operands;
                     }
+                    // 创建一个LISTAGG的调用，使用修改后的操作数列表
                     call2 =
                             SqlStdOperatorTable.LISTAGG.createCall(
                                     call.getFunctionQuantifier(), pos, operands2);
+                    // 使用新的调用和其他参数调用translateAgg
                     translateAgg(call2, filter, distinctList, orderList, ignoreNulls, outerCall);
                     return;
 
@@ -6212,10 +6618,15 @@ public class SqlToRelConverter {
                     // Translate "GROUP_CONCAT(s ORDER BY x, y SEPARATOR ',')"
                     // as if it were "LISTAGG(s, ',') WITHIN GROUP (ORDER BY x, y)".
                     // To do this, build a list of operands without ORDER BY with with sep.
+
+                    // 将 "GROUP_CONCAT(s ORDER BY x, y SEPARATOR ',')" 翻译为 "LISTAGG(s, ',') WITHIN GROUP (ORDER BY x, y)" 的形式。
+                    // 首先，我们构建一个新的操作数列表，但不包含 ORDER BY 子句和 SEPARATOR（如果它们存在的话）。
                     operands2 = new ArrayList<>(operands);
                     final SqlNode separator;
+                    // 检查并提取 ORDER BY 子句，如果存在的话
                     if (!operands2.isEmpty()
                             && Util.last(operands2).getKind() == SqlKind.SEPARATOR) {
+                        // 假设最后一个操作数是一个SqlNodeList，表示ORDER BY子句
                         final SqlCall sepCall = (SqlCall) operands2.remove(operands.size() - 1);
                         separator = sepCall.operand(0);
                     } else {
@@ -6225,30 +6636,38 @@ public class SqlToRelConverter {
                     if (!operands2.isEmpty() && Util.last(operands2) instanceof SqlNodeList) {
                         orderList = (SqlNodeList) operands2.remove(operands2.size() - 1);
                     }
-
+                    // 如果找到了分隔符，则将其添加回操作数列表（因为我们在前面移除了它）
                     if (separator != null) {
-                        operands2.add(separator);
+                        operands2.add(separator);// 分隔符应该放在除ORDER BY外的其他操作数之后
                     }
 
+                    // 创建一个LISTAGG的调用，使用修改后的操作数列表（现在包含分隔符但不包含ORDER BY）
                     call2 =
                             SqlStdOperatorTable.LISTAGG.createCall(
                                     call.getFunctionQuantifier(), pos, operands2);
+                    // 使用新的LISTAGG调用、过滤器、DISTINCT列表、ORDER BY列表、ignoreNulls标志和外部调用作为参数，调用translateAgg函数
                     translateAgg(call2, filter, distinctList, orderList, ignoreNulls, outerCall);
                     return;
-
+                // 处理ARRAY_AGG和ARRAY_CONCAT_AGG的情况
                 case ARRAY_AGG:
                 case ARRAY_CONCAT_AGG:
                     // Translate "ARRAY_AGG(s ORDER BY x, y)"
                     // as if it were "ARRAY_AGG(s) WITHIN GROUP (ORDER BY x, y)";
                     // similarly "ARRAY_CONCAT_AGG".
+
+                    // 将 "ARRAY_AGG(s ORDER BY x, y)" 翻译为 "ARRAY_AGG(s) WITHIN GROUP (ORDER BY x, y)" 的形式。
+                    // 类似地处理ARRAY_CONCAT_AGG。
                     if (!operands.isEmpty() && Util.last(operands) instanceof SqlNodeList) {
+                        // 如果最后一个操作数是SqlNodeList类型，则假设它表示ORDER BY子句
                         orderList = (SqlNodeList) Util.last(operands);
+                        // 创建一个新的调用，但去掉最后一个操作数（ORDER BY子句），因为ORDER BY将在translateAgg中单独处理
                         call2 =
                                 call.getOperator()
                                         .createCall(
                                                 call.getFunctionQuantifier(),
                                                 pos,
                                                 Util.skipLast(operands));
+                        // 调用translateAgg来处理聚合，包括新的调用、过滤器、DISTINCT列表、ORDER BY列表等
                         translateAgg(
                                 call2, filter, distinctList, orderList, ignoreNulls, outerCall);
                         return;
@@ -6259,85 +6678,123 @@ public class SqlToRelConverter {
                 default:
                     break;
             }
-            final List<Integer> args = new ArrayList<>();
-            int filterArg = -1;
-            final ImmutableBitSet distinctKeys;
+            // 以下代码段是处理非聚合函数或不需要特殊处理的情况
+            final List<Integer> args = new ArrayList<>(); // 初始化一个参数列表
+            int filterArg = -1;// 初始化一个变量来标记过滤器的参数位置，默认为-1表示没有过滤器
+            final ImmutableBitSet distinctKeys;// 初始化一个不可变位集，可能用于标记DISTINCT子句中涉及的列
             try {
                 // switch out of agg mode
+                // 退出聚合模式（如果之前处于该模式）
                 bb.agg = null;
                 // ----- FLINK MODIFICATION BEGIN -----
+                // 创建一个SqlCallBinding对象，用于绑定SQL调用和验证上下文
                 SqlCallBinding sqlCallBinding =
                         new SqlCallBinding(validator(), aggregatingSelectScope, call);
+                // 通过SqlCallBinding获取操作数列表
                 List<SqlNode> sqlNodes = sqlCallBinding.operands();
+                // 创建一个FlinkOperatorBinding对象，可能是为了将SQL操作绑定到Flink特有的执行逻辑上
                 FlinkOperatorBinding flinkOperatorBinding =
                         new FlinkOperatorBinding(sqlCallBinding);
+                // 遍历SQL调用中的所有操作数（节点）
                 for (int i = 0; i < sqlNodes.size(); i++) {
-                    SqlNode operand = sqlNodes.get(i);
+                    SqlNode operand = sqlNodes.get(i);// 获取当前操作数
                     // special case for COUNT(*):  delete the *
+
+                    // 特殊情况处理：如果是COUNT(*)函数，则忽略星号(*)
                     if (operand instanceof SqlIdentifier) {
                         SqlIdentifier id = (SqlIdentifier) operand;
-                        if (id.isStar()) {
+                        if (id.isStar()) {// 判断是否是星号(*)
                             assert call.operandCount() == 1;
                             assert args.isEmpty();
                             break;
                         }
                     }
+                    // 将SQL节点转换为RexNode表达式
                     RexNode convertedExpr = bb.convertExpression(operand);
+                    // 如果转换后的RexNode表达式的种类是DEFAULT（可能表示类型不匹配或需要特殊处理）
                     if (convertedExpr.getKind() == SqlKind.DEFAULT) {
+                        // 获取当前操作数的数据类型
                         RelDataType relDataType = flinkOperatorBinding.getOperandType(i);
+                        // 克隆原始的RexCall表达式，但使用新的数据类型和相同的操作数
                         convertedExpr =
                                 ((RexCall) convertedExpr)
                                         .clone(relDataType, ((RexCall) convertedExpr).operands);
                     }
+                    // 将转换后的表达式添加到参数列表中，可能需要查找或创建分组表达式
                     args.add(lookupOrCreateGroupExpr(convertedExpr));
                 }
                 // ----- FLINK MODIFICATION END -----
-
+                // 如果存在过滤器
                 if (filter != null) {
+                    // 将过滤器表达式转换为RexNode
                     RexNode convertedExpr = bb.convertExpression(filter);
+                    // 如果转换后的过滤器表达式是可空的（即可能为NULL）
                     if (convertedExpr.getType().isNullable()) {
+                        // 使用IS_TRUE函数来包装过滤器表达式，以确保NULL值被视为FALSE
                         convertedExpr =
                                 rexBuilder.makeCall(SqlStdOperatorTable.IS_TRUE, convertedExpr);
                     }
+                    // 将处理后的过滤器表达式添加到参数列表中（或作为特殊参数），可能需要查找或创建分组表达式
                     filterArg = lookupOrCreateGroupExpr(convertedExpr);
                 }
-
+                // 检查distinctList是否为null，以决定是否需要构建distinctKeys
                 if (distinctList == null) {
+                    // 如果distinctList为null，则不设置distinctKeys，保持为null
                     distinctKeys = null;
                 } else {
+                    // 使用ImmutableBitSet.Builder来构建distinctKeys
                     final ImmutableBitSet.Builder distinctBuilder = ImmutableBitSet.builder();
+                    // 遍历distinctList中的每个SqlNode
                     for (SqlNode distinct : distinctList) {
+                        // 将SqlNode转换为RexNode表达式
                         RexNode e = bb.convertExpression(distinct);
+                        // 断言转换后的RexNode不为null（理论上不会失败，但作为安全检查）
                         assert e != null;
+                        // 查找或创建分组表达式，并使用其索引在distinctBuilder中设置位
                         distinctBuilder.set(lookupOrCreateGroupExpr(e));
                     }
+                    // 构建并设置distinctKeys
                     distinctKeys = distinctBuilder.build();
                 }
             } finally {
                 // switch back into agg mode
+                // 切换回聚合模式，确保bb的agg属性指向当前聚合函数处理对象
                 bb.agg = this;
             }
-
+            // 获取SQL调用中的聚合函数
             SqlAggFunction aggFunction = (SqlAggFunction) call.getOperator();
+            // 推导聚合函数的返回类型
             final RelDataType type = validator().deriveType(bb.scope(), call);
+            // 初始化distinct标志位
             boolean distinct = false;
+            // 检查调用中是否有DISTINCT量词
             SqlLiteral quantifier = call.getFunctionQuantifier();
             if ((null != quantifier) && (quantifier.getValue() == SqlSelectKeyword.DISTINCT)) {
+                // 如果有DISTINCT量词，则将distinct标志位设置为true
                 distinct = true;
             }
+            // 初始化approximate标志位，用于近似聚合函数
             boolean approximate = false;
+            // 检查是否使用了APPROX_COUNT_DISTINCT聚合函数
             if (aggFunction == SqlStdOperatorTable.APPROX_COUNT_DISTINCT) {
+                // 如果是，则将聚合函数替换为COUNT，并设置distinct和approximate标志位
                 aggFunction = SqlStdOperatorTable.COUNT;
                 distinct = true;
                 approximate = true;
             }
+            // 定义排序规则变量
             final RelCollation collation;
+            // 检查orderList是否为空或没有元素
             if (orderList == null || orderList.size() == 0) {
+                // 如果orderList为空或没有元素，则使用空的排序规则
                 collation = RelCollations.EMPTY;
             } else {
                 try {
                     // switch out of agg mode
+                    // 切换出聚合模式（假设bb是一个SQL构建上下文或类似的对象）
                     bb.agg = null;
+                    // 构建排序规则
+                    // 使用stream处理orderList，将每个排序项转换为RelFieldCollation，并收集到一个列表中
                     collation =
                             RelCollations.of(
                                     orderList.stream()
@@ -6353,9 +6810,12 @@ public class SqlToRelConverter {
                                             .collect(Collectors.toList()));
                 } finally {
                     // switch back into agg mode
+                    // 无论是否成功构建排序规则，最后都切换回聚合模式
                     bb.agg = this;
                 }
             }
+            // 创建一个AggregateCall对象
+            // AggregateCall用于表示聚合调用，包括聚合函数、是否去重、是否近似、是否忽略空值、参数列表、过滤参数、DISTINCT键、排序规则、返回类型以及可能的别名
             final AggregateCall aggCall =
                     AggregateCall.create(
                             aggFunction,
@@ -6368,6 +6828,8 @@ public class SqlToRelConverter {
                             collation,
                             type,
                             nameMap.get(outerCall.toString()));
+            // 创建一个RexNode对象，该对象表示一个Rex表达式，这里特指与聚合调用相关的表达式
+           // RexNode是Calcite框架中用于表示表达式树的节点
             RexNode rex =
                     rexBuilder.addAggCall(
                             aggCall,
@@ -6375,6 +6837,7 @@ public class SqlToRelConverter {
                             aggCalls,
                             aggCallMapping,
                             i -> convertedInputExprs.get(i).left.getType().isNullable());
+            // 将外部聚合调用（outerCall）与构建好的RexNode表达式（rex）关联起来
             aggMapping.put(outerCall, rex);
         }
 
@@ -6390,17 +6853,27 @@ public class SqlToRelConverter {
             return new RelFieldCollation(fieldIndex, direction, nullDirection);
         }
 
+        /**
+         * @授课老师: 码界探索
+         * @微信: 252810631
+         * @版权所有: 请尊重劳动成果
+         * 查找给定的RexNode表达式是否已存在于已转换的输入表达式列表中。
+         */
         private int lookupOrCreateGroupExpr(RexNode expr) {
+            // 初始化索引为0，用于遍历列表
             int index = 0;
             for (RexNode convertedInputExpr : Pair.left(convertedInputExprs)) {
                 if (expr.equals(convertedInputExpr)) {
+                    // 如果找到了相同的表达式，则返回其索引
                     return index;
                 }
-                ++index;
+                ++index;// 如果没有找到，则递增索引以继续查找
             }
 
             // not found -- add it
+            // 如果遍历完列表都没有找到相同的表达式，则执行添加操作（这里只是简单地增加索引计数）
             addExpr(expr, null);
+            // 返回新添加的索引
             return index;
         }
 
@@ -6745,39 +7218,60 @@ public class SqlToRelConverter {
         final SqlNodeList distinctList = new SqlNodeList(SqlParserPos.ZERO);
         final SqlNodeList orderList = new SqlNodeList(SqlParserPos.ZERO);
 
+        /**
+         * @授课老师: 码界探索
+         * @微信: 252810631
+         * @版权所有: 请尊重劳动成果
+         * 查找聚合函数，并添加到List中
+         */
         @Override
         public Void visit(SqlCall call) {
             // ignore window aggregates and ranking functions (associated with OVER operator)
+            // 忽略窗口聚合和排名函数（与OVER操作符相关）
             if (call.getOperator().getKind() == SqlKind.OVER) {
                 return null;
             }
 
+            // 如果遇到FILTER函数（例如，在聚合函数中的FILTER子句），需要特别处理WHERE条件
             if (call.getOperator().getKind() == SqlKind.FILTER) {
                 // the WHERE in a FILTER must be tracked too so we can call replaceSubQueries on it.
                 // see https://issues.apache.org/jira/browse/CALCITE-1910
+                // 聚合函数部分
                 final SqlNode aggCall = call.getOperandList().get(0);
+                // FILTER子句中的WHERE条件
                 final SqlNode whereCall = call.getOperandList().get(1);
+                // 将聚合函数添加到列表中
                 list.add(aggCall);
+                // 将WHERE条件添加到需要特别处理的filter列表中
                 filterList.add(whereCall);
                 return null;
             }
 
+            // 如果遇到WITHIN DISTINCT函数，处理其聚合函数和DISTINCT列表  
             if (call.getOperator().getKind() == SqlKind.WITHIN_DISTINCT) {
+                // 聚合函数部分
                 final SqlNode aggCall = call.getOperandList().get(0);
+                // DISTINCT列表
                 final SqlNodeList distinctList = (SqlNodeList) call.getOperandList().get(1);
+                // 将聚合函数添加到列表中
                 list.add(aggCall);
+                // 遍历DISTINCT列表并添加到distinctList中
                 distinctList.getList().forEach(this.distinctList::add);
                 return null;
             }
-
+            // 如果遇到WITHIN GROUP函数，处理其聚合函数和ORDER BY列表
             if (call.getOperator().getKind() == SqlKind.WITHIN_GROUP) {
+                // 聚合函数部分
                 final SqlNode aggCall = call.getOperandList().get(0);
+                // ORDER BY列表
                 final SqlNodeList orderList = (SqlNodeList) call.getOperandList().get(1);
+                // 将聚合函数添加到列表中
                 list.add(aggCall);
+                // 将ORDER BY列表添加到orderList中
                 this.orderList.addAll(orderList);
                 return null;
             }
-
+            // 如果是聚合函数，则将其添加到列表中
             if (call.getOperator().isAggregator()) {
                 list.add(call);
                 return null;
@@ -6785,10 +7279,11 @@ public class SqlToRelConverter {
 
             // Don't traverse into sub-queries, even if they contain aggregate
             // functions.
+            // 不遍历子查询，即使它们包含聚合函数
             if (call instanceof SqlSelect) {
                 return null;
             }
-
+            // 如果不是上述任何情况，则按照正常的访问者模式递归遍历
             return call.getOperator().acceptCall(this, call);
         }
     }

@@ -26,9 +26,21 @@ import org.apache.calcite.rel.RelNode
  * @tparam OC
  *   OptimizeContext
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * FlinkOptimizeProgram，它将关系表达式转换为另一个关系表达式。
+ */
 trait FlinkOptimizeProgram[OC <: FlinkOptimizeContext] {
 
   /** Transforms a relational expression into another relational expression. */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 将关系表达式转换为另一个关系表达式
+   */
   def optimize(root: RelNode, context: OC): RelNode
 
 }

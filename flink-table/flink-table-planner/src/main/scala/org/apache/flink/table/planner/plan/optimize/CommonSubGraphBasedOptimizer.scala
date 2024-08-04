@@ -75,32 +75,47 @@ abstract class CommonSubGraphBasedOptimizer extends Optimizer {
    * @return
    *   a list of RelNode represents an optimized RelNode DAG.
    */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 从原始的关系节点生成优化后的[[RelNode]]有向无环图（DAG）。
+     * @param roots 原始的关系节点序列。
+     * @return 一个RelNode列表，表示优化后的RelNode DAG。
+     */
   override def optimize(roots: Seq[RelNode]): Seq[RelNode] = {
     // resolve hints before optimizing
+    // 在优化之前解析查询提示
     val queryHintsResolver = new QueryHintsResolver()
+    // 将Scala序列转换为Java序列以匹配方法签名
     val resolvedHintRoots = queryHintsResolver.resolve(toJava(roots))
 
     // clear query block alias bef optimizing
+    // 在优化之前清除查询块的别名
     val clearQueryBlockAliasResolver = new ClearQueryBlockAliasResolver
     val resolvedAliasRoots = clearQueryBlockAliasResolver.resolve(resolvedHintRoots)
-
+    // 执行实际的优化过程 doOptimize是执行主要优化逻辑的方法
     val sinkBlocks = doOptimize(resolvedAliasRoots)
+    // 从sinkBlocks中提取优化后的计划
     val optimizedPlan = sinkBlocks.map {
       block =>
-        val plan = block.getOptimizedPlan
-        require(plan != null)
+        val plan = block.getOptimizedPlan //每个block都有一个getOptimizedPlan方法来获取优化后的计划
+          require(plan != null)
         plan
     }
+    // 展开中间表扫描（如果存在）
     val expanded = expandIntermediateTableScan(optimizedPlan)
-
+    // 进行后优化处理
     val postOptimizedPlan = postOptimize(expanded)
 
     // Rewrite same rel object to different rel objects
     // in order to get the correct dag (dag reuse is based on object not digest)
+    // 为了得到正确的DAG（DAG重用基于对象而非摘要），将相同的Rel对象重写为不同的Rel对象
     val shuttle = new SameRelObjectShuttle()
-    val relsWithoutSameObj = postOptimizedPlan.map(_.accept(shuttle))
+    val relsWithoutSameObj = postOptimizedPlan.map(_.accept(shuttle))// 使用访问者模式修改RelNode
 
     // reuse subplan
+    // 重用子计划
     SubplanReuser.reuseDuplicatedSubplan(
       relsWithoutSameObj,
       unwrapTableConfig(roots.head),

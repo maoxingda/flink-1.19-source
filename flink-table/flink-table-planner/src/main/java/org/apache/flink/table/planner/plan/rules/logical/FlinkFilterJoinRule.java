@@ -76,6 +76,13 @@ import static org.apache.calcite.plan.RelOptUtil.conjunctions;
  * <li>SELECT * FROM MyTable1 join MyTable2 ON a1 = a2 AND a1 = 2
  * <li>SELECT * FROM MyTable1, MyTable2 WHERE a1 = a2 AND a1 = 2
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 规划器规则，将连接节点上方和内部的过滤器推送到连接节点和/或其子节点中。
+ * 此规则是从｛@link FilterJoinRule｝复制的
+ */
 public abstract class FlinkFilterJoinRule<C extends FlinkFilterJoinRule.Config> extends RelRule<C>
         implements TransformationRule {
 

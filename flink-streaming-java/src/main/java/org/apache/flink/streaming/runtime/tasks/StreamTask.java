@@ -1499,7 +1499,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
      * @授课老师(微信): yi_locus
      * email: 156184212@qq.com
      *
-     *
+     * 触发检查点通知
     */
     @Override
     public void triggerCheckpointOnBarrier(

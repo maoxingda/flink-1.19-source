@@ -56,11 +56,19 @@ public class SequentialChannelStateReaderImpl implements SequentialChannelStateR
         chunkReader = new ChannelStateChunkReader(serializer);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 从InputGate中恢复或初始化数据状态。
+     */
     @Override
     public void readInputData(InputGate[] inputGates) throws IOException, InterruptedException {
+        // 使用try-with-resources语句自动管理资源，确保InputChannelRecoveredStateHandler在使用后能够被正确关闭
         try (InputChannelRecoveredStateHandler stateHandler =
                 new InputChannelRecoveredStateHandler(
                         inputGates, taskStateSnapshot.getInputRescalingDescriptor())) {
+            // 读取状态信息
             read(
                     stateHandler,
                     groupByDelegate(
@@ -68,14 +76,23 @@ public class SequentialChannelStateReaderImpl implements SequentialChannelStateR
         }
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 读取输出数据并处理ResultPartitionWriter数组。
+     */
     @Override
     public void readOutputData(ResultPartitionWriter[] writers, boolean notifyAndBlockOnCompletion)
             throws IOException, InterruptedException {
+        // 使用try-with-resources语句自动管理ResultSubpartitionRecoveredStateHandler的生命周期
+        // 这个处理器用于恢复分区状态和读取数据
         try (ResultSubpartitionRecoveredStateHandler stateHandler =
                 new ResultSubpartitionRecoveredStateHandler(
                         writers,
                         notifyAndBlockOnCompletion,
                         taskStateSnapshot.getOutputRescalingDescriptor())) {
+            // 调用read方法，传入状态处理器和通过groupByDelegate处理的结果子任务状态
             read(
                     stateHandler,
                     groupByDelegate(
@@ -83,13 +100,20 @@ public class SequentialChannelStateReaderImpl implements SequentialChannelStateR
                             OperatorSubtaskState::getResultSubpartitionState));
         }
     }
-
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 读取并处理从各个流状态句柄中恢复的状态信息。
+     */
     private <Info, Context, Handle extends AbstractChannelStateHandle<Info>> void read(
             RecoveredChannelStateHandler<Info, Context> stateHandler,
             Map<StreamStateHandle, List<Handle>> streamStateHandleListMap)
             throws IOException, InterruptedException {
+        // 遍历streamStateHandleListMap中的每个条目
         for (Map.Entry<StreamStateHandle, List<Handle>> delegateAndHandles :
                 streamStateHandleListMap.entrySet()) {
+            // 对于每个条目，使用其键（StreamStateHandle）和值（Handle列表）调用readSequentially方法
             readSequentially(
                     delegateAndHandles.getKey(), delegateAndHandles.getValue(), stateHandler);
         }

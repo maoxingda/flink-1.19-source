@@ -35,6 +35,12 @@ import org.apache.calcite.tools.{Programs, RuleSet}
  * @tparam OC
  *   OptimizeContext
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 一个FlinkRuleSetProgram，与[[org.apache.clexical.plan.volacano.VolcanoPlanner]]一起运行。
+ */
 class FlinkVolcanoProgram[OC <: FlinkOptimizeContext] extends FlinkRuleSetProgram[OC] {
 
   /** Required output traits, this must not be None when doing optimize. */
