@@ -25,12 +25,19 @@ import org.apache.calcite.runtime.Utilities
  * an adapted cost comparison method `isLe(other: RelOptCost)` that takes io, cpu, network and
  * memory into account.
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 这个类基于 Apache Calcite 的 [[org.apache.calcite.plan.volcano.VolcanoCost]]，并有一个适应后的成本比较方法 `isLe(other: RelOptCost)`，
+ * 该方法考虑了 I/O、CPU、网络和内存的使用情况。
+ */
 class FlinkCost(
-    val rowCount: Double,
-    val cpu: Double,
-    val io: Double,
-    val network: Double,
-    val memory: Double)
+    val rowCount: Double,// 处理的行数
+    val cpu: Double, // CPU 资源的使用量
+    val io: Double,// I/O 资源的使用量
+    val network: Double,// 网络资源的使用量
+    val memory: Double) // 内存资源的使用量
   extends FlinkCostBase {
 
   /**
@@ -38,12 +45,35 @@ class FlinkCost(
    *   number of rows processed; this should not be confused with the row count produced by a
    *   relational expression ({ @link org.apache.calcite.rel.RelNode#estimateRowCount})
    */
+   /**
+    * @授课老师: 码界探索
+    * @微信: 252810631
+    * @版权所有: 请尊重劳动成果
+    * 返回处理的行数；这不应与关系表达式产生的行数（{@link org.apache.calcite.rel.RelNode#estimateRowCount}）相混淆。
+    * 处理的行数是指在优化和执行查询过程中，预计会处理（读取、写入或中间处理）的数据行数。
+    *
+    * @return 处理的行数
+    */
   override def getRows: Double = rowCount
 
   /** @return usage of CPU resources */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 返回CPU资源的使用情况。
+   * 这通常表示执行查询所需的CPU时间或计算资源的量。
+   */
   override def getCpu: Double = cpu
 
   /** @return usage of I/O resources */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 返回I/O资源的使用情况。
+   * 这通常表示执行查询时从存储系统（如磁盘或网络）读取或写入数据的量。
+   */
   override def getIo: Double = io
 
   /** @return usage of network resources */
@@ -57,6 +87,14 @@ class FlinkCost(
    *   true iff this cost represents an expression that hasn't actually been implemented (e.g. a
    *   pure relational algebra expression) or can't actually be implemented, e.g. a transfer of data
    *   between two disconnected sites
+   */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 返回 true 当且仅当这个成本表示一个尚未实际实现（例如，一个纯粹的关系代数表达式）或实际上无法实现的表达式时，
+   * 这个方法检查 FlinkCost 实例是否代表了一个“无限”的成本，即任何一个成本维度（行数、CPU、I/O、网络、内存）
+   * 是无穷大的，或者这个实例本身就是为了表示无限成本而定义的 FlinkCost.Infinity 实例。
    */
   override def isInfinite: Boolean = {
     (this eq FlinkCost.Infinity) ||
@@ -92,6 +130,12 @@ class FlinkCost(
    *   another cost
    * @return
    *   true iff this is the same as the other cost within a roundoff margin of error
+   */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 将此成本与另一成本进行比较，允许存在轻微的舍入误差。
    */
   override def isEqWithEpsilon(other: RelOptCost): Boolean = {
     if (!other.isInstanceOf[FlinkCost]) {
@@ -272,13 +316,14 @@ class FlinkCost(
 }
 
 object FlinkCost {
-
+  // 定义一个私有的 FlinkCost 实例，名为 Infinity，仅在 flink 包内可见
+  // 它表示一个无限大的成本，用于在优化器中进行比较时作为上限
   private[flink] val Infinity = new FlinkCost(
-    Double.PositiveInfinity,
-    Double.PositiveInfinity,
-    Double.PositiveInfinity,
-    Double.PositiveInfinity,
-    Double.PositiveInfinity) {
+    Double.PositiveInfinity,// 使用 Double 类型的正无穷大来表示无限大的行数
+    Double.PositiveInfinity,// 使用 Double 类型的正无穷大来表示无限大的 CPU 使用量
+    Double.PositiveInfinity,// 使用 Double 类型的正无穷大来表示无限大的 I/O 使用量
+    Double.PositiveInfinity,// 使用 Double 类型的正无穷大来表示无限大的网络使用量
+    Double.PositiveInfinity) { // 使用 Double 类型的正无穷大来表示无限大的内存使用量
     override def toString: String = "{inf}"
   }
 

@@ -24,6 +24,14 @@ import org.apache.calcite.plan.{RelOptPlanner, RelTrait, RelTraitDef}
  * flowing out from a [[org.apache.calcite.rel.RelNode]], e,g,. MiniBatchIntervalTrait(1000L,
  * ProcTime) means elements are divided into 1000ms proctime mini batches.
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * MiniBatchIntervalTrait 用于描述当数据从 [[org.apache.calcite.rel.RelNode]]（即关系表达式节点）流出时，元素是如何被分割成批次的。
+ * 例如，MiniBatchIntervalTrait(1000L, ProcTime) 表示元素被分割成以处理时间（Processing Time）为基准的，每1000毫秒（1秒）一个的小批次。
+ * 这种方式对于需要按时间窗口处理数据流的场景非常有用，如实时分析、事件驱动的应用等。
+ */
 class MiniBatchIntervalTrait(miniBatchInterval: MiniBatchInterval) extends RelTrait {
 
   def getMiniBatchInterval: MiniBatchInterval = miniBatchInterval

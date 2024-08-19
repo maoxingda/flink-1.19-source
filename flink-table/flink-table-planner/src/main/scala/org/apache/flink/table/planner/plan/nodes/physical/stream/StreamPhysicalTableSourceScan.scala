@@ -36,6 +36,13 @@ import java.util
  * Stream physical RelNode to read data from an external source defined by a
  * [[org.apache.flink.table.connector.source.ScanTableSource]].
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 一个物理执行节点（physical RelNode），该节点被设计用于从外部数据源读取数据.
+ * 外部数据源是由org.apache.flink.table.connector.source.ScanTableSource接口定义的。
+ */
 class StreamPhysicalTableSourceScan(
     cluster: RelOptCluster,
     traitSet: RelTraitSet,

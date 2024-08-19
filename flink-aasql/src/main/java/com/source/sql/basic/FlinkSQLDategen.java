@@ -30,6 +30,7 @@ public class FlinkSQLDategen {
                 + ")";
 
         tableEnv.executeSql(ddl);
+        //select id,name from t where id>5;
         tableEnv.executeSql("select  id,count(id) cnt_id from xm.t_user  where id > 5 group by id ").print();
         env.execute("Flink SQL Demo");
 

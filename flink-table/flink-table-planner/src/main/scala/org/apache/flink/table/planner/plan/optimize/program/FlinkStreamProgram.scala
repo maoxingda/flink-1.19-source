@@ -81,7 +81,7 @@ object FlinkStreamProgram {
             .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)// 设置规则的匹配顺序为自下而上
             .add(FlinkStreamRuleSets.TABLE_REF_RULES)// 添加处理表引用的规则集
             .build(),
-          "convert table references before rewriting sub-queries to semi-join"
+          "convert table references before rewriting sub-queries to semi-join" //在将子查询重写为半连接之前转换表引用
         )
         // 第二个优化程序，将子查询重写为半连接
         .addProgram(
@@ -90,7 +90,7 @@ object FlinkStreamProgram {
             .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)// 设置规则的匹配顺序为自下而上
             .add(FlinkStreamRuleSets.SEMI_JOIN_RULES) // 添加处理半连接相关的规则集
             .build(),
-          "rewrite sub-queries to semi-join"
+          "rewrite sub-queries to semi-join" //将子查询重写为半连接
         )
         // 第三个优化程序，进一步处理子查询
         .addProgram(

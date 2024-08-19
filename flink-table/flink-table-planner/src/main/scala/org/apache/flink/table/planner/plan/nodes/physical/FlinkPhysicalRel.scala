@@ -24,6 +24,12 @@ import org.apache.calcite.plan.RelTraitSet
 import org.apache.calcite.rel.RelNode
 
 /** Base class for flink physical relational expression. */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * Flink物理关系表达式的基类。
+ */
 trait FlinkPhysicalRel extends FlinkRelNode {
 
   /**
@@ -37,6 +43,13 @@ trait FlinkPhysicalRel extends FlinkRelNode {
    *   A converted node which satisfy required traits by inputs node of current node. Returns None
    *   if required traits cannot be satisfied.
    */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 通过当前节点的后代节点来满足所需的特性集。如果后代节点能够满足所需特性，
+   * 并且当前节点不会破坏这些特性，则返回具有已转换输入的新节点。
+   */
   def satisfyTraits(requiredTraitSet: RelTraitSet): Option[RelNode] = None
 
   /**
@@ -48,6 +61,14 @@ trait FlinkPhysicalRel extends FlinkRelNode {
    *
    * @param isCompiled
    *   Whether the translation happens as part of a plan compilation.
+   */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 将此物理RelNode转换为[[ExecNode]]。
+   * 注意：此方法仅需要创建对应的ExecNode，其与输入/输出节点的连接将由ExecGraphGenerator完成。
+   * 因为一些物理关系表达式不需要转换为实际的ExecNode，例如未来的Exchange可能会被转换为边。
    */
   def translateToExecNode(isCompiled: Boolean): ExecNode[_] = {
     val execNode = translateToExecNode()
@@ -61,6 +82,14 @@ trait FlinkPhysicalRel extends FlinkRelNode {
    * NOTE: This method only needs to create the corresponding ExecNode, the connection to its
    * input/output nodes will be done by ExecGraphGenerator. Because some physical rels need not be
    * translated to a real ExecNode, such as Exchange will be translated to edge in the future.
+   */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 将此物理RelNode转换为[[ExecNode]]。
+   * 注意：此方法仅需要创建对应的ExecNode，其与输入/输出节点的连接将由ExecGraphGenerator完成。
+   * 因为一些物理关系表达式不需要转换为实际的ExecNode，例如未来的Exchange可能会被转换为边。
    */
   def translateToExecNode(): ExecNode[_]
 }

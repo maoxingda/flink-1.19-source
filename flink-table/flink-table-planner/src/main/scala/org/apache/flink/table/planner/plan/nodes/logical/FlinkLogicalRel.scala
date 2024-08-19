@@ -20,4 +20,10 @@ package org.apache.flink.table.planner.plan.nodes.logical
 import org.apache.flink.table.planner.plan.nodes.FlinkRelNode
 
 /** Base class for flink logical relational expression. */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * flink逻辑关系表达式的基类。
+ */
 trait FlinkLogicalRel extends FlinkRelNode {}

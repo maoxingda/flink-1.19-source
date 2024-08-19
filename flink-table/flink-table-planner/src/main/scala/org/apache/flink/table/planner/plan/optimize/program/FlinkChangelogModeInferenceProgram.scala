@@ -40,47 +40,76 @@ import org.apache.calcite.util.ImmutableBitSet
 import scala.collection.JavaConversions._
 
 /** An optimize program to infer ChangelogMode for every physical node. */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 为每个物理节点推断ChangelogMode的优化程序
+ */
 class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOptimizeContext] {
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   *  重写 optimize 方法，用于优化给定的 RelNode 以适应流处理环境
+   */
   override def optimize(root: RelNode, context: StreamOptimizeContext): RelNode = {
     // step1: satisfy ModifyKindSet trait
+    // 步骤1: 满足 ModifyKindSet 特性
+    // 将根节点转换为 StreamPhysicalRel 类型，这是流处理物理节点的基类
     val physicalRoot = root.asInstanceOf[StreamPhysicalRel]
+    // 创建一个访问者来确保物理节点满足 ModifyKindSet 特性
+    // 这里不跨块传播 ModifyKindSet 的要求和请求者，仅对根节点设置默认的要求和请求者
     val rootWithModifyKindSet = new SatisfyModifyKindSetTraitVisitor().visit(
       physicalRoot,
       // we do not propagate the ModifyKindSet requirement and requester among blocks
       // set default ModifyKindSet requirement and requester for root
-      ModifyKindSetTrait.ALL_CHANGES,
-      "ROOT"
+      ModifyKindSetTrait.ALL_CHANGES, // 设置 ModifyKindSet 的要求为所有更改（插入、更新、删除）
+      "ROOT"// 标识为根节点
     )
 
     // step2: satisfy UpdateKind trait
+    // 步骤2: 满足 UpdateKind 特性
+    // 获取修改类型集合，即节点支持的修改类型（如更新）
     val rootModifyKindSet = getModifyKindSet(rootWithModifyKindSet)
     // use the required UpdateKindTrait from parent blocks
+    // 根据父块的要求和节点是否包含更新来确定所需的 UpdateKind 特性
     val requiredUpdateKindTraits = if (rootModifyKindSet.contains(ModifyKind.UPDATE)) {
+      // 如果节点支持更新
       if (context.isUpdateBeforeRequired) {
+        // 如果需要在更新前处理，则要求同时支持更新前后的处理
         Seq(UpdateKindTrait.BEFORE_AND_AFTER)
       } else {
         // update_before is not required, and input contains updates
         // try ONLY_UPDATE_AFTER first, and then BEFORE_AND_AFTER
+        // 更新前处理不是必需的，但节点包含更新
+        // 尝试仅支持更新后的处理，如果不成功则尝试同时支持更新前后的处理
         Seq(UpdateKindTrait.ONLY_UPDATE_AFTER, UpdateKindTrait.BEFORE_AND_AFTER)
       }
     } else {
       // there is no updates
+      // 节点不包含更新
       Seq(UpdateKindTrait.NONE)
     }
-
+    // 创建一个访问者来确保物理节点满足所需的 UpdateKind 特性
     val updateKindTraitVisitor = new SatisfyUpdateKindTraitVisitor(context)
+    // 尝试应用所有必需的 UpdateKind 特性，并收集结果
     val finalRoot = requiredUpdateKindTraits.flatMap {
       requiredUpdateKindTrait =>
         updateKindTraitVisitor.visit(rootWithModifyKindSet, requiredUpdateKindTrait)
     }
 
     // step3: sanity check and return non-empty root
+    // 步骤3: 合理性检查并返回非空的根节点
+    // 如果没有找到满足所有要求的物理节点，则抛出异常
     if (finalRoot.isEmpty) {
+      // 将原始计划转换为字符串，包括更改日志特性
       val plan = FlinkRelOptUtil.toString(root, withChangelogTraits = true)
       throw new TableException(
         "Can't generate a valid execution plan for the given query:\n" + plan)
     } else {
+      // 返回第一个满足所有条件的物理节点
       finalRoot.head
     }
   }

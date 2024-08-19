@@ -54,33 +54,48 @@ class StreamPhysicalTableSourceScanRule(config: Config) extends ConverterRule(co
       case _ => false
     }
   }
-
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 用于转换关系节点（RelNode）
+   */
   def convert(rel: RelNode): RelNode = {
+    // 将关系节点转换为FlinkLogicalTableSourceScan类型
     val scan = rel.asInstanceOf[FlinkLogicalTableSourceScan]
+    // 替换关系节点的特性集，将其物理约定改为流物理约定
     val traitSet: RelTraitSet = rel.getTraitSet.replace(FlinkConventions.STREAM_PHYSICAL)
+    // 获取表配置
     val tableConfig = ShortcutUtils.unwrapContext(rel.getCluster).getTableConfig
+    // 将扫描的表转换为TableSourceTable类型
     val table = scan.getTable.asInstanceOf[TableSourceTable]
-
+    // 创建一个新的流物理表源扫描节点
     val newScan = new StreamPhysicalTableSourceScan(rel.getCluster, traitSet, scan.getHints, table)
+    // 获取解析后的表结构
     val resolvedSchema = table.contextResolvedTable.getResolvedSchema
-
+    // 判断是否需要生成变更日志规范化节点
     if (
       !scan.eventTimeSnapshotRequired && (isUpsertSource(resolvedSchema, table.tableSource) ||
         isSourceChangeEventsDuplicate(resolvedSchema, table.tableSource, tableConfig))
     ) {
       // generate changelog normalize node
       // primary key has been validated in CatalogSourceTable
+      // 主键已在CatalogSourceTable中验证
       val primaryKey = resolvedSchema.getPrimaryKey.get()
       val keyFields = primaryKey.getColumns
       val inputFieldNames = newScan.getRowType.getFieldNames
+      // 获取主键字段在输入字段中的索引
       val primaryKeyIndices = ScanUtil.getPrimaryKeyIndices(inputFieldNames, keyFields)
+      // 设置所需的分布特性，基于主键的哈希分布
       val requiredDistribution = FlinkRelDistribution.hash(primaryKeyIndices, requireStrict = true)
+      // 创建一个新的特性集，包含所需的分布特性和流物理约定
       val requiredTraitSet = rel.getCluster.getPlanner
         .emptyTraitSet()
         .replace(requiredDistribution)
         .replace(FlinkConventions.STREAM_PHYSICAL)
+      // 将新的扫描节点转换为具有所需特性集的节点
       val newInput: RelNode = RelOptRule.convert(newScan, requiredTraitSet)
-
+      // 创建一个新的流物理变更日志规范化节点
       new StreamPhysicalChangelogNormalize(
         scan.getCluster,
         traitSet,
@@ -89,6 +104,7 @@ class StreamPhysicalTableSourceScanRule(config: Config) extends ConverterRule(co
         table.contextResolvedTable
       )
     } else {
+      // 如果不需要变更日志规范化，则直接返回新的扫描节点
       newScan
     }
   }

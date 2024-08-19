@@ -46,25 +46,42 @@ class FlinkVolcanoProgram[OC <: FlinkOptimizeContext] extends FlinkRuleSetProgra
   /** Required output traits, this must not be None when doing optimize. */
   protected var requiredOutputTraits: Option[Array[RelTrait]] = None
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 定义一个优化方法，用于优化给定的逻辑计划节点（RelNode）
+   */
   override def optimize(root: RelNode, context: OC): RelNode = {
+    // 如果没有优化规则，则直接返回原始的根节点
     if (rules.isEmpty) {
       return root
     }
-
+    // 如果所需的输出特性为空，则抛出异常，因为在Flink的Volcano优化器中，输出特性不应为空
     if (requiredOutputTraits.isEmpty) {
       throw new TableException("Required output traits should not be None in FlinkVolcanoProgram")
     }
-
+    /**
+     * RelTraitSet是一组RelTrait的集合，用于描述一个RelNode（即关系表达式节点）的物理属性。
+     * 这些物理属性包括但不限于数据的排序方式（Collation）、数据的分布方式（Distribution）
+     * 以及数据访问的规约（Convention）等。
+     * 常见的RelTrait包括排序（Collation）、分布（Distribution）和规约（Convention）等。
+     */
     val targetTraits = root.getTraitSet.plusAll(requiredOutputTraits.get).simplify()
     // VolcanoPlanner limits that the planer a RelNode tree belongs to and
     // the VolcanoPlanner used to optimize the RelNode tree should be same instance.
     // see: VolcanoPlanner#registerImpl
     // here, use the planner in cluster directly
+    // 由于VolcanoPlanner的限制，同一个RelNode树必须属于同一个VolcanoPlanner实例
+    // 这里直接使用集群中的planner实例
     val planner = root.getCluster.getPlanner.asInstanceOf[VolcanoPlanner]
+    // 创建包含所有优化规则的程序
     val optProgram = Programs.ofRules(rules)
 
     try {
+      // 设置当前线程的优化器为planner，以便在优化过程中使用
       FlinkRelMdNonCumulativeCost.THREAD_PLANNER.set(planner)
+      // 执行优化程序，传入planner、根节点、目标特性集等参数
       optProgram.run(planner, root, targetTraits, ImmutableList.of(), ImmutableList.of())
     } catch {
       case e: CannotPlanException =>

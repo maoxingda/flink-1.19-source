@@ -37,6 +37,12 @@ import scala.collection.JavaConversions._
  *
  * NOTE: it's intended to have a private constructor for this class.
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 关系表达式物理分布的描述，比如HASH、range
+ */
 class FlinkRelDistribution private (
     private val distributionType: RelDistribution.Type,
     private val keys: ImmutableIntList,

@@ -115,9 +115,20 @@ class FlinkLogicalTableSourceScanConverter(config: Config) extends ConverterRule
     isTableSourceScan(scan)
   }
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 用于将RelNode转换为FlinkLogicalTableSourceScan
+   */
   def convert(rel: RelNode): RelNode = {
+    // 尝试将RelNode转换为TableScan类型
     val scan = rel.asInstanceOf[TableScan]
+    // 从TableScan中提取Table对象，并尝试将其向下转型为TableSourceTable
+    // unwrap方法可能是自定义的，用于从Table包装中提取具体的TableSourceTable实例
+    // 这里假设unwrap方法能够正确处理并返回TableSourceTable或其子类的实例
     val table = scan.getTable.unwrap(classOf[TableSourceTable])
+    // 使用FlinkLogicalTableSourceScan的create方法创建一个新的FlinkLogicalTableSourceScan实例
     FlinkLogicalTableSourceScan.create(rel.getCluster, scan.getHints, table)
   }
 }

@@ -419,27 +419,40 @@ abstract class PlannerBase(
    * Converts [[FlinkPhysicalRel]] DAG to [[ExecNodeGraph]], tries to reuse duplicate sub-plans and
    * transforms the graph based on the given processors.
    */
+   /**
+    * @授课老师: 码界探索
+    * @微信: 252810631
+    * @版权所有: 请尊重劳动成果
+    * 将 [[FlinkPhysicalRel]] DAG（有向无环图）转换为 [[ExecNodeGraph]]，尝试重用重复的子计划，并根据给定的处理器对图进行转换
+    */
   @VisibleForTesting
   private[flink] def translateToExecNodeGraph(
       optimizedRelNodes: Seq[RelNode],
       isCompiled: Boolean): ExecNodeGraph = {
+    // 过滤出非Flink物理计划的节点，并检查是否存在这样的节点。
     val nonPhysicalRel = optimizedRelNodes.filterNot(_.isInstanceOf[FlinkPhysicalRel])
     if (nonPhysicalRel.nonEmpty) {
+      // 如果存在非Flink物理计划的节点，则抛出异常。
       throw new TableException(
         "The expected optimized plan is FlinkPhysicalRel plan, " +
           s"actual plan is ${nonPhysicalRel.head.getClass.getSimpleName} plan.")
     }
-
+    // 确保所有节点都是Flink物理计划节点。
     require(optimizedRelNodes.forall(_.isInstanceOf[FlinkPhysicalRel]))
 
     // convert FlinkPhysicalRel DAG to ExecNodeGraph
+    // 创建一个ExecNodeGraphGenerator实例，用于将FlinkPhysicalRel DAG转换为ExecNodeGraph。
     val generator = new ExecNodeGraphGenerator()
+    // 使用generator将Flink物理计划节点序列转换为ExecNodeGraph。
     val execGraph =
       generator.generate(optimizedRelNodes.map(_.asInstanceOf[FlinkPhysicalRel]), isCompiled)
 
     // process the graph
+    // 创建一个ProcessorContext实例，可能包含了一些上下文信息，供后续的图处理器使用。
     val context = new ProcessorContext(this)
+    // 获取ExecNodeGraph的处理器序列。
     val processors = getExecNodeGraphProcessors
+    // 遍历处理器序列，依次对图进行处理，每个处理器都可能对图进行一定的转换或优化。
     processors.foldLeft(execGraph)((graph, processor) => processor.process(graph, context))
   }
 
