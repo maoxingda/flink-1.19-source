@@ -44,11 +44,19 @@ class StreamPhysicalExchange(
     new StreamPhysicalExchange(cluster, traitSet, newInput, newDistribution)
   }
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * StreamPhysicalExchange 转换为ExecNode为后面的Transformation做准备
+   */
   override def translateToExecNode(): ExecNode[_] = {
+    // 创建一个StreamExecExchange执行节点
+    // 这个节点通常用于在Flink的执行计划中引入数据交换（shuffle），以便对数据进行重新分区或分发
     new StreamExecExchange(
-      unwrapTableConfig(this),
+      unwrapTableConfig(this),// 获取表的配置
       InputProperty.builder.requiredDistribution(getRequiredDistribution).build,
-      FlinkTypeFactory.toLogicalRowType(getRowType),
-      getRelDetailedDescription)
+      FlinkTypeFactory.toLogicalRowType(getRowType),// 将表的行类型转换为逻辑行类型
+      getRelDetailedDescription)// 获取关系的详细描述
   }
 }

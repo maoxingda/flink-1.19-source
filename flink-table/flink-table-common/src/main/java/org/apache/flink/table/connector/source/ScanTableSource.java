@@ -123,6 +123,12 @@ public interface ScanTableSource extends DynamicTableSource {
      * in {@code flink-table-api-java-bridge} and {@link InputFormatProvider} are available for
      * backwards compatibility.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 提供读取数据的实际运行时实现。
+     */
     @PublicEvolving
     interface ScanRuntimeProvider {
 

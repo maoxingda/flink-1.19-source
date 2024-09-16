@@ -79,17 +79,29 @@ class StreamPlanner(
 
   override protected def getExecNodeGraphProcessors: Seq[ExecNodeGraphProcessor] = Seq()
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 转换执行计划
+   */
   override def translateToPlan(execGraph: ExecNodeGraph): util.List[Transformation[_]] = {
+    // 在转换之前执行的钩子方法
     beforeTranslation()
+    // 创建一个虚拟的规划器
     val planner = createDummyPlanner()
+    // 遍历执行图的根节点，并将每个根节点转换为转换计划
     val transformations = execGraph.getRootNodes.map {
       case node: StreamExecNode[_] => node.translateToPlan(planner)
       case _ =>
-        throw new TableException(
+        // 如果遇到非StreamExecNode类型的节点，抛出异常
+      throw new TableException(
           "Cannot generate DataStream due to an invalid logical plan. " +
             "This is a bug and should not happen. Please file an issue.")
     }
+    // 在转换之后执行的钩子方法
     afterTranslation()
+    // 返回转换计划列表，并追加规划器中的额外转换计划
     transformations ++ planner.extraTransformations
   }
 

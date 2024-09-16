@@ -85,17 +85,26 @@ public abstract class CommonExecCalc extends ExecNodeBase<RowData>
         this.retainHeader = retainHeader;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将当前执行节点（ExecNode）的内部表示转换为Flink的执行计划（Transformation）。
+     */
     @SuppressWarnings("unchecked")
     @Override
     protected Transformation<RowData> translateToPlanInternal(
             PlannerBase planner, ExecNodeConfig config) {
+        // 获取当前执行节点的第一个输入边，并转换为Flink的执行计划（Transformation）。
         final ExecEdge inputEdge = getInputEdges().get(0);
         final Transformation<RowData> inputTransform =
                 (Transformation<RowData>) inputEdge.translateToPlan(planner);
+        // 创建一个代码生成上下文，用于后续的代码生成过程。
         final CodeGeneratorContext ctx =
                 new CodeGeneratorContext(config, planner.getFlinkContext().getClassLoader())
                         .setOperatorBaseClass(operatorBaseClass);
-
+        // 使用CalcCodeGenerator生成一个计算操作器的工厂类。
+        // 这个工厂类能够创建出执行特定计算逻辑（如投影、过滤等）的Flink Stream Operator。
         final CodeGenOperatorFactory<RowData> substituteStreamOperator =
                 CalcCodeGenerator.generateCalcOperator(
                         ctx,
@@ -105,6 +114,8 @@ public abstract class CommonExecCalc extends ExecNodeBase<RowData>
                         JavaScalaConversionUtil.toScala(Optional.ofNullable(this.condition)),
                         retainHeader,
                         getClass().getSimpleName());
+        // 使用ExecNodeUtil工具类创建一个单输入的Transformation。
+        // 这个Transformation封装了前面生成的Stream Operator工厂类，并设置了其他必要的属性（如并行度、元数据等）。
         return ExecNodeUtil.createOneInputTransformation(
                 inputTransform,
                 createTransformationMeta(CALC_TRANSFORMATION, config),

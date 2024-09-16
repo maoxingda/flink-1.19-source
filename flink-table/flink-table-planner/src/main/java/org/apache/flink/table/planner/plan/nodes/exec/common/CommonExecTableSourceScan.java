@@ -105,50 +105,75 @@ public abstract class CommonExecTableSourceScan extends ExecNodeBase<RowData>
     public DynamicTableSourceSpec getTableSourceSpec() {
         return tableSourceSpec;
     }
-
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     *  将此节点内部转换为Flink的执行计划中的Transformation。
+     */
     @Override
     protected Transformation<RowData> translateToPlanInternal(
             PlannerBase planner, ExecNodeConfig config) {
+        // 初始化源数据的Transformation
         final Transformation<RowData> sourceTransform;
+        // 获取执行环境
         final StreamExecutionEnvironment env = planner.getExecEnv();
+        // 创建Transformation的元数据
         final TransformationMetadata meta = createTransformationMeta(SOURCE_TRANSFORMATION, config);
+        // 设置输出类型信息为RowData
         final InternalTypeInfo<RowData> outputTypeInfo =
                 InternalTypeInfo.of((RowType) getOutputType());
+        // 从TableSourceSpec中获取ScanTableSource
         final ScanTableSource tableSource =
                 tableSourceSpec.getScanTableSource(
                         planner.getFlinkContext(), ShortcutUtils.unwrapTypeFactory(planner));
+        // 获取ScanRuntimeProvider，用于提供扫描运行时信息
         ScanTableSource.ScanRuntimeProvider provider =
                 tableSource.getScanRuntimeProvider(ScanRuntimeProviderContext.INSTANCE);
+        // 推导源数据的并行度
         final int sourceParallelism = deriveSourceParallelism(provider);
+        // 判断源数据的并行度是否已配置
         final boolean sourceParallelismConfigured = isParallelismConfigured(provider);
+        // 如果provider是SourceFunctionProvider的实例
         if (provider instanceof SourceFunctionProvider) {
+            // 强制类型转换
             final SourceFunctionProvider sourceFunctionProvider = (SourceFunctionProvider) provider;
+            // 创建源函数
             final SourceFunction<RowData> function = sourceFunctionProvider.createSourceFunction();
+            // 创建源函数的Transformation
             sourceTransform =
                     createSourceFunctionTransformation(
                             env,
                             function,
-                            sourceFunctionProvider.isBounded(),
-                            meta.getName(),
-                            outputTypeInfo,
-                            sourceParallelism,
-                            sourceParallelismConfigured);
+                            sourceFunctionProvider.isBounded(),// 判断源是否有界
+                            meta.getName(),// Transformation的名称
+                            outputTypeInfo,// 输出类型信息
+                            sourceParallelism,// 并行度
+                            sourceParallelismConfigured);// 并行度是否已配置
+            // 如果源函数是ParallelSourceFunction且并行度已配置
             if (function instanceof ParallelSourceFunction && sourceParallelismConfigured) {
-                meta.fill(sourceTransform);
+                meta.fill(sourceTransform); // 填充元数据并返回包装后的SourceTransformation
                 return new SourceTransformationWrapper<>(sourceTransform);
             } else {
+                // 否则，直接填充元数据并返回Transformation
                 return meta.fill(sourceTransform);
             }
+            // 根据ScanRuntimeProvider的类型，进一步处理以创建源数据的Transformation
         } else if (provider instanceof InputFormatProvider) {
+            // 如果provider是InputFormatProvider的实例，则创建InputFormat
             final InputFormat<RowData, ?> inputFormat =
                     ((InputFormatProvider) provider).createInputFormat();
+            // 使用InputFormat创建Transformation
             sourceTransform =
                     createInputFormatTransformation(
                             env, inputFormat, outputTypeInfo, meta.getName());
+            // 填充元数据
             meta.fill(sourceTransform);
         } else if (provider instanceof SourceProvider) {
+            // 如果provider是SourceProvider的实例，则创建Source
             final Source<RowData, ?, ?> source = ((SourceProvider) provider).createSource();
             // TODO: Push down watermark strategy to source scan
+            // 使用Source创建DataStream的Transformation
             sourceTransform =
                     env.fromSource(
                                     source,
@@ -156,25 +181,33 @@ public abstract class CommonExecTableSourceScan extends ExecNodeBase<RowData>
                                     meta.getName(),
                                     outputTypeInfo)
                             .getTransformation();
+            // 填充元数据
             meta.fill(sourceTransform);
         } else if (provider instanceof DataStreamScanProvider) {
+            // 如果provider是DataStreamScanProvider的实例，则直接通过DataStream创建Transformation
             sourceTransform =
                     ((DataStreamScanProvider) provider)
                             .produceDataStream(createProviderContext(config), env)
                             .getTransformation();
+            // 填充元数据
             meta.fill(sourceTransform);
+            // 设置输出类型信息
             sourceTransform.setOutputType(outputTypeInfo);
         } else if (provider instanceof TransformationScanProvider) {
+            // 如果provider是TransformationScanProvider的实例，则直接创建Transformation
             sourceTransform =
                     ((TransformationScanProvider) provider)
                             .createTransformation(createProviderContext(config));
+            // 填充元数据
             meta.fill(sourceTransform);
+            // 设置输出类型信息
             sourceTransform.setOutputType(outputTypeInfo);
         } else {
+            // 如果provider不是上述任何一种类型，则抛出不支持的操作异常
             throw new UnsupportedOperationException(
                     provider.getClass().getSimpleName() + " is unsupported now.");
         }
-
+        // 如果源数据的并行度已配置，则应用SourceTransformationWrapper进行封装
         if (sourceParallelismConfigured) {
             return applySourceTransformationWrapper(
                     sourceTransform,
@@ -184,6 +217,7 @@ public abstract class CommonExecTableSourceScan extends ExecNodeBase<RowData>
                     tableSource.getChangelogMode(),
                     sourceParallelism);
         } else {
+            // 如果没有配置并行度，则直接返回原始的Transformation
             return sourceTransform;
         }
     }
@@ -290,9 +324,9 @@ public abstract class CommonExecTableSourceScan extends ExecNodeBase<RowData>
             TypeInformation<RowData> outputTypeInfo,
             int sourceParallelism,
             boolean sourceParallelismConfigured) {
-
+        // 清理源函数，可能涉及到资源释放等操作
         env.clean(function);
-
+        // 计算并行度
         final int parallelism;
         if (function instanceof ParallelSourceFunction) {
             if (sourceParallelismConfigured) {
@@ -300,26 +334,27 @@ public abstract class CommonExecTableSourceScan extends ExecNodeBase<RowData>
             } else {
                 parallelism = env.getParallelism();
             }
-        } else {
+        } else {// 如果源函数不支持并行
             parallelism = 1;
             sourceParallelismConfigured = true;
         }
-
+        // 确定源的有界性
         final Boundedness boundedness;
         if (isBounded) {
             boundedness = Boundedness.BOUNDED;
         } else {
             boundedness = Boundedness.CONTINUOUS_UNBOUNDED;
         }
-
+        // 创建源操作器
         final StreamSource<RowData, ?> sourceOperator = new StreamSource<>(function, !isBounded);
+        // 创建一个转换（Transformation），用于在Flink的执行图中表示这个源
         return new LegacySourceTransformation<>(
-                operatorName,
-                sourceOperator,
-                outputTypeInfo,
-                parallelism,
-                boundedness,
-                sourceParallelismConfigured);
+                operatorName, // 源操作的名称
+                sourceOperator,// 源操作器
+                outputTypeInfo,// 源输出的数据类型信息
+                parallelism, // 源的并行度
+                boundedness, // 源的有界性
+                sourceParallelismConfigured);// 指示是否已配置源的并行度
     }
 
     /**

@@ -78,31 +78,40 @@ class StreamPhysicalSink(
       abilitySpecs,
       newUpsertMaterialize)
   }
-
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * StreamPhysicalSink转换为StreamExecSink执行节点为后面的Transformation做准备
+   */
   override def translateToExecNode(): ExecNode[_] = {
+    // 获取输入流的变更日志模式。变更日志模式决定了数据变更（如插入、更新、删除）的处理方式。
     val inputChangelogMode =
       ChangelogPlanUtils.getChangelogMode(getInput.asInstanceOf[StreamPhysicalRel]).get
+    // 创建一个DynamicTableSinkSpec对象，该对象封装了与动态表汇（Sink）相关的配置和信息。
     val tableSinkSpec =
       new DynamicTableSinkSpec(
         contextResolvedTable,
         util.Arrays.asList(abilitySpecs: _*),
         targetColumns)
+    // 将具体的表汇（Sink）对象设置到DynamicTableSinkSpec中。
     tableSinkSpec.setTableSink(tableSink)
     // no need to call getUpsertKeysInKeyGroupRange here because there's no exchange before sink,
     // and only add exchange in exec sink node.
+    // 获取输入关系的更新键。更新键是用于在数据更新操作中唯一标识数据行的键。
     val inputUpsertKeys = FlinkRelMetadataQuery
       .reuseOrCreate(cluster.getMetadataQuery)
       .getUpsertKeys(inputRel)
-
+    // 创建一个StreamExecSink执行节点，用于将数据写入到表汇（Sink）中。
     new StreamExecSink(
-      unwrapTableConfig(this),
-      tableSinkSpec,
-      inputChangelogMode,
-      InputProperty.DEFAULT,
-      FlinkTypeFactory.toLogicalRowType(getRowType),
-      upsertMaterialize,
-      UpsertKeyUtil.getSmallestKey(inputUpsertKeys),
-      getRelDetailedDescription)
+      unwrapTableConfig(this), // 获取表的配置
+      tableSinkSpec, // 动态表汇规格
+      inputChangelogMode, // 输入流的变更日志模式
+      InputProperty.DEFAULT, // 输入属性的默认设置
+      FlinkTypeFactory.toLogicalRowType(getRowType), // 将表的行类型转换为逻辑行类型
+      upsertMaterialize,// 是否将更新操作物化（即实际写入到存储中）
+      UpsertKeyUtil.getSmallestKey(inputUpsertKeys),// 获取输入更新键中的最小键（可能用于优化或排序）
+      getRelDetailedDescription) // 获取关系的详细描述
   }
 
   override def explainTerms(pw: RelWriter): RelWriter = {

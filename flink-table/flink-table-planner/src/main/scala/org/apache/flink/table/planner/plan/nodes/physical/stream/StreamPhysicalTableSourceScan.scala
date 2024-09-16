@@ -67,16 +67,24 @@ class StreamPhysicalTableSourceScan(
     planner.getCostFactory.makeCost(rowCnt, rowCnt, rowCnt * rowSize)
   }
 
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 将TableSource物理节点转为ExecNode为后面的Transformation做准备
+   */
   override def translateToExecNode(): ExecNode[_] = {
+    // 创建一个DynamicTableSourceSpec对象，传入解析后的表和表的能力规范
     val tableSourceSpec = new DynamicTableSourceSpec(
       tableSourceTable.contextResolvedTable,
       util.Arrays.asList(tableSourceTable.abilitySpecs: _*))
+    // 设置表的源
     tableSourceSpec.setTableSource(tableSource)
-
+    // 创建一个StreamExecTableSourceScan执行节点，传入配置、表源规范、行类型和详细描述
     new StreamExecTableSourceScan(
-      unwrapTableConfig(this),
-      tableSourceSpec,
-      FlinkTypeFactory.toLogicalRowType(getRowType),
-      getRelDetailedDescription)
+      unwrapTableConfig(this),// 获取表的配置
+      tableSourceSpec,// 表源规范
+      FlinkTypeFactory.toLogicalRowType(getRowType),// 将表的行类型转换为逻辑行类型
+      getRelDetailedDescription)// 获取关系的详细描述
   }
 }

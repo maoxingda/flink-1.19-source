@@ -136,6 +136,21 @@ public abstract class CommonExecSink extends ExecNodeBase<Object>
         return tableSinkSpec;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 创建一个数据汇的Transformation对象。
+     *
+     * @param streamExecEnv Flink的流执行环境，用于配置和执行流处理作业。
+     * @param config 执行节点的配置信息。
+     * @param classLoader 类加载器，用于加载用户定义的函数或类。
+     * @param inputTransform 输入的Transformation对象，表示数据源或之前处理步骤的输出。
+     * @param tableSink 动态表汇，定义了如何将数据写入外部系统。
+     * @param rowtimeFieldIndex 行时间字段的索引，在输入数据中的位置，用于时间相关的处理。
+     * @param upsertMaterialize 是否将更新（upsert）操作物化（转换为插入或删除操作），以支持某些不支持直接更新操作的数据存储。
+     * @param inputUpsertKey 输入数据中用于更新操作的键的索引数组。
+     */
     @SuppressWarnings("unchecked")
     protected Transformation<Object> createSinkTransformation(
             StreamExecutionEnvironment streamExecEnv,
@@ -146,20 +161,31 @@ public abstract class CommonExecSink extends ExecNodeBase<Object>
             int rowtimeFieldIndex,
             boolean upsertMaterialize,
             int[] inputUpsertKey) {
+        // 从表汇规范中获取解析后的Schema
         final ResolvedSchema schema = tableSinkSpec.getContextResolvedTable().getResolvedSchema();
+        // 获取数据汇的运行时提供者，这通常与具体的外部系统相关
         final SinkRuntimeProvider runtimeProvider =
                 tableSink.getSinkRuntimeProvider(
                         new SinkRuntimeProviderContext(
                                 isBounded, tableSinkSpec.getTargetColumns()));
+        // 根据解析后的Schema获取物理行类型
         final RowType physicalRowType = getPhysicalRowType(schema);
+        // 获取主键的索引数组，如果表定义了主键的话
         final int[] primaryKeys = getPrimaryKeyIndices(physicalRowType, schema);
+        // 推导数据汇的并行度
         final int sinkParallelism = deriveSinkParallelism(inputTransform, runtimeProvider);
+        // 标记是否显式配置了并行度
         sinkParallelismConfigured = isParallelismConfigured(runtimeProvider);
+        // 获取输入Transformation的并行度
         final int inputParallelism = inputTransform.getParallelism();
+        // 检查输入变更日志是否仅包含插入操作
         final boolean inputInsertOnly = inputChangelogMode.containsOnly(RowKind.INSERT);
+        // 检查是否有定义主键
         final boolean hasPk = primaryKeys.length > 0;
 
+        // 检查输入并行度、数据汇并行度和是否包含主键的条件
         if (!inputInsertOnly && sinkParallelism != inputParallelism && !hasPk) {
+            // 如果输入不是仅插入模式，且数据汇并行度与输入并行度不同，且没有定义主键，则抛出异常
             throw new TableException(
                     String.format(
                             "The sink for table '%s' has a configured parallelism of %s, while the input parallelism is %s. "
@@ -175,12 +201,14 @@ public abstract class CommonExecSink extends ExecNodeBase<Object>
         }
 
         // only add materialization if input has change
+        // 仅当输入包含变更时才需要物化
         final boolean needMaterialization = !inputInsertOnly && upsertMaterialize;
-
+        // 应用约束验证（可能是对输入数据的校验）
         Transformation<RowData> sinkTransform =
                 applyConstraintValidations(inputTransform, config, physicalRowType);
-
+        // 如果定义了主键
         if (hasPk) {
+            // 应用主键约束，可能涉及到数据的重新排序或分区
             sinkTransform =
                     applyKeyBy(
                             config,
@@ -191,8 +219,9 @@ public abstract class CommonExecSink extends ExecNodeBase<Object>
                             inputParallelism,
                             needMaterialization);
         }
-
+        // 如果需要物化（即输入包含更新或删除操作）
         if (needMaterialization) {
+            // 应用物化逻辑，将更新和删除操作转换为插入和删除操作（如果目标系统不支持直接更新）
             sinkTransform =
                     applyUpsertMaterialize(
                             sinkTransform,
@@ -203,78 +232,96 @@ public abstract class CommonExecSink extends ExecNodeBase<Object>
                             physicalRowType,
                             inputUpsertKey);
         }
-
+        // 获取目标行类型（可能是INSERT、UPDATE、DELETE等）
         Optional<RowKind> targetRowKind = getTargetRowKind();
         if (targetRowKind.isPresent()) {
+            // 如果指定了目标行类型，则应用行类型设置器
             sinkTransform = applyRowKindSetter(sinkTransform, targetRowKind.get(), config);
         }
-
+        // 最后，应用数据汇提供者来创建并返回最终的数据汇Transformation对象
         return (Transformation<Object>)
                 applySinkProvider(
                         sinkTransform,
-                        streamExecEnv,
-                        runtimeProvider,
-                        rowtimeFieldIndex,
-                        sinkParallelism,
-                        config,
-                        classLoader);
+                        streamExecEnv, // Flink的流执行环境
+                        runtimeProvider,// 数据汇的运行时提供者
+                        rowtimeFieldIndex,// 行时间字段的索引
+                        sinkParallelism,// 数据汇的并行度
+                        config,// 执行节点的配置
+                        classLoader);//类加载器
     }
 
     /**
      * Apply an operator to filter or report error to process not-null values for not-null fields.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 应用操作符以过滤或报告非空字段中非空值的错误。
+     */
     private Transformation<RowData> applyConstraintValidations(
             Transformation<RowData> inputTransform,
             ExecNodeConfig config,
             RowType physicalRowType) {
+        // 初始化约束执行器构建器
         final ConstraintEnforcer.Builder validatorBuilder = ConstraintEnforcer.newBuilder();
+        // 获取物理行类型中所有字段的名称
         final String[] fieldNames = physicalRowType.getFieldNames().toArray(new String[0]);
 
         // Build NOT NULL enforcer
+        // 构建非空约束执行器
         final int[] notNullFieldIndices = getNotNullFieldIndices(physicalRowType);
         if (notNullFieldIndices.length > 0) {
+            // 从配置中获取非空约束执行器选项
             final ExecutionConfigOptions.NotNullEnforcer notNullEnforcer =
                     config.get(ExecutionConfigOptions.TABLE_EXEC_SINK_NOT_NULL_ENFORCER);
+            // 将非空字段索引转换为字段名称列表
             final List<String> notNullFieldNames =
                     Arrays.stream(notNullFieldIndices)
                             .mapToObj(idx -> fieldNames[idx])
                             .collect(Collectors.toList());
-
+            // 向构建器添加非空约束
             validatorBuilder.addNotNullConstraint(
                     notNullEnforcer, notNullFieldIndices, notNullFieldNames, fieldNames);
         }
-
+        // 从配置中获取类型长度约束执行器选项
         final ExecutionConfigOptions.TypeLengthEnforcer typeLengthEnforcer =
                 config.get(ExecutionConfigOptions.TABLE_EXEC_SINK_TYPE_LENGTH_ENFORCER);
 
         // Build CHAR/VARCHAR length enforcer
+        // 构建CHAR/VARCHAR长度约束执行器
         final List<ConstraintEnforcer.FieldInfo> charFieldInfo =
                 getFieldInfoForLengthEnforcer(physicalRowType, LengthEnforcerType.CHAR);
         if (!charFieldInfo.isEmpty()) {
+            // 将CHAR类型字段信息中的索引转换为字段名称列表
             final List<String> charFieldNames =
                     charFieldInfo.stream()
                             .map(cfi -> fieldNames[cfi.fieldIdx()])
                             .collect(Collectors.toList());
-
+            // 向构建器添加CHAR长度约束
             validatorBuilder.addCharLengthConstraint(
                     typeLengthEnforcer, charFieldInfo, charFieldNames, fieldNames);
         }
 
         // Build BINARY/VARBINARY length enforcer
+        // 构建BINARY/VARBINARY长度约束执行器
         final List<ConstraintEnforcer.FieldInfo> binaryFieldInfo =
                 getFieldInfoForLengthEnforcer(physicalRowType, LengthEnforcerType.BINARY);
         if (!binaryFieldInfo.isEmpty()) {
+            // 将BINARY/VARBINARY类型字段信息中的索引转换为字段名称列表
             final List<String> binaryFieldNames =
                     binaryFieldInfo.stream()
                             .map(cfi -> fieldNames[cfi.fieldIdx()])
                             .collect(Collectors.toList());
-
+            // 向构建器添加BINARY/VARBINARY长度约束
             validatorBuilder.addBinaryLengthConstraint(
                     typeLengthEnforcer, binaryFieldInfo, binaryFieldNames, fieldNames);
         }
-
+        // 构建最终的约束执行器
         ConstraintEnforcer constraintEnforcer = validatorBuilder.build();
         if (constraintEnforcer != null) {
+            // 如果存在约束执行器（即至少有一个约束被添加），则创建一个新的转换逻辑
+            // 该转换逻辑将包含约束验证操作符
             return ExecNodeUtil.createOneInputTransformation(
                     inputTransform,
                     createTransformationMeta(
@@ -288,6 +335,8 @@ public abstract class CommonExecSink extends ExecNodeBase<Object>
                     false);
         } else {
             // there are no not-null fields, just skip adding the enforcer operator
+            // 如果没有非空字段或长度约束字段，则跳过添加约束执行器操作符
+            // 直接返回原始的输入转换逻辑
             return inputTransform;
         }
     }

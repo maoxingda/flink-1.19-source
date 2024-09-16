@@ -599,7 +599,7 @@ public class DataStream<T> {
      */
     /**
       * @授课老师(V): yi_locus
-      * email: 156184212@qq.com
+      * email: 252810631
       * 对DataStream应用Map转换。转换调用｛MapFunction｝用于数据流的每个元素。每个MapFunction调用都只返回一个
       *
       */
@@ -630,7 +630,7 @@ public class DataStream<T> {
      */
     /**
       * @授课老师(V): yi_locus
-      * email: 156184212@qq.com
+      * email: 252810631
       * 调用transform方法构建Transformation
       */
     public <R> SingleOutputStreamOperator<R> map(
@@ -1271,15 +1271,13 @@ public class DataStream<T> {
 
     /**
       * @授课老师(V): yi_locus
-      * email: 156184212@qq.com
+      * email:252810631
       * 构建Transformation
       */
     protected <R> SingleOutputStreamOperator<R> doTransform(
             String operatorName,
             TypeInformation<R> outTypeInfo,
             StreamOperatorFactory<R> operatorFactory) {
-
-        // read the output type of the input Transform to coax out errors about MissingTypeInfo
         /**
          * 读取输入的输出类型Transform以引出有关MissingTypeInfo的错误
          * 类型丢失会报错

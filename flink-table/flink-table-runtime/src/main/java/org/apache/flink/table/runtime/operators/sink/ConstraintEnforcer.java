@@ -51,6 +51,12 @@ import static org.apache.flink.util.Preconditions.checkArgument;
  *       length} defined in their corresponding types.
  * </ul>
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 处理｛@link RowData｝以强制执行以下约束：
+ */
 @Internal
 public class ConstraintEnforcer extends TableStreamOperator<RowData>
         implements OneInputStreamOperator<RowData, RowData> {

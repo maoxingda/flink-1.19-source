@@ -111,6 +111,12 @@ import static org.apache.flink.table.types.logical.utils.LogicalTypeChecks.getSc
  *
  * <p>Nullability is always handled by the container data structure.
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 内部数据结构的基本接口，表示表生态系统中｛@link RowType｝和其他（可能嵌套的）结构化类型（如｛@link StructuredType｝）的数据。
+ */
 @PublicEvolving
 public interface RowData {
 

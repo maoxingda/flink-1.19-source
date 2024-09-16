@@ -153,6 +153,13 @@ class AggsHandlerCodeGenerator(
    * Tells the generator to generate `accumulate(..)` method for the [[AggsHandleFunction]] and
    * [[NamespaceAggsHandleFunction]]. Default not generate `accumulate(..)` method.
    */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 指示生成器为 [[AggsHandleFunction]] 和 [[NamespaceAggsHandleFunction]] 生成 `accumulate(..)` 方法。
+   * 默认情况下，不会生成 `accumulate(..)` 方法。
+   */
   def needAccumulate(): AggsHandlerCodeGenerator = {
     this.isAccumulateNeeded = true
     this
@@ -163,6 +170,13 @@ class AggsHandlerCodeGenerator(
    * [[NamespaceAggsHandleFunction]]. Default not generate `retract(..)` method.
    *
    * @return
+   */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 指示生成器为 [[AggsHandleFunction]] 和 [[NamespaceAggsHandleFunction]] 生成 `retract(..)` 方法。
+   * 默认情况下，不会生成 `retract(..)` 方法。
    */
   def needRetract(): AggsHandlerCodeGenerator = {
     this.isRetractNeeded = true
@@ -344,25 +358,38 @@ class AggsHandlerCodeGenerator(
   }
 
   /** Generate [[GeneratedAggsHandleFunction]] with the given function name and aggregate infos. */
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 根据给定的函数名和聚合信息列表生成 [[GeneratedAggsHandleFunction]]。
+   * 这个函数负责生成一个聚合处理函数，该函数将用于处理聚合查询中的聚合操作。
+   *
+   * @param name 自定义的函数名称，用于在生成的代码中标识该函数。
+   * @param aggInfoList 聚合信息列表，包含了所有需要处理的聚合操作的信息。
+   */
   def generateAggsHandler(
       name: String,
       aggInfoList: AggregateInfoList): GeneratedAggsHandleFunction = {
-
+    // 初始化聚合信息列表，可能包括验证、排序或准备必要的上下文等。
     initialAggregateInformation(aggInfoList)
 
     // generates all methods body first to add necessary reuse code to context
-    val setWindowSizeCode = genSetWindowSize()
-    val createAccumulatorsCode = genCreateAccumulators()
-    val getAccumulatorsCode = genGetAccumulators()
-    val setAccumulatorsCode = genSetAccumulators()
-    val resetAccumulatorsCode = genResetAccumulators()
-    val accumulateCode = genAccumulate()
-    val retractCode = genRetract()
-    val mergeCode = genMerge()
-    val getValueCode = genGetValue()
-
+    // 首先生成所有方法体，以便将必要的可重用代码添加到上下文中
+    // 这些方法包括设置窗口大小、创建累加器、获取累加器、设置累加器、重置累加器、累加操作、回退操作和合并操作等。
+    val setWindowSizeCode = genSetWindowSize() // 生成设置窗口大小的方法体
+    val createAccumulatorsCode = genCreateAccumulators() // 生成创建累加器的方法体
+    val getAccumulatorsCode = genGetAccumulators()// 生成获取累加器的方法体
+    val setAccumulatorsCode = genSetAccumulators()// 生成设置累加器的方法体
+    val resetAccumulatorsCode = genResetAccumulators() // 生成重置累加器的方法体
+    val accumulateCode = genAccumulate()// 生成累加操作的方法体
+    val retractCode = genRetract()// 生成回退操作的方法体
+    val mergeCode = genMerge()// 生成合并操作的方法体
+    val getValueCode = genGetValue()// 生成获取聚合结果值的方法体
+    // 根据给定的名称和上下文生成一个唯一的函数名称
     val functionName = newName(ctx, name)
 
+    //拼接动态代码
     val functionCode =
       j"""
         public final class $functionName implements $AGGS_HANDLER_FUNCTION {

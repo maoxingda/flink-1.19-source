@@ -168,30 +168,45 @@ public class StreamExecSink extends CommonExecSink implements StreamExecNode<Obj
         this.stateMetadataList = stateMetadataList;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将当前执行节点内部转换为计划的一部分。
+     */
     @SuppressWarnings("unchecked")
     @Override
     protected Transformation<Object> translateToPlanInternal(
             PlannerBase planner, ExecNodeConfig config) {
+        // 获取当前节点的第一个输入边
         final ExecEdge inputEdge = getInputEdges().get(0);
+        // 将输入边的配置转换为Flink的Transformation对象，这里假设输入类型是RowData
         final Transformation<RowData> inputTransform =
                 (Transformation<RowData>) inputEdge.translateToPlan(planner);
+        // 获取输入边的输出类型，这里假设是RowType
         final RowType inputRowType = (RowType) inputEdge.getOutputType();
+        // 根据计划器的Flink上下文获取动态表接收器
         final DynamicTableSink tableSink = tableSinkSpec.getTableSink(planner.getFlinkContext());
+        // 判断动态表接收器是否为CollectDynamicSink类型
         final boolean isCollectSink = tableSink instanceof CollectDynamicSink;
+        // 检查是否禁用了行时间插入器，这可能会影响行时间字段的处理
         final boolean isDisabled =
                 config.get(ExecutionConfigOptions.TABLE_EXEC_SINK_ROWTIME_INSERTER)
                         == RowtimeInserter.DISABLED;
-
+        // 初始化一个列表，用于存储行时间字段的索引
         final List<Integer> rowtimeFieldIndices = new ArrayList<>();
+        // 遍历输入行的所有字段，查找行时间字段并记录其索引
         for (int i = 0; i < inputRowType.getFieldCount(); ++i) {
             if (TypeCheckUtils.isRowTime(inputRowType.getTypeAt(i))) {
                 rowtimeFieldIndices.add(i);
             }
         }
-
+        // 声明一个整型变量来存储行时间字段的索引
         final int rowtimeFieldIndex;
+        // 如果是收集接收器（通常用于测试或调试）或行时间插入器被禁用，则行时间字段索引设置为-1
         if (isCollectSink || isDisabled) {
             rowtimeFieldIndex = -1;
+            // 如果存在多个行时间字段，则抛出异常，因为写入表接收器时只能有一个行时间字段
         } else if (rowtimeFieldIndices.size() > 1) {
             throw new TableException(
                     String.format(
@@ -205,12 +220,15 @@ public class StreamExecSink extends CommonExecSink implements StreamExecNode<Obj
                                     .getContextResolvedTable()
                                     .getIdentifier()
                                     .asSummaryString()));
+            // 如果只有一个行时间字段，则设置行时间字段索引为该字段的索引
         } else if (rowtimeFieldIndices.size() == 1) {
             rowtimeFieldIndex = rowtimeFieldIndices.get(0);
+            // 如果没有行时间字段，则行时间字段索引也设置为-1
         } else {
             rowtimeFieldIndex = -1;
         }
-
+       // 调用方法创建并返回包含接收器逻辑的Transformation对象
+       // 该方法根据Flink执行环境、配置、类加载器、输入Transformation、表接收器、行时间字段索引等参数来构建
         return createSinkTransformation(
                 planner.getExecEnv(),
                 config,

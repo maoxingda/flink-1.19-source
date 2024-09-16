@@ -164,25 +164,34 @@ public class StreamExecGroupAggregate extends StreamExecAggregateBase {
         this.stateMetadataList = stateMetadataList;
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将当前节点转换为执行计划中的Transformation。
+     */
     @SuppressWarnings("unchecked")
     @Override
     protected Transformation<RowData> translateToPlanInternal(
             PlannerBase planner, ExecNodeConfig config) {
-
+        // 根据配置和状态元数据列表获取状态保留时间
         final long stateRetentionTime =
                 StateMetadata.getStateTtlForOneInputOperator(config, stateMetadataList);
+        // 如果分组键存在但状态保留时间未配置（即小于0），则发出警告
         if (grouping.length > 0 && stateRetentionTime < 0) {
             LOG.warn(
                     "No state retention interval configured for a query which accumulates state. "
                             + "Please provide a query configuration with valid retention interval to prevent excessive "
                             + "state size. You may specify a retention time of 0 to not clean up the state.");
         }
-
+        // 获取输入边的第一个Transformation
         final ExecEdge inputEdge = getInputEdges().get(0);
         final Transformation<RowData> inputTransform =
                 (Transformation<RowData>) inputEdge.translateToPlan(planner);
+        // 获取输入边的输出类型，即RowType
         final RowType inputRowType = (RowType) inputEdge.getOutputType();
-
+        // 创建聚合处理器代码生成器
+        // 聚合处理器代码生成器根据配置、Flink上下文类加载器、输入RowType的子类型等信息来生成聚合逻辑的代码
         final AggsHandlerCodeGenerator generator =
                 new AggsHandlerCodeGenerator(
                                 new CodeGeneratorContext(
@@ -196,40 +205,46 @@ public class StreamExecGroupAggregate extends StreamExecAggregateBase {
                                 // TODO: but other operators do not copy this input field.....
                                 true)
                         .needAccumulate();
-
+        // 如果需要撤回（retraction）机制（如处理更新前和更新后的值），则调用needRetract()方法
         if (needRetraction) {
             generator.needRetract();
         }
-
+        // 将聚合调用转换为流聚合信息列表
         final AggregateInfoList aggInfoList =
                 AggregateUtil.transformToStreamAggregateInfoList(
-                        planner.getTypeFactory(),
-                        inputRowType,
-                        JavaScalaConversionUtil.toScala(Arrays.asList(aggCalls)),
-                        aggCallNeedRetractions,
-                        needRetraction,
-                        true,
-                        true);
+                        planner.getTypeFactory(),// 类型工厂，用于创建和转换类型
+                        inputRowType, // 输入行的类型
+                        JavaScalaConversionUtil.toScala(Arrays.asList(aggCalls)),// 聚合调用的Java列表转换为Scala列表
+                        aggCallNeedRetractions,// 聚合调用是否需要撤回信息
+                        needRetraction,// 当前聚合操作是否需要撤回机制
+                        true,// 是否考虑时间属性（如窗口聚合）
+                        true); // 是否生成累积器（accumulate）
+        // 使用聚合信息列表生成聚合处理器函数
         final GeneratedAggsHandleFunction aggsHandler =
                 generator.generateAggsHandler("GroupAggsHandler", aggInfoList);
-
+        // 将累积器类型（数据类型）转换为逻辑类型
         final LogicalType[] accTypes =
                 Arrays.stream(aggInfoList.getAccTypes())
                         .map(LogicalTypeDataTypeConverter::fromDataTypeToLogicalType)
                         .toArray(LogicalType[]::new);
+        // 将实际值类型（数据类型）转换为逻辑类型
         final LogicalType[] aggValueTypes =
                 Arrays.stream(aggInfoList.getActualValueTypes())
                         .map(LogicalTypeDataTypeConverter::fromDataTypeToLogicalType)
                         .toArray(LogicalType[]::new);
+        // 生成记录等值比较器
         final GeneratedRecordEqualiser recordEqualiser =
                 new EqualiserCodeGenerator(
                                 aggValueTypes, planner.getFlinkContext().getClassLoader())
                         .generateRecordEqualiser("GroupAggValueEqualiser");
+        // 获取COUNT(*)在聚合信息列表中的索引
         final int inputCountIndex = aggInfoList.getIndexOfCountStar();
+        // 判断是否启用微批处理
         final boolean isMiniBatchEnabled = MinibatchUtil.isMiniBatchEnabled(config);
-
+         // 根据是否启用微批处理，选择不同的操作符实现
         final OneInputStreamOperator<RowData, RowData> operator;
         if (isMiniBatchEnabled) {
+            // 如果启用微批处理，则使用MiniBatchGroupAggFunction
             MiniBatchGroupAggFunction aggFunction =
                     new MiniBatchGroupAggFunction(
                             aggsHandler,
@@ -243,6 +258,7 @@ public class StreamExecGroupAggregate extends StreamExecAggregateBase {
                     new KeyedMapBundleOperator<>(
                             aggFunction, MinibatchUtil.createMiniBatchTrigger(config));
         } else {
+            // 如果未启用微批处理，则使用GroupAggFunction
             GroupAggFunction aggFunction =
                     new GroupAggFunction(
                             aggsHandler,
@@ -255,6 +271,7 @@ public class StreamExecGroupAggregate extends StreamExecAggregateBase {
         }
 
         // partitioned aggregation
+        // 创建一个用于分组聚合的OneInputTransformation
         final OneInputTransformation<RowData, RowData> transform =
                 ExecNodeUtil.createOneInputTransformation(
                         inputTransform,
@@ -265,14 +282,18 @@ public class StreamExecGroupAggregate extends StreamExecAggregateBase {
                         false);
 
         // set KeyType and Selector for state
+        // 设置状态键的类型和选择器
+        // 状态键用于在状态后端中唯一标识每个键的状态
         final RowDataKeySelector selector =
                 KeySelectorUtil.getRowDataSelector(
                         planner.getFlinkContext().getClassLoader(),
                         grouping,
                         InternalTypeInfo.of(inputRowType));
+        // 设置状态键选择器，用于从输入数据中提取键
         transform.setStateKeySelector(selector);
+        // 设置状态键的类型，即分组键的类型
         transform.setStateKeyType(selector.getProducedType());
-
+         // 返回构建好的转换
         return transform;
     }
 }

@@ -44,6 +44,12 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *
  * <p>The fields in {@link GenericRowData} can be null for representing nullability.
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 表示｛@link RowType｝和其他（可能嵌套的）结构化类型（如｛@link StructuredType｝）数据的内部数据结构。
+ */
 @PublicEvolving
 public final class GenericRowData implements RowData {
 

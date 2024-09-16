@@ -161,24 +161,34 @@ public abstract class ExecNodeBase<T> implements ExecNode<T> {
         edges.set(index, newInputEdge);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将ExecNode转换为Transformation
+     */
     @Override
     public final Transformation<T> translateToPlan(Planner planner) {
+        // 如果transformation还未被初始化，则进行初始化
         if (transformation == null) {
             transformation =
                     translateToPlanInternal(
-                            (PlannerBase) planner,
-                            ExecNodeConfig.of(
+                            (PlannerBase) planner,// 将planner强制转换为PlannerBase类型，并传入translateToPlanInternal方法
+                            ExecNodeConfig.of(// 创建ExecNodeConfig对象，传入planner的表配置、持久化配置和编译状态
                                     ((PlannerBase) planner).getTableConfig(),
                                     persistedConfig,
                                     isCompiled));
+            // 如果当前对象是SingleTransformationTranslator的实例
             if (this instanceof SingleTransformationTranslator) {
+                // 并且transformation包含单例输入
                 if (inputsContainSingleton(transformation)) {
+                    // 将transformation的并行度和最大并行度设置为1
                     transformation.setParallelism(1);
                     transformation.setMaxParallelism(1);
                 }
             }
         }
-        return transformation;
+        return transformation;// 返回transformation对象
     }
 
     @Override
@@ -240,12 +250,27 @@ public abstract class ExecNodeBase<T> implements ExecNode<T> {
         return createFormattedTransformationDescription(getDescription(), config);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 创建转换的元数据。
+     *
+     * @param operatorName 操作符的名称，用于在需要时生成唯一标识符（UID）。
+     * @param config 执行节点配置，包含了是否应该设置UID以及其他可能的配置信息。
+     * @return 返回创建的转换元数据对象。
+     */
     protected TransformationMetadata createTransformationMeta(
             String operatorName, ExecNodeConfig config) {
+        // 检查当前类是否被标记为不支持或者配置指示不应设置UID
         if (ExecNodeMetadataUtil.isUnsupported(this.getClass()) || !config.shouldSetUid()) {
+            // 如果不支持或者不应设置UID，则只使用配置信息来创建基本的转换元数据
+            // 包括转换的名称和描述
             return new TransformationMetadata(
                     createTransformationName(config), createTransformationDescription(config));
         } else {
+            // 如果支持且配置指示应设置UID，则除了名称和描述外，还使用操作符名称和配置信息来生成UID
+            // 并创建包含UID、名称和描述的完整转换元数据
             return new TransformationMetadata(
                     createTransformationUid(operatorName, config),
                     createTransformationName(config),

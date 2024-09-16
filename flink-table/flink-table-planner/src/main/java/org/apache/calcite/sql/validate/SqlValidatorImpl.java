@@ -5087,7 +5087,7 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
         }
         // 获取WHERE子句的作用域，这通常包括表别名、列名等解析时需要的上下文信息
         final SqlValidatorScope whereScope = getWhereScope(select);
-        // 对WHERE子句进行扩展，比如解析别名、展开复杂的表达式等
+        // 对WHERE子句进行扩展，比如解析别名、展开复杂的表达式等 where id >5 where t1.id>5
         final SqlNode expandedWhere = expand(where, whereScope);
         // 将扩展后的WHERE子句设置回SQL查询中
         select.setWhere(expandedWhere);

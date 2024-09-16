@@ -91,46 +91,59 @@ public class StreamExecExchange extends CommonExecExchange implements StreamExec
         checkArgument(inputProperties.size() == 1);
     }
 
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将当前节点转换为执行计划中的Transformation。
+     */
     @SuppressWarnings("unchecked")
     @Override
     protected Transformation<RowData> translateToPlanInternal(
             PlannerBase planner, ExecNodeConfig config) {
+        // 获取输入边的第一个Transformation，作为当前节点的输入
         final Transformation<RowData> inputTransform =
                 (Transformation<RowData>) getInputEdges().get(0).translateToPlan(planner);
-
+        // 初始化分区器和并行度
         final StreamPartitioner<RowData> partitioner;
         final int parallelism;
+        // 获取输入属性的第一个，并判断其分布类型
         final InputProperty inputProperty = getInputProperties().get(0);
         final InputProperty.DistributionType distributionType =
                 inputProperty.getRequiredDistribution().getType();
         switch (distributionType) {
-            case SINGLETON:
-                partitioner = new GlobalPartitioner<>();
-                parallelism = 1;
+            case SINGLETON:// 单例分布
+                partitioner = new GlobalPartitioner<>();// 使用全局分区器
+                parallelism = 1;// 设置并行度为1
                 break;
-            case HASH:
+            case HASH:// 哈希分布
                 // TODO Eliminate duplicate keys
+                // TODO 消除重复键（需要额外的逻辑来确保键的唯一性）
                 int[] keys = ((HashDistribution) inputProperty.getRequiredDistribution()).getKeys();
                 InternalTypeInfo<RowData> inputType =
                         (InternalTypeInfo<RowData>) inputTransform.getOutputType();
                 RowDataKeySelector keySelector =
-                        KeySelectorUtil.getRowDataSelector(
+                        KeySelectorUtil.getRowDataSelector(// 创建键选择器
                                 planner.getFlinkContext().getClassLoader(), keys, inputType);
                 partitioner =
-                        new KeyGroupStreamPartitioner<>(
+                        new KeyGroupStreamPartitioner<>(// 使用键组流分区器
                                 keySelector, DEFAULT_LOWER_BOUND_MAX_PARALLELISM);
                 parallelism = ExecutionConfig.PARALLELISM_DEFAULT;
                 break;
-            default:
+            default:// 如果分布类型不支持，则抛出异常
                 throw new TableException(
                         String.format("%s is not supported now!", distributionType));
         }
-
+        // 创建PartitionTransformation，这是一个包含分区逻辑的Transformation
         final Transformation<RowData> transformation =
                 new PartitionTransformation<>(inputTransform, partitioner);
+        // 填充Transformation的元数据，例如名称和配置
         createTransformationMeta(EXCHANGE_TRANSFORMATION, config).fill(transformation);
+        // 设置Transformation的并行度
         transformation.setParallelism(parallelism);
+        // 设置Transformation的输出类型
         transformation.setOutputType(InternalTypeInfo.of(getOutputType()));
+        // 返回转换后的Transformation
         return transformation;
     }
 }

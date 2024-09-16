@@ -28,6 +28,12 @@ import org.apache.flink.table.functions.AggregateFunction;
  *
  * <p>It is the entry point for aggregate operators to operate all {@link AggregateFunction}s.
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 处理聚合函数的基类。
+ */
 public interface AggsHandleFunction extends AggsHandleFunctionBase {
 
     /**

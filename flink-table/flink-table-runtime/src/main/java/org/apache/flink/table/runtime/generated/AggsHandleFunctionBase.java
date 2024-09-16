@@ -33,15 +33,33 @@ import org.apache.flink.table.runtime.dataview.StateDataViewStore;
  * <p>It is the entry point for aggregate operators to operate all {@link AggregateFunction}s and
  * {@link TableAggregateFunction}s.
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * 处理聚合或表聚合函数的基类。
+ */
 public interface AggsHandleFunctionBase extends Function {
 
     /** Initialization method for the function. It is called before the actual working methods. */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 函数的初始化方法。它被称为实际工作方法之前。
+     */
     void open(StateDataViewStore store) throws Exception;
 
     /**
      * Accumulates the input values to the accumulators.
      *
      * @param input input values bundled in a row
+     */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将输入值累加到累加器。
      */
     void accumulate(RowData input) throws Exception;
 
@@ -50,12 +68,24 @@ public interface AggsHandleFunctionBase extends Function {
      *
      * @param input input values bundled in a row
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 从累加器中提取输入值。
+     */
     void retract(RowData input) throws Exception;
 
     /**
      * Merges the other accumulators into current accumulators.
      *
      * @param accumulators The other row of accumulators
+     */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将其他累加器合并为当前累加器。
      */
     void merge(RowData accumulators) throws Exception;
 
@@ -67,15 +97,35 @@ public interface AggsHandleFunctionBase extends Function {
      *
      * @param accumulators current accumulators
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 设置包含当前聚合结果的当前累加器（保存在一行中）。
+     * 在流中：累加器存储在状态中，我们需要从状态中恢复聚合缓冲区。
+     * 批量：累加器存储在hashMap中，我们需要从hashMap恢复聚合缓冲区。
+     */
     void setAccumulators(RowData accumulators) throws Exception;
 
     /** Resets all the accumulators. */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 重置所有累加器。
+     */
     void resetAccumulators() throws Exception;
 
     /**
      * Gets the current accumulators (saved in a row) which contains the current aggregated results.
      *
      * @return the current accumulators
+     */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 并获得累加器
      */
     RowData getAccumulators() throws Exception;
 
@@ -84,14 +134,32 @@ public interface AggsHandleFunctionBase extends Function {
      *
      * @return a row of accumulators which contains the aggregated results
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 初始化累加器并将其保存到累加器行。
+     */
     RowData createAccumulators() throws Exception;
 
     /** Cleanup for the retired accumulators state. */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 清理累加器状态
+     */
     void cleanup() throws Exception;
 
     /**
      * Tear-down method for this function. It can be used for clean up work. By default, this method
      * does nothing.
+     */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 关闭累加器
      */
     void close() throws Exception;
 }

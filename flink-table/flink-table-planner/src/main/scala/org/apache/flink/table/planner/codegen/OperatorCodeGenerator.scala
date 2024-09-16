@@ -39,24 +39,34 @@ object OperatorCodeGenerator extends Logging {
   def addReuseOutElement(ctx: CodeGeneratorContext): Unit = {
     ctx.addReusableMember(s"private final $STREAM_RECORD $OUT_ELEMENT = new $STREAM_RECORD(null);")
   }
-
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 使用OperatorCodeGenerator生成一个单输入流操作器的代码
+   */
   def generateOneInputStreamOperator[IN <: Any, OUT <: Any](
-      ctx: CodeGeneratorContext,
-      name: String,
-      processCode: String,
-      inputType: LogicalType,
-      inputTerm: String = CodeGenUtils.DEFAULT_INPUT1_TERM,
-      endInputCode: Option[String] = None,
-      lazyInputUnboxingCode: Boolean = false,
-      converter: String => String = a => a): GeneratedOperator[OneInputStreamOperator[IN, OUT]] = {
+      ctx: CodeGeneratorContext,// 代码生成上下文
+      name: String,// 生成的操作符名称
+      processCode: String,// 处理逻辑的代码
+      inputType: LogicalType,// 输入数据的逻辑类型
+      inputTerm: String = CodeGenUtils.DEFAULT_INPUT1_TERM,// 输入数据项的默认名称
+      endInputCode: Option[String] = None,// 结束输入时的自定义代码，可选
+      lazyInputUnboxingCode: Boolean = false,// 是否延迟输入解包代码，默认为否
+      converter: String => String = a => a): GeneratedOperator[OneInputStreamOperator[IN, OUT]] = {// 字符串转换器，默认为恒等转换
+    // 添加重用输出元素的逻辑
     addReuseOutElement(ctx)
+    // 生成新的操作符名称，避免命名冲突
     val operatorName = newName(ctx, name)
+    // 获取操作符的抽象基类名称
     val abstractBaseClass = ctx.getOperatorBaseClass
+    // 指定操作符的基类为OneInputStreamOperator[IN, OUT]
     val baseClass = classOf[OneInputStreamOperator[IN, OUT]]
+    // 将输入数据的逻辑类型转换为对应的Java类型术语
     val inputTypeTerm = boxedTypeTermForType(inputType)
-
+    // 处理结束输入时的代码，如果endInputCode为Some，则生成重写endInput方法的代码
     val (endInput, endInputImpl) = endInputCode match {
-      case None => ("", "")
+      case None => ("", "")// 如果没有自定义的结束输入代码，则留空
       case Some(code) =>
         (
           s"""
@@ -66,17 +76,18 @@ object OperatorCodeGenerator extends Logging {
              |  $code
              |}
          """.stripMargin,
-          s", ${className[BoundedOneInput]}")
+          s", ${className[BoundedOneInput]}")// 如果需要，添加BoundedOneInput接口的实现
     }
+    // 构造操作符类的Java代码
 
     val operatorCode =
       j"""
       public class $operatorName extends ${abstractBaseClass.getCanonicalName}
           implements ${baseClass.getCanonicalName}$endInputImpl {
-
+         // 引用数组，用于存储可能需要的外部引用
         private final Object[] references;
         ${ctx.reuseMemberCode()}
-
+        // 构造函数
         public $operatorName(
             Object[] references,
             ${className[StreamTask[_, _]]} task,
@@ -91,13 +102,13 @@ object OperatorCodeGenerator extends Logging {
               .setProcessingTimeService(processingTimeService);
           }
         }
-
+        // open方法，用于初始化
         @Override
         public void open() throws Exception {
           super.open();
           ${ctx.reuseOpenCode()}
         }
-
+        // processElement方法，处理输入元素
         @Override
         public void processElement($STREAM_RECORD $ELEMENT) throws Exception {
           $inputTypeTerm $inputTerm = ($inputTypeTerm) ${converter(s"$ELEMENT.getValue()")};
@@ -108,13 +119,13 @@ object OperatorCodeGenerator extends Logging {
         }
 
         $endInput
-
+        // finish方法，在任务结束时调用
         @Override
         public void finish() throws Exception {
             ${ctx.reuseFinishCode()}
             super.finish();
         }
-
+       // close方法，用于清理资源
         @Override
         public void close() throws Exception {
            super.close();
@@ -124,9 +135,10 @@ object OperatorCodeGenerator extends Logging {
         ${ctx.reuseInnerClassDefinitionCode()}
       }
     """.stripMargin
-
+    // 日志输出，调试信息
     LOG.debug(s"Compiling OneInputStreamOperator Code:\n$name")
     LOG.trace(s"Code: \n$operatorCode")
+    // 构造GeneratedOperator实例并返回
     new GeneratedOperator(operatorName, operatorCode, ctx.references.toArray, ctx.tableConfig)
   }
 

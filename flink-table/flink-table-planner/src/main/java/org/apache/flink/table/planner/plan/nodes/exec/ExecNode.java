@@ -122,5 +122,11 @@ public interface ExecNode<T> extends ExecNodeTranslator<T>, FusionCodegenExecNod
      * Declares whether the node has been created as part of a plan compilation. Some translation
      * properties might be impacted by this (e.g. UID generation for transformations).
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 设置该节点是否作为计划编译的一部分被创建
+     */
     void setCompiled(boolean isCompiled);
 }

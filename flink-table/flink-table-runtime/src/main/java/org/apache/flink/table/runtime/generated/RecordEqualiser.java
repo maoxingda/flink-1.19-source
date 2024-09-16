@@ -25,6 +25,12 @@ import java.io.Serializable;
 /**
  * Record equaliser for RowData which can compare two RowData and returns whether they are equal.
  */
+/**
+ * @授课老师: 码界探索
+ * @微信: 252810631
+ * @版权所有: 请尊重劳动成果
+ * RowData的记录均衡器，可以比较两个RowData并返回它们是否相等。
+ */
 public interface RecordEqualiser extends Serializable {
 
     /** Returns {@code true} if the rows are equal to each other and {@code false} otherwise. */

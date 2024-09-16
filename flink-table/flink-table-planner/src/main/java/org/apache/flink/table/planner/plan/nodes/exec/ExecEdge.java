@@ -255,7 +255,14 @@ public class ExecEdge {
      *
      * @param planner The {@link Planner} of the translated Table.
      */
+    /**
+     * @授课老师: 码界探索
+     * @微信: 252810631
+     * @版权所有: 请尊重劳动成果
+     * 将此边（Edge）转换为Flink的操作符（Operator）。
+     */
     public Transformation<?> translateToPlan(Planner planner) {
+        //调用父类方法 返回包含边逻辑的执行计划中的Transformation对象。
         return source.translateToPlan(planner);
     }
 

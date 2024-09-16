@@ -42,21 +42,30 @@ class StreamPhysicalCalc(
   override def copy(traitSet: RelTraitSet, child: RelNode, program: RexProgram): Calc = {
     new StreamPhysicalCalc(cluster, traitSet, child, program, outputRowType)
   }
-
+  /**
+   * @授课老师: 码界探索
+   * @微信: 252810631
+   * @版权所有: 请尊重劳动成果
+   * 将物理节点Calc转换为ExecNode为后面转换Transformation做准备
+   */
   override def translateToExecNode(): ExecNode[_] = {
+    // 从CalcProgram中获取投影列表，并将每个投影表达式中的本地引用扩展为完整的表达式
     val projection = calcProgram.getProjectList.map(calcProgram.expandLocalRef)
+    // 如果CalcProgram中存在条件表达式，则将其中的本地引用扩展为完整的表达式；否则，条件表达式为null
     val condition = if (calcProgram.getCondition != null) {
       calcProgram.expandLocalRef(calcProgram.getCondition)
     } else {
       null
     }
 
+    // 创建一个StreamExecCalc执行节点
+    // 该节点用于在流处理中对输入数据进行计算，包括投影（选择列）和过滤（根据条件筛选）
     new StreamExecCalc(
-      unwrapTableConfig(this),
-      projection,
-      condition,
-      InputProperty.DEFAULT,
-      FlinkTypeFactory.toLogicalRowType(getRowType),
-      getRelDetailedDescription)
+      unwrapTableConfig(this),// 获取表的配置
+      projection, // 投影列表，即要选择的列或表达式
+      condition, // 过滤条件，如果不存在则为null
+      InputProperty.DEFAULT,// 输入属性的默认设置
+      FlinkTypeFactory.toLogicalRowType(getRowType),// 将表的行类型转换为逻辑行类型
+      getRelDetailedDescription)// 获取关系的详细描述
   }
 }
